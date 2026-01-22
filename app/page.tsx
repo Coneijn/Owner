@@ -2,63 +2,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth'; 
-import PropertyImage from './components/PropertyImage'; 
 import SearchFilters from './components/SearchFilters'; 
 import LanguageSwitch from './components/LanguageSwitch'; 
+import PropertiesCarousel from './components/PropertiesCarousel'; // <--- IMPORTA EL NUEVO COMPONENTE
 import { Prisma } from '@prisma/client';
 
-// --- CONFIGURACIÓN DE COLORES ---
-// Primary Yellow: #f8ed1a | Primary Green: #529e14 | Dark: #1a1a1a
-
-// --- CONSTANTES GLOBALES (Solo lo que es fijo para todos) ---
-const DEFAULT_TERM_YEARS = 30; // El plazo suele ser estándar
-const SERVICE_FEE = 39;        // Fee de servicio fijo
-
-// --- LÓGICA DE CÁLCULO MEJORADA ---
-// Ahora recibe todos los parámetros específicos de la propiedad
-const calculateEstimatedPayment = (
-  price: number, 
-  downPayment: number, 
-  annualTaxes: number, 
-  annualInsurance: number, 
-  interestRate: number
-) => {
-  const loanAmount = price - downPayment;
-  
-  // Usamos el interés específico de la propiedad
-  const monthlyRate = (interestRate / 100) / 12;
-  const numberOfPayments = DEFAULT_TERM_YEARS * 12;
-
-  let principalAndInterest = 0;
-  if (monthlyRate > 0) {
-    principalAndInterest = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
-      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-  } else {
-    principalAndInterest = loanAmount / numberOfPayments;
-  }
-
-  // Dividimos los valores anuales reales entre 12
-  const monthlyTaxes = annualTaxes / 12;
-  const monthlyInsurance = annualInsurance / 12;
-
-  return principalAndInterest + monthlyTaxes + monthlyInsurance + SERVICE_FEE;
-};
-
-const formatMoney = (amount: number | unknown) => {
-  const value = Number(amount);
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-};
-
-// ... (TU DICCIONARIO DICTIONARY SE QUEDA IGUAL, LO OMITO PARA AHORRAR ESPACIO) ...
 const DICTIONARY = { 
-    // ... copia tu diccionario aquí ...
-    es: {
-        // ...
-        heroTitle: "TU CASA PROPIA, SIN BANCOS NI COMPLICACIONES", 
+   es: {
+        nav: {
+            home: "Inicio",
+            properties: "Propiedades",
+            about: "Nosotros",
+            contact: "Contacto"
+        },
+        heroTitle: "TU CASA PROPIA, SIN BANCOS NI COMPLICACIONES",
         heroSub: "Financiamiento directo de Dueño a Dueño. Si el banco te dijo que no, nosotros te decimos que SÍ.",
         btnProps: "Ver casas disponibles",
         btnApply: "Login",
@@ -95,7 +52,12 @@ const DICTIONARY = {
         }
     },
     en: {
-        // ...
+        nav: {
+            home: "Home",
+            properties: "Properties",
+            about: "About Us",
+            contact: "Contact"
+        },
         heroTitle: "YOUR OWN HOME, NO BANKS, NO HASSLE",
         heroSub: "Direct Owner-to-Owner financing. If the bank said no, we say YES.",
         btnProps: "See Available Homes",
@@ -182,10 +144,18 @@ export default async function HomePage(props: {
             
             <div className="flex items-center gap-2 md:gap-6">
               <nav className="hidden md:flex gap-6 text-white font-medium text-sm">
-                 <Link href="/" className="hover:text-[#f8ed1a] transition">Inicio</Link>
-                 <Link href="#properties" className="hover:text-[#f8ed1a] transition">Propiedades</Link>
-                 <Link href="#trust" className="hover:text-[#f8ed1a] transition">Nosotros</Link>
-                 <Link href="#contact" className="hover:text-[#f8ed1a] transition">Contacto</Link>
+                 <Link href="/" className="hover:text-[#f8ed1a] transition">
+                    {t.nav.home}
+                 </Link>
+                 <Link href="#properties" className="hover:text-[#f8ed1a] transition">
+                    {t.nav.properties}
+                 </Link>
+                 <Link href="#trust" className="hover:text-[#f8ed1a] transition">
+                    {t.nav.about}
+                 </Link>
+                 <Link href="#contact" className="hover:text-[#f8ed1a] transition">
+                    {t.nav.contact}
+                 </Link>
               </nav>
 
               <div className="flex items-center gap-2 md:gap-3">
@@ -204,7 +174,16 @@ export default async function HomePage(props: {
       {/* HERO SECTION  */}
       <div className="relative bg-[#1a1a1a] pt-10 pb-20 md:pt-24 md:pb-32 px-4 overflow-hidden">
         <div className="absolute inset-0 z-0 opacity-40">
-           <div className="w-full h-full bg-[url('/casa.png')] bg-cover bg-center" />
+            <Image 
+              src="/casa.png" 
+              alt="Casa background"
+              fill priority={true} 
+              fetchPriority="high" 
+              decoding="sync"      
+              quality={60}
+              className="object-cover object-center" 
+              sizes="100vw" 
+            />
         </div>
         <div className="max-w-7xl mx-auto relative z-10 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div className="text-left">
@@ -255,7 +234,7 @@ export default async function HomePage(props: {
          </div>
       </div>
 
-      {/* --- FEATURED PROPERTIES --- */}
+      {/* --- FEATURED PROPERTIES CON CARRUSEL --- */}
       <main id="properties" className="bg-[#f8ed1a] py-12 md:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-10 border-b-4 border-black pb-4 gap-4">
@@ -267,92 +246,9 @@ export default async function HomePage(props: {
             </span>
           </div>
 
-          {properties.length === 0 ? (
-            <div className="text-center py-20 bg-black/10 rounded-xl border-2 border-dashed border-black/20">
-              <p className="text-[#1a1a1a] text-xl font-bold">{t.noResults}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {properties.map((property) => {
-                
-                const estimatedPayment = calculateEstimatedPayment(
-                    Number(property.price), 
-                    Number(property.downPayment),
-                    Number(property.taxes),      
-                    Number(property.insurance),  
-                    Number(property.interestRate) 
-                );
-
-                return (
-                  <div key={property.id} className="bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full">
-                    <div className="relative h-64 bg-gray-800">
-                        <PropertyImage 
-                            src={property.mainImage || ''} 
-                            alt={lang === 'en' ? property.titleEn : property.titleEs} 
-                        />
-                        {/* Etiqueta dinámica Off Market vs Available */}
-                        <div className={`absolute top-4 right-4 px-3 py-1 rounded text-xs font-black uppercase tracking-wider shadow-sm 
-                            ${property.isOffMarket ? 'bg-[#f8ed1a] text-[#1a1a1a]' : 'bg-[#529e14] text-white'}`}>
-                          {property.isOffMarket 
-                             ? (lang === 'en' ? t.offMarket : t.offMarket) 
-                             : (lang === 'en' ? t.availability : t.availability) 
-                          }
-                        </div>
-                    </div>
-                    <div className="p-6 flex flex-col flex-grow">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white line-clamp-2 leading-tight" title={lang === 'en' ? property.titleEn : property.titleEs}>
-                                {lang === 'en' ? property.titleEn : property.titleEs}
-                            </h3>
-                            <div className="text-gray-400 text-sm mt-1 uppercase font-semibold tracking-wide">
-                                {property.city}, {property.state}
-                            </div>
-                        </div>
-                        
-                        {/* PAGO MENSUAL REAL CALCULADO */}
-                        <div className="mb-6 bg-white/5 p-3 rounded-lg border border-white/10">
-                            <p className="text-gray-400 text-xs uppercase font-bold mb-1">{t.monthlyPayment}</p>
-                            <p className="text-[#f8ed1a] text-3xl font-black tracking-tight">
-                                {formatMoney(estimatedPayment)}
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2 border-t border-gray-700 pt-4 mb-6 text-center text-white">
-                            <div>
-                                <span className="block text-lg font-bold">{property.bedrooms}</span>
-                                <span className="text-[10px] text-gray-400 uppercase tracking-wider">{t.beds}</span>
-                            </div>
-                            <div className="border-l border-gray-700">
-                                <span className="block text-lg font-bold">{property.bathrooms}</span>
-                                <span className="text-[10px] text-gray-400 uppercase tracking-wider">{t.baths}</span>
-                            </div>
-                            <div className="border-l border-gray-700">
-                                <span className="block text-lg font-bold">{property.sqft}</span>
-                                <span className="text-[10px] text-gray-400 uppercase tracking-wider">Sqft</span>
-                            </div>
-                        </div>
-                        <div className="mt-auto space-y-3">
-                            <div className="flex justify-between items-center text-sm text-gray-300">
-                                <span>{t.totalPrice}:</span>
-                                <span className="font-bold text-white">{formatMoney(property.price)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm text-gray-300">
-                                <span>{t.downPayment}:</span>
-                                <span className="font-bold text-[#f8ed1a]">{formatMoney(property.downPayment)}</span>
-                            </div>
-                            <Link 
-                                href={`/propiedades/${property.slug}?lang=${lang}`}
-                                className="block w-full text-center bg-[#529e14] text-white py-3 rounded-lg font-bold uppercase tracking-wide hover:bg-[#458510] transition-colors mt-4"
-                            >
-                                {t.details}
-                            </Link>
-                        </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* AQUÍ ESTÁ EL NUEVO COMPONENTE */}
+          <PropertiesCarousel properties={properties} t={t} lang={lang} />
+          
         </div>
       </main>
 
@@ -371,24 +267,46 @@ export default async function HomePage(props: {
                     <span className="text-xl md:text-2xl font-bold tracking-wide">901-660-4100</span>
                 </div>
                 <div className="space-y-4">
-                    <div className="flex items-center gap-3 justify-center md:justify-start">
-                        <Image src="/facebook.png" alt="Facebook" width={24} height={24} />
-                        <span className="font-medium">Dueño A Dueño</span>
-                    </div>
-                    <div className="flex items-center gap-3 justify-center md:justify-start">
-                        <Image src="/instagram.png" alt="Instagram" width={24} height={24} />
-                        <span className="font-medium">@duenoaduenoo</span>
-                    </div>
-                    <div className="flex items-center gap-3 justify-center md:justify-start">
-                        <Image src="/tiktok.png" alt="TikTok" width={24} height={24} />
-                        <span className="font-medium">@duenoaduenoo</span>
-                    </div>
+                    <div className="space-y-4">
+                {/* Facebook */}
+                <a 
+                  href="https://www.facebook.com/duenoaduenoo" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity"
+                >
+                  <Image src="/facebook.png" alt="Facebook" width={24} height={24} />
+                  <span className="font-medium">Dueño A Dueño</span>
+                </a>
+
+                {/* Instagram */}
+                <a 
+                  href="https://www.instagram.com/duenoaduenoo" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity"
+                >
+                  <Image src="/instagram.png" alt="Instagram" width={24} height={24} />
+                  <span className="font-medium">@duenoaduenoo</span>
+                </a>
+
+                {/* TikTok */}
+                <a 
+                  href="https://www.tiktok.com/@duenoaduenoo" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity"
+                >
+                  <Image src="/tiktok.png" alt="TikTok" width={24} height={24} />
+                  <span className="font-medium">@duenoaduenoo</span>
+                </a>
+</div>
                 </div>
             </div>
            
         </div>
         <div className="max-w-7xl mx-auto px-4 text-center mt-8 md:mt-12 pt-8 border-t border-gray-800 text-gray-500 text-sm">
-          <p>© 2026 Dueño a Dueño. Todos los derechos reservados.</p>
+          <p>© 2026 Dueño a Dueño. </p>
         </div>
       </footer>
     </div>

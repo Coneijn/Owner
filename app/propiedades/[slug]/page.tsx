@@ -67,8 +67,8 @@ const DICTIONARY = {
   }
 };
 
-const DEFAULT_CALENDAR_LINK = "https://calendly.com/tu-usuario/visita-general"; 
 
+const DEFAULT_CALENDAR_LINK = "https://cal.com/duenodueno/susie"; 
 export default async function PropertyDetailPage(props: {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
@@ -121,7 +121,7 @@ export default async function PropertyDetailPage(props: {
         
         {/* Breadcrumb */}
         <div className="mb-8">
-            <Link href={`/?lang=${lang}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
+            <Link href={`/?lang=${lang}#properties`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
                 <span className="text-lg">←</span> {t.back}
             </Link>
         </div>
