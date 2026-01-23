@@ -3,20 +3,15 @@
 import Link from 'next/link';
 import { createProperty } from '@/lib/actions';
 import { useActionState, useState } from 'react'; 
-import ImageUpload from '@/app/admin/ui/image-upload'; 
-
-// Color Palette Reference:
-// Dark: #1a1a1a | Yellow:rgb(90, 85, 0) | Green: #529e14
+import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 
 export default function NewPropertyPage() {
     const [state, formAction, isPending] = useActionState(createProperty, null);
     
-    // Estados para imágenes
-    const [mainImage, setMainImage] = useState<string>('');
-    const [galleryImages, setGalleryImages] = useState<string[]>([]);
+    const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
+    const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
 
-    // Estados para Vendedor
-    const [sellerImage, setSellerImage] = useState<string>('');
+    const [sellerImage, setSellerImage] = useState<ImageFile[]>([]);
     const [showSeller, setShowSeller] = useState<boolean>(false);
 
   return (
@@ -83,7 +78,7 @@ export default function NewPropertyPage() {
                   <input
                     type="url"
                     name="calendarLink"
-                    placeholder="https://calendly.com/..."
+                    placeholder="https://cal.com/duenodueno..."
                     className="block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm sm:leading-6"
                   />
                 </div>
@@ -125,6 +120,47 @@ export default function NewPropertyPage() {
             </div>
           </div>
 
+          {/* SECTION: PAGE SEO & METADATA (NUEVO) */}
+          <div className="border-b border-gray-800 pb-10">
+            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Page SEO & Meta Tags</h2>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2">
+                
+                {/* SEO English */}
+                <div className="space-y-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">🇺🇸</span>
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">SEO English</h3>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Title (Browser Tab)</label>
+                        <input type="text" name="seoTitleEn" className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        <p className="text-[10px] text-gray-500 mt-1">Recommended: 50-60 characters</p>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Description (Google Snippet)</label>
+                        <textarea name="seoDescriptionEn" rows={3} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                        <p className="text-[10px] text-gray-500 mt-1">Recommended: 150-160 characters</p>
+                    </div>
+                </div>
+
+                {/* SEO Spanish */}
+                <div className="space-y-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">🇲🇽</span>
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">SEO Español</h3>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Título</label>
+                        <input type="text" name="seoTitleEs" className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Descripción</label>
+                        <textarea name="seoDescriptionEs" rows={3} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                </div>
+            </div>
+          </div>
+
           {/* SECTION 2: LOCATION & CONTACT */}
           <div className="border-b border-gray-800 pb-10">
             <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Location & Contact</h2>
@@ -152,7 +188,7 @@ export default function NewPropertyPage() {
 
               <div className="sm:col-span-2">
                 <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">State</label>
-                <input type="text" name="state" defaultValue="NC" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
+                <input type="text" name="state" defaultValue="TN" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
 
               <div className="sm:col-span-2">
@@ -261,27 +297,29 @@ export default function NewPropertyPage() {
             </div>
           </div>
 
-          {/* SECTION 6: MEDIA (S3 INTEGRATION) */}
+          {/* SECTION 6: MEDIA (UPDATED WITH METADATA) */}
           <div className="pb-8 border-b border-gray-800 pt-10">
              <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Images & Features</h2>
              
-             {/* INPUTS OCULTOS (Conectados al State) */}
-             <input type="hidden" name="mainImage" value={mainImage} />
-             <input type="hidden" name="galleryImages" value={galleryImages.join(',')} />
+             {/* INPUTS OCULTOS JSON PARA SERVER ACTIONS */}
+             {/* Importante: Parsear estos strings en el backend */}
+             <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
+             <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
              
              <div className="grid grid-cols-1 gap-10">
-                {/* Componente Drag & Drop: Main Image */}
+                {/* Componente Drag & Drop Actualizado: Main Image */}
                 <ImageUpload 
                   label="Main Image" 
-                  value={mainImage} 
-                  onChange={(url) => setMainImage(url as string)} 
+                  value={mainImageFiles} 
+                  onChange={(files) => setMainImageFiles(files)}
+                  multiple={false} 
                 />
 
-                {/* Componente Drag & Drop: Gallery */}
+                {/* Componente Drag & Drop Actualizado: Gallery */}
                 <ImageUpload 
                   label="Gallery Images" 
-                  value={galleryImages} 
-                  onChange={(urls) => setGalleryImages(urls as string[])} 
+                  value={galleryImageFiles} 
+                  onChange={(files) => setGalleryImageFiles(files)} 
                   multiple={true}
                 />
 
@@ -306,11 +344,10 @@ export default function NewPropertyPage() {
              </div>
           </div>
 
-          {/* SECTION 7: SELLER INFORMATION (NUEVA SECCIÓN) */}
+          {/* SECTION 7: SELLER INFORMATION */}
           <div className="border-b border-gray-800 pb-10 pt-10">
             <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Seller Information</h2>
             
-            {/* Checkbox para habilitar la sección */}
             <div className="relative flex items-start mb-8">
                 <div className="flex h-6 items-center">
                   <input
@@ -328,11 +365,9 @@ export default function NewPropertyPage() {
                 </div>
             </div>
 
-            {/* Campos Condicionales */}
             {showSeller && (
                 <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-4 duration-300">
                     
-                    {/* NUEVO SELECTOR: TIPO DE VENDEDOR */}
                     <div className="sm:col-span-2">
                         <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Role Title</label>
                         <select 
@@ -356,13 +391,13 @@ export default function NewPropertyPage() {
                     </div>
 
                     <div className="sm:col-span-6">
-                        {/* Input oculto para guardar la URL de la imagen del vendedor */}
-                        <input type="hidden" name="sellerImage" value={sellerImage} />
+                        <input type="hidden" name="sellerImage" value={sellerImage[0]?.url || ''} />
                         
                         <ImageUpload 
                             label="Seller Photo" 
                             value={sellerImage} 
-                            onChange={(url) => setSellerImage(url as string)} 
+                            onChange={(files) => setSellerImage(files)} 
+                            multiple={false}
                         />
                     </div>
                 </div>

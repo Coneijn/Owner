@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PropertyStatus } from '@prisma/client';
 
+// --- AUTH ---
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
@@ -29,6 +30,7 @@ export async function authenticate(
   }
 }
 
+// --- DELETE ---
 export async function deleteProperty(formData: FormData) {
   const id = formData.get('id') as string;
   
@@ -45,14 +47,58 @@ export async function deleteProperty(formData: FormData) {
   }
 }
 
-function processArray(input: unknown): string[] {
+// --- HELPERS ---
+function processFeatures(input: unknown): string[] {
   if (typeof input !== 'string') return [];
   if (!input.trim()) return [];
   return input.split(',').map(item => item.trim());
 }
 
+// Helper para parsear los JSON de imágenes
+function parseImageData(jsonString: unknown) {
+  if (typeof jsonString !== 'string' || !jsonString) return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    console.error("Error parsing image JSON", e);
+    return null;
+  }
+}
+
+// --- CREATE ---
 export async function createProperty(prevState: any, formData: FormData) {
   const rawFormData = Object.fromEntries(formData.entries());
+  const mainImageObj = parseImageData(rawFormData.mainImageData);
+  const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
+  const imagesToCreate = [];
+
+  if (mainImageObj && mainImageObj.url) {
+    imagesToCreate.push({
+      url: mainImageObj.url,
+      altText: mainImageObj.altText || '',
+      title: mainImageObj.title || '',
+      caption: mainImageObj.caption || '',
+      description: mainImageObj.description || '',
+      isMain: true,
+      order: 0
+    });
+  }
+
+  if (Array.isArray(galleryImagesArray)) {
+    galleryImagesArray.forEach((img: any, index: number) => {
+      imagesToCreate.push({
+        url: img.url,
+        altText: img.altText || '',
+        title: img.title || '',
+        caption: img.caption || '',
+        description: img.description || '',
+        isMain: false,
+        order: index + 1
+      });
+    });
+  }
+
+  const legacyGalleryUrls = Array.isArray(galleryImagesArray) ? galleryImagesArray.map((img:any) => img.url) : [];
 
   try {
     await prisma.property.create({
@@ -63,6 +109,12 @@ export async function createProperty(prevState: any, formData: FormData) {
         isOffMarket: rawFormData.isOffMarket === 'on',
         calendarLink: rawFormData.calendarLink as string,
 
+        // SEO Fields
+        seoTitleEn: rawFormData.seoTitleEn as string,
+        seoDescriptionEn: rawFormData.seoDescriptionEn as string,
+        seoTitleEs: rawFormData.seoTitleEs as string,
+        seoDescriptionEs: rawFormData.seoDescriptionEs as string,
+
         // Bilingüe
         titleEn: rawFormData.titleEn as string,
         titleEs: rawFormData.titleEs as string,
@@ -70,7 +122,7 @@ export async function createProperty(prevState: any, formData: FormData) {
         descriptionEs: rawFormData.descriptionEs as string,
         
         // Financiero 
-        price: rawFormData.price as string,
+        price: rawFormData.price as string, 
         downPayment: rawFormData.downPayment as string,
         interestRate: rawFormData.interestRate as string,
         taxes: rawFormData.taxes as string,
@@ -90,16 +142,21 @@ export async function createProperty(prevState: any, formData: FormData) {
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
         
-        // Multimedia y Features
-        mainImage: rawFormData.mainImage as string,
-        galleryImages: processArray(rawFormData.galleryImages),
-        features: processArray(rawFormData.features),
+        // Multimedia (Legacy Fields)
+        mainImage: mainImageObj?.url || '',
+        galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
+        features: processFeatures(rawFormData.features),
+
+        // RELACIÓN DE IMÁGENES (NUEVO MODELO)
+        images: {
+          create: imagesToCreate
+        },
 
         // Vendedor 
         showSeller: rawFormData.showSeller === 'on',
         sellerName: rawFormData.sellerName as string,
-        sellerImage: rawFormData.sellerImage as string,
+        sellerImage: rawFormData.sellerImage as string, 
         sellerType: rawFormData.sellerType as string,
       },
     });
@@ -113,9 +170,44 @@ export async function createProperty(prevState: any, formData: FormData) {
   redirect('/admin');
 }
 
+// --- UPDATE ---
 export async function updateProperty(prevState: any, formData: FormData) {
   const id = formData.get('id') as string; 
   const rawFormData = Object.fromEntries(formData.entries());
+
+  // 1. Procesar Imágenes (Igual que en create)
+  const mainImageObj = parseImageData(rawFormData.mainImageData);
+  const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
+
+  const imagesToCreate = [];
+
+  if (mainImageObj && mainImageObj.url) {
+    imagesToCreate.push({
+      url: mainImageObj.url,
+      altText: mainImageObj.altText || '',
+      title: mainImageObj.title || '',
+      caption: mainImageObj.caption || '',
+      description: mainImageObj.description || '',
+      isMain: true,
+      order: 0
+    });
+  }
+
+  if (Array.isArray(galleryImagesArray)) {
+    galleryImagesArray.forEach((img: any, index: number) => {
+      imagesToCreate.push({
+        url: img.url,
+        altText: img.altText || '',
+        title: img.title || '',
+        caption: img.caption || '',
+        description: img.description || '',
+        isMain: false,
+        order: index + 1
+      });
+    });
+  }
+
+  const legacyGalleryUrls = Array.isArray(galleryImagesArray) ? galleryImagesArray.map((img:any) => img.url) : [];
 
   try {
     await prisma.property.update({
@@ -127,6 +219,12 @@ export async function updateProperty(prevState: any, formData: FormData) {
         isOffMarket: rawFormData.isOffMarket === 'on',
         calendarLink: rawFormData.calendarLink as string,
         
+        // SEO Fields
+        seoTitleEn: rawFormData.seoTitleEn as string,
+        seoDescriptionEn: rawFormData.seoDescriptionEn as string,
+        seoTitleEs: rawFormData.seoTitleEs as string,
+        seoDescriptionEs: rawFormData.seoDescriptionEs as string,
+
         // Bilingüe
         titleEn: rawFormData.titleEn as string,
         titleEs: rawFormData.titleEs as string,
@@ -140,7 +238,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
         taxes: rawFormData.taxes as string,
         insurance: rawFormData.insurance as string,
         
-        // Ubicación y Contacto
+        // Ubicación
         address: rawFormData.address as string,
         city: rawFormData.city as string,
         state: rawFormData.state as string,
@@ -154,11 +252,16 @@ export async function updateProperty(prevState: any, formData: FormData) {
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
         
-        // Multimedia
-        mainImage: rawFormData.mainImage as string,
-        galleryImages: processArray(rawFormData.galleryImages),
-        features: processArray(rawFormData.features),
+        // Multimedia (Legacy)
+        mainImage: mainImageObj?.url || '',
+        galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
+        features: processFeatures(rawFormData.features),
+
+        images: {
+          deleteMany: {}, 
+          create: imagesToCreate 
+        },
 
         // Vendedor 
         showSeller: rawFormData.showSeller === 'on',

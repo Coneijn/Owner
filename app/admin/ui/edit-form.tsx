@@ -3,13 +3,78 @@
 import Link from 'next/link';
 import { useActionState, useState } from 'react'; 
 import { updateProperty } from '@/lib/actions';
-import ImageUpload from '@/app/admin/ui/image-upload'; 
+import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 
-export default function EditForm({ property }: { property: any }) {
+interface PropertyData {
+  id: string;
+  status: string;
+  slug: string;
+  calendarLink?: string | null;
+  isFeatured: boolean;
+  isOffMarket: boolean;
+  
+  // SEO
+  seoTitleEn?: string | null;
+  seoDescriptionEn?: string | null;
+  seoTitleEs?: string | null;
+  seoDescriptionEs?: string | null;
+
+  // Location
+  address: string;
+  phoneNumber?: string | null;
+  city: string;
+  state?: string | null;
+  zipCode: string;
+
+  // Specs
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number;
+  yearBuilt?: number | null;
+
+  // Financials 
+  price: number;
+  downPayment: number;
+  interestRate: number;
+  taxes: number;
+  insurance: number;
+
+  // Content
+  titleEn: string;
+  descriptionEn?: string | null;
+  titleEs: string;
+  descriptionEs?: string | null;
+
+  // Media & Features
+  mainImage?: string | null;
+  galleryImages: string[];
+  images?: any[]; 
+  videoUrl?: string | null;
+  features: string[];
+
+  // Seller
+  showSeller: boolean;
+  sellerType?: string | null;
+  sellerName?: string | null;
+  sellerImage?: string | null;
+}
+
+export default function EditForm({ property }: { property: PropertyData }) {
   const [state, formAction, isPending] = useActionState(updateProperty, null);
-  const [mainImage, setMainImage] = useState<string>(property.mainImage || '');
-  const [galleryImages, setGalleryImages] = useState<string[]>(property.galleryImages || []);
-  const [sellerImage, setSellerImage] = useState<string>(property.sellerImage || '');
+  const initialMain: ImageFile[] = property.images && property.images.length > 0
+      ? property.images.filter((img: any) => img.isMain).map((img: any) => ({ url: img.url }))
+      : property.mainImage ? [{ url: property.mainImage }] : [];
+
+  const initialGallery: ImageFile[] = property.images && property.images.length > 0
+      ? property.images.filter((img: any) => !img.isMain).map((img: any) => ({ url: img.url }))
+      : property.galleryImages ? property.galleryImages.map((url: string) => ({ url })) : [];
+
+  const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>(initialMain);
+  const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>(initialGallery);
+
+  const initialSeller = property.sellerImage ? [{ url: property.sellerImage }] : [];
+  const [sellerImageFiles, setSellerImageFiles] = useState<ImageFile[]>(initialSeller);
+  
   const [showSeller, setShowSeller] = useState<boolean>(property.showSeller || false);
 
   return (
@@ -49,7 +114,7 @@ export default function EditForm({ property }: { property: any }) {
             </div>
           </div>
 
-          {/* NUEVO CAMPO: CALENDARIO */}
+          {/* CALENDARIO */}
           <div className="sm:col-span-6">
             <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Calendar Link (Booking)</label>
             <div className="mt-2">
@@ -57,13 +122,13 @@ export default function EditForm({ property }: { property: any }) {
                 type="url"
                 name="calendarLink"
                 defaultValue={property.calendarLink || ''}
-                placeholder="https://calendly.com/..."
+                placeholder="https://cal.com/duenodueno..."
                 className="block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm sm:leading-6"
               />
             </div>
           </div>
 
-          {/* FLAGS: Featured & Off Market */}
+          {/* FLAGS */}
           <div className="sm:col-span-6 flex gap-8 pt-4">
               <div className="relative flex items-start">
                 <div className="flex h-6 items-center">
@@ -98,6 +163,45 @@ export default function EditForm({ property }: { property: any }) {
         </div>
       </div>
 
+       {/* SECTION: PAGE SEO (EDIT) */}
+       <div className="border-b border-gray-800 pb-10">
+            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Page SEO & Meta Tags</h2>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2">
+                
+                {/* SEO English */}
+                <div className="space-y-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">🇺🇸</span>
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">SEO English</h3>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Title</label>
+                        <input type="text" name="seoTitleEn" defaultValue={property.seoTitleEn || ''} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Description</label>
+                        <textarea name="seoDescriptionEn" rows={3} defaultValue={property.seoDescriptionEn || ''} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                </div>
+
+                {/* SEO Spanish */}
+                <div className="space-y-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">🇲🇽</span>
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">SEO Español</h3>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Título</label>
+                        <input type="text" name="seoTitleEs" defaultValue={property.seoTitleEs || ''} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Descripción</label>
+                        <textarea name="seoDescriptionEs" rows={3} defaultValue={property.seoDescriptionEs || ''} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                </div>
+            </div>
+       </div>
+
       {/* SECTION 2: LOCATION */}
       <div className="border-b border-gray-800 pb-10">
         <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Location & Contact</h2>
@@ -112,7 +216,7 @@ export default function EditForm({ property }: { property: any }) {
             <input 
                 type="tel" 
                 name="phoneNumber" 
-                defaultValue={property.phoneNumber}
+                defaultValue={property.phoneNumber || ''}
                 className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" 
             />
           </div>
@@ -124,7 +228,7 @@ export default function EditForm({ property }: { property: any }) {
 
           <div className="sm:col-span-2">
             <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">State</label>
-            <input type="text" name="state" defaultValue={property.state} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
+            <input type="text" name="state" defaultValue={property.state || ''} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
           </div>
 
           <div className="sm:col-span-2">
@@ -200,7 +304,7 @@ export default function EditForm({ property }: { property: any }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400">Description (EN)</label>
-              <textarea name="descriptionEn" rows={4} defaultValue={property.descriptionEn} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+              <textarea name="descriptionEn" rows={4} defaultValue={property.descriptionEn || ''} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
             </div>
           </div>
           {/* Spanish */}
@@ -215,35 +319,36 @@ export default function EditForm({ property }: { property: any }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400">Description (ES)</label>
-              <textarea name="descriptionEs" rows={4} defaultValue={property.descriptionEs} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+              <textarea name="descriptionEs" rows={4} defaultValue={property.descriptionEs || ''} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
             </div>
           </div>
         </div>
       </div>
 
-      {/* SECTION 6: MEDIA (DRAG & DROP S3) */}
+      {/* SECTION 6: MEDIA (EDIT) */}
       <div className="pb-8 border-b border-gray-800">
         <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Images & Features</h2>
         
-        <input type="hidden" name="mainImage" value={mainImage} />
-        <input type="hidden" name="galleryImages" value={galleryImages.join(',')} />
+        {/* INPUTS OCULTOS JSON PARA SERVER ACTIONS (EDIT) */}
+        <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
+        <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
 
         <div className="grid grid-cols-1 gap-10">
           
-          {/* Main Image Upload Component */}
           <ImageUpload 
             label="Main Image" 
-            value={mainImage} 
-            onChange={(url) => setMainImage(url as string)} 
+            value={mainImageFiles} 
+            onChange={(files) => setMainImageFiles(files)}
+            multiple={false} 
           />
 
-          {/* Gallery Upload Component */}
           <ImageUpload 
             label="Gallery Images" 
-            value={galleryImages} 
-            onChange={(urls) => setGalleryImages(urls as string[])} 
+            value={galleryImageFiles} 
+            onChange={(files) => setGalleryImageFiles(files)} 
             multiple={true}
           />
+          
           {/* VIDEO URL */}
         <div className="mt-8">
             <label className="block text-sm font-bold text-[#f8ed1a] uppercase">Video Tour URL (YouTube/Vimeo)</label>
@@ -271,11 +376,10 @@ export default function EditForm({ property }: { property: any }) {
         </div>
       </div>
 
-      {/* SECTION 7: SELLER INFORMATION (NUEVA SECCIÓN) */}
+      {/* SECTION 7: SELLER INFORMATION */}
       <div className="border-b border-gray-800 pb-10 pt-10">
         <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Seller Information</h2>
         
-        {/* Checkbox para habilitar la sección */}
         <div className="relative flex items-start mb-8">
             <div className="flex h-6 items-center">
               <input
@@ -289,11 +393,9 @@ export default function EditForm({ property }: { property: any }) {
             </div>
             <div className="ml-3 text-sm leading-6">
               <label htmlFor="showSeller" className="font-bold text-white">Enable "Meet Your Seller" Section</label>
-              <p className="text-gray-500 text-xs">If checked, the seller profile will be displayed on the property page.</p>
             </div>
         </div>
 
-        {/* Campos Condicionales */}
         {showSeller && (
             <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-4 duration-300">
                <div className="sm:col-span-2">
@@ -319,12 +421,13 @@ export default function EditForm({ property }: { property: any }) {
                 </div>
 
                 <div className="sm:col-span-6">
-                    <input type="hidden" name="sellerImage" value={sellerImage} />
+                    <input type="hidden" name="sellerImage" value={sellerImageFiles[0]?.url || ''} />
                     
                     <ImageUpload 
                         label="Seller Photo" 
-                        value={sellerImage} 
-                        onChange={(url) => setSellerImage(url as string)} 
+                        value={sellerImageFiles} 
+                        onChange={(files) => setSellerImageFiles(files)} 
+                        multiple={false}
                     />
                 </div>
             </div>

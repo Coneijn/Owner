@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth'; 
 import SearchFilters from './components/SearchFilters'; 
 import LanguageSwitch from './components/LanguageSwitch'; 
-import PropertiesCarousel from './components/PropertiesCarousel'; // <--- IMPORTA EL NUEVO COMPONENTE
+import PropertiesCarousel from './components/PropertiesCarousel'; 
 import { Prisma } from '@prisma/client';
 
 const DICTIONARY = { 
@@ -121,10 +121,24 @@ export default async function HomePage(props: {
     whereClause.features = { has: searchParams.feature };
   }
 
-  const properties = await prisma.property.findMany({
+  // 1. OBTENEMOS LOS DATOS CRUDOS DE PRISMA
+  const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
   });
+
+  // 2. SOLUCIÓN AL ERROR: CONVERTIMOS DECIMALS A NUMBERS
+  // Esto crea "plain objects" que Next.js sí puede enviar al cliente.
+  const properties = rawProperties.map(p => ({
+    ...p,
+    price: p.price.toNumber(),
+    downPayment: p.downPayment.toNumber(),
+    interestRate: p.interestRate.toNumber(),
+    taxes: p.taxes ? p.taxes.toNumber() : 0,
+    insurance: p.insurance ? p.insurance.toNumber() : 0,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+  }));
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-800 scroll-smooth">
@@ -180,7 +194,6 @@ export default async function HomePage(props: {
               fill priority={true} 
               fetchPriority="high" 
               decoding="sync"      
-              quality={60}
               className="object-cover object-center" 
               sizes="100vw" 
             />
@@ -246,7 +259,7 @@ export default async function HomePage(props: {
             </span>
           </div>
 
-          {/* AQUÍ ESTÁ EL NUEVO COMPONENTE */}
+          {/* Pasamos los datos ya convertidos (properties) en lugar de los crudos (rawProperties) */}
           <PropertiesCarousel properties={properties} t={t} lang={lang} />
           
         </div>

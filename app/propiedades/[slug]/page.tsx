@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image'; 
+import { Metadata, ResolvingMetadata } from 'next'; // <--- 1. Importar tipos de Next
 import PropertyGallery from '@/app/components/PropertyGallery';
 import MortgageCalculator from '@/app/components/MortgageCalculator';
 import LanguageSwitch from '@/app/components/LanguageSwitch'; 
@@ -36,7 +37,6 @@ const DICTIONARY = {
     btnSchedule: "AGENDAR VISITA",
     btnCall: "LLAMAR A AGENTE (IA)",
     location: "Ubicación",
-    // Nuevas traducciones para Vendedor
     meetSeller: "CONOCE A TU VENDEDOR",
     sellerRole: "Vendedor",
     videoBtn: "VER VIDEO TOUR", 
@@ -58,7 +58,6 @@ const DICTIONARY = {
     btnSchedule: "SCHEDULE VISIT",
     btnCall: "CALL AGENT (AI)",
     location: "Location",
-    // Nuevas traducciones para Vendedor
     meetSeller: "MEET YOUR SELLER",
     sellerRole: "Seller",
     videoBtn: "WATCH VIDEO TOUR", 
@@ -67,12 +66,75 @@ const DICTIONARY = {
   }
 };
 
-
 const DEFAULT_CALENDAR_LINK = "https://cal.com/duenodueno/susie"; 
-export default async function PropertyDetailPage(props: {
+
+// 2. Definimos el tipo de Props para reutilizarlo en metadata y en la página
+type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
-}) {
+};
+
+// 3. FUNCIÓN GENERATE METADATA
+export async function generateMetadata(
+  props: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // Leer parámetros
+  const params = await props.params;
+  const searchParams = await props.searchParams;
+  const slug = params.slug;
+  const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
+
+  // Buscar propiedad (Next.js deduplica esta petición automáticamente si usas fetch, 
+  // pero con Prisma es buena práctica cachear o simplemente confiar en la rapidez de la DB por ID)
+  const property = await prisma.property.findUnique({
+    where: { slug },
+    select: {
+        titleEn: true,
+        titleEs: true,
+        descriptionEn: true,
+        descriptionEs: true,
+        seoTitleEn: true,
+        seoTitleEs: true,
+        seoDescriptionEn: true,
+        seoDescriptionEs: true,
+        mainImage: true,
+    }
+  });
+
+  if (!property) {
+    return {
+      title: 'Propiedad no encontrada',
+    };
+  }
+
+  // Lógica de fallback: Si no hay SEO title, usa el título normal
+  const title = lang === 'en' 
+    ? (property.seoTitleEn || property.titleEn)
+    : (property.seoTitleEs || property.titleEs);
+
+  const description = lang === 'en'
+    ? (property.seoDescriptionEn || property.descriptionEn)
+    : (property.seoDescriptionEs || property.descriptionEs);
+
+  // Recortar descripción si es muy larga (opcional, Google lo hace solo, pero es buena práctica)
+  const metaDescription = description.length > 160 ? description.substring(0, 157) + '...' : description;
+
+  return {
+    title: `${title} | Dueño a Dueño`,
+    description: metaDescription,
+    openGraph: {
+      title: title,
+      description: metaDescription,
+      images: [property.mainImage], // Usa la imagen principal para compartir en redes
+      locale: lang === 'es' ? 'es_MX' : 'en_US',
+      type: 'website',
+    },
+  };
+}
+
+// 4. COMPONENTE DE PÁGINA
+export default async function PropertyDetailPage(props: Props) {
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
@@ -94,7 +156,6 @@ export default async function PropertyDetailPage(props: {
   const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
   const phoneHref = `tel:${property.phoneNumber || '+19016604100'}`;
   
-  // Lógica del Calendario Dinámico
   const bookingLink = property.calendarLink && property.calendarLink.length > 0 
     ? property.calendarLink 
     : DEFAULT_CALENDAR_LINK;
@@ -106,6 +167,7 @@ export default async function PropertyDetailPage(props: {
       <nav className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-[#f8ed1a]">
         <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
             <Link href={`/?lang=${lang}`} className="flex items-center gap-3 group">
+                {/* Asumiendo que logo está en public */}
                 <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
                      <Image src="/logo.png" alt="Logo" fill className="object-cover" />
                 </div>
@@ -228,14 +290,12 @@ export default async function PropertyDetailPage(props: {
                            <p className="text-xl sm:text-2xl font-black text-[#1a1a1a] uppercase leading-none mb-1">
                               {property.sellerName}
                            </p>
-                           
-                           {/* AQUI MOSTRAMOS SI ES DUEÑO O AGENTE */}
                            <p className="text-sm text-gray-500 font-medium">
                               {property.sellerType === 'AGENT' ? t.agentTitle : t.ownerTitle}
                            </p>
                         </div>
                       </div>
-                )}
+                    )}
                 </div>
 
                 {/* Características */}
@@ -282,7 +342,6 @@ export default async function PropertyDetailPage(props: {
                         </div>
                         
                         <div className="space-y-3">
-                            {/* BOTÓN CALENDARIO DINÁMICO */}
                             <a 
                                 href={bookingLink} 
                                 target="_blank" 
@@ -298,17 +357,11 @@ export default async function PropertyDetailPage(props: {
                             >
                                 📞 {t.btnCall}
                             </a>
-                            
                         </div>
-                        
                     </div>
-                    
                 </div>
-                
             </div>
-
         </div>
-        
       </main>
 
       <footer className="bg-[#1a1a1a] text-gray-400 py-12 mt-20 border-t border-gray-800">

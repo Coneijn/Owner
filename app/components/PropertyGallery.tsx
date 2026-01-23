@@ -14,9 +14,8 @@ export default function PropertyGallery({ images, title }: GalleryProps) {
   return (
     <div className="space-y-4">
       {/* Imagen Principal Grande */}
-      <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-xl overflow-hidden shadow-lg h-96 relative">
+      <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-xl overflow-hidden shadow-lg h-96 relative group">
         <Image
-         
           key={activeImage} 
           src={activeImage}
           alt={title}
@@ -25,6 +24,18 @@ export default function PropertyGallery({ images, title }: GalleryProps) {
           className="object-cover transition-opacity duration-300"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 800px"
         />
+
+        
+        <div className="absolute bottom-4 right-4 z-10 w-24 h-12 pointer-events-none opacity-90">
+         <Image
+            src="/logo.png" 
+            alt="Logo de la empresa"
+            fill
+            className="object-contain" 
+            sizes="100px"
+          />
+        </div>
+
       </div>
 
       {/* Tira de Miniaturas */}

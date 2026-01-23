@@ -13,7 +13,7 @@ model User {
   id        String   @id @default(cuid())
   name      String?
   email     String   @unique
-  password  String   // Hash del password
+  password  String // Hash del password
   role      Role     @default(ADMIN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -26,12 +26,12 @@ model Property {
   updatedAt DateTime @updatedAt
 
   // --- Gestión Interna y Estado ---
-  slug        String         @unique 
-  status      PropertyStatus @default(AVAILABLE)
-  isFeatured  Boolean        @default(false) 
-  
+  slug       String         @unique
+  status     PropertyStatus @default(AVAILABLE)
+  isFeatured Boolean        @default(false)
+
   // Para ocultar propiedades del catálogo público
-  isOffMarket Boolean        @default(false) 
+  isOffMarket Boolean @default(false)
 
   // --- Contenido Bilingüe ---
   // Títulos
@@ -42,44 +42,65 @@ model Property {
   descriptionEs String @db.Text
 
   // --- Datos Financieros ---
-  price         Decimal  @db.Decimal(10, 2) // Precio de venta
-  downPayment   Decimal  @db.Decimal(10, 2) // Enganche mínimo
-  interestRate  Decimal  @db.Decimal(5, 2)  // Tasa de interés anual 
-  taxes         Decimal  @db.Decimal(10, 2) // Impuestos anuales
-  insurance     Decimal  @db.Decimal(10, 2) // Seguro anual
+  price        Decimal @db.Decimal(10, 2) // Precio de venta
+  downPayment  Decimal @db.Decimal(10, 2) // Enganche mínimo
+  interestRate Decimal @db.Decimal(5, 2) // Tasa de interés anual 
+  taxes        Decimal @db.Decimal(10, 2) // Impuestos anuales
+  insurance    Decimal @db.Decimal(10, 2) // Seguro anual
 
   // --- Ubicación y Contacto ---
   address      String
   city         String
-  state        String   
-  zipCode      String   
-  
-  // Teléfono específico para esta propiedad
-  phoneNumber  String?   
-
-  // --- NUEVO: Integraciones ---
-  calendarLink String?   
+  state        String
+  zipCode      String
+  phoneNumber  String?
+  calendarLink String?
 
   // --- Especificaciones Técnicas ---
-  bedrooms     Int
-  bathrooms    Float    
-  sqft         Int      
-  lotSize      Int?     
-  yearBuilt    Int?     
+  bedrooms  Int
+  bathrooms Float
+  sqft      Int
+  lotSize   Int?
+  yearBuilt Int?
 
   // --- Multimedia ---
-  mainImage     String    
-  galleryImages String[] 
-  videoUrl      String?  @default("")
-  
+  mainImage     String
+  galleryImages String[]
+  videoUrl      String?         @default("")
+  images        PropertyImage[]
+
+  // --- SEO de la Página (Meta Tags) ---
+  seoTitleEn       String?
+  seoDescriptionEn String? @db.Text
+  seoTitleEs       String?
+  seoDescriptionEs String? @db.Text
+
   // --- Características Extra ---
-  features      String[] 
+  features String[]
 
   // --- Sección "Conoce a tu Vendedor" ---
-  showSeller    Boolean  @default(false) 
-  sellerName    String?  
-  sellerImage   String?  
-  sellerType    String?  @default("OWNER")
+  showSeller  Boolean @default(false)
+  sellerName  String?
+  sellerImage String?
+  sellerType  String? @default("OWNER")
+}
+
+model PropertyImage {
+  id  String @id @default(cuid())
+  url String
+
+  // Metadatos
+  altText     String?
+  title       String?
+  caption     String?
+  description String?
+
+  // Orden y Tipo
+  order  Int     @default(0)
+  isMain Boolean @default(false) // Para identificar la principal
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
 // 4. Enums
@@ -89,7 +110,7 @@ enum Role {
 }
 
 enum PropertyStatus {
-  AVAILABLE      
-  UNDER_CONTRACT 
-  SOLD           
+  AVAILABLE
+  UNDER_CONTRACT
+  SOLD
 }

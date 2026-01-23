@@ -17,11 +17,13 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
 
   const plainProperty = {
     ...property,
-    price: property.price.toNumber(),
-    downPayment: property.downPayment.toNumber(),
-    interestRate: property.interestRate.toNumber(),
-    taxes: property.taxes.toNumber(),
-    insurance: property.insurance.toNumber(),
+    price: property.price ? property.price.toNumber() : 0,
+    downPayment: property.downPayment ? property.downPayment.toNumber() : 0,
+    interestRate: property.interestRate ? property.interestRate.toNumber() : 0,
+    taxes: property.taxes ? property.taxes.toNumber() : 0,
+    insurance: property.insurance ? property.insurance.toNumber() : 0,
+    createdAt: property.createdAt.toISOString(),
+    updatedAt: property.updatedAt.toISOString(),
   };
 
   return (
@@ -50,7 +52,6 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
         <div className="bg-[#1a1a1a] p-8 shadow-2xl rounded-2xl border border-gray-800 relative">
             {/* Glow decorativo */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#f8ed1a] opacity-5 rounded-full blur-3xl pointer-events-none"></div>
-            
             <EditForm property={plainProperty} />
         </div>
 

@@ -1,0 +1,63 @@
+{
+  "users": [
+    {
+      "id": "cmkf0169r0000jl7tav3y5xe2",
+      "name": "Spencer Admin",
+      "email": "admin@spencersbuyershouse.com",
+      "password": "$2b$10$JIXDaheNzsCV1/ahC4IdrOaCYVQ48b0WrNwAMf3n74CFeRf1ZKQUW",
+      "role": "ADMIN",
+      "createdAt": "2026-01-15T05:18:24.255Z",
+      "updatedAt": "2026-01-15T05:18:24.255Z"
+    }
+  ],
+  "properties": [
+    {
+      "id": "cmkq0gb2l0000jlraby8fe1t7",
+      "createdAt": "2026-01-22T22:15:37.543Z",
+      "updatedAt": "2026-01-22T22:15:37.543Z",
+      "slug": "test",
+      "status": "AVAILABLE",
+      "isFeatured": false,
+      "isOffMarket": false,
+      "titleEn": "test",
+      "titleEs": "test",
+      "descriptionEn": "test",
+      "descriptionEs": "test",
+      "price": "299000",
+      "downPayment": "10000",
+      "interestRate": "10",
+      "taxes": "2500",
+      "insurance": "3000",
+      "address": "Primer Retorno Del Canario",
+      "city": "Morelia",
+      "state": "NC",
+      "zipCode": "58350",
+      "phoneNumber": "",
+      "calendarLink": "",
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "sqft": 1600,
+      "lotSize": 0,
+      "yearBuilt": 1995,
+      "mainImage": "https://ownerproduction.s3.amazonaws.com/properties/15815a2b-94a6-44bb-bea0-f643d53b3615.jpeg",
+      "galleryImages": [
+        "https://ownerproduction.s3.amazonaws.com/properties/f2ea02a2-55ed-4234-bcab-6b83a2f248be.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/731d0e8e-ba48-4a39-a666-6e023b27a568.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/8a0730aa-2bd5-4278-ac48-e47ef1a513e2.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/f3374017-7a9b-4984-9ebd-6e8b9df52e79.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/f362f846-a183-4021-829d-cf3281a3a747.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/93b2eea3-86e4-427d-87af-b5849531b999.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/f43f1eb6-e922-4db6-8378-2904cc1efac2.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/939bb945-b6ea-46dd-803f-c14b8b80c5b3.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/1c952fc0-9a8b-4ced-8926-772853a5801f.jpeg",
+        "https://ownerproduction.s3.amazonaws.com/properties/aa65c6e3-729a-4c85-a401-2fc3d751cb9f.jpeg"
+      ],
+      "videoUrl": "",
+      "features": [],
+      "showSeller": false,
+      "sellerName": null,
+      "sellerImage": null,
+      "sellerType": "OWNER"
+    }
+  ]
+}
