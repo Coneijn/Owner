@@ -5,12 +5,50 @@ import { createProperty } from '@/lib/actions';
 import { useActionState, useState } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 
+// --- HELPER COMPONENT: ACCORDION ---
+const AccordionSection = ({ 
+  title, 
+  children, 
+  defaultOpen = false,
+  icon
+}: { 
+  title: string, 
+  children: React.ReactNode, 
+  defaultOpen?: boolean,
+  icon?: string
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border border-gray-700 rounded-lg bg-gray-900/30 overflow-hidden mb-4 transition-all duration-200">
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-750 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+            {icon && <span className="text-lg">{icon}</span>}
+            <h2 className="text-sm md:text-base font-black text-white uppercase tracking-wide">{title}</h2>
+        </div>
+        <span className={`transform transition-transform duration-200 text-[#f8ed1a] ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </button>
+      
+      {isOpen && (
+        <div className="p-6 border-t border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function NewPropertyPage() {
     const [state, formAction, isPending] = useActionState(createProperty, null);
     
     const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
     const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
-
     const [sellerImage, setSellerImage] = useState<ImageFile[]>([]);
     const [showSeller, setShowSeller] = useState<boolean>(false);
 
@@ -39,380 +77,245 @@ export default function NewPropertyPage() {
         </div>
 
         {/* Form */}
-        <form action={formAction} className="space-y-10 bg-[#1a1a1a] p-8 shadow-2xl rounded-2xl border border-gray-800 relative">
+        <form action={formAction} className="space-y-6 relative">
           
-          {/* Decorative Glow */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#f8ed1a] opacity-5 rounded-full blur-3xl pointer-events-none"></div>
+          {/* INPUTS OCULTOS JSON PARA IMÁGENES */}
+          <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
+          <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
 
-          {/* SECTION 1: GENERAL CONFIGURATION */}
-          <div className="border-b border-gray-800 pb-10">
-            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">General Configuration</h2>
+          {/* 1. STATUS, LOCATION & SPECS */}
+          <AccordionSection title="Status, Location & Specs" icon="📍" defaultOpen={true}>
             <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
-                <select name="status" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-[#f8ed1a] sm:text-sm sm:leading-6">
-                  <option value="AVAILABLE">Available</option>
-                  <option value="UNDER_CONTRACT">Under Contract</option>
-                  <option value="SOLD">Sold</option>
-                </select>
-              </div>
-
-              <div className="sm:col-span-4">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Slug (URL Identifier)</label>
-                <div className="mt-2">
-                  <input
-                    type="text"
-                    name="slug"
-                    placeholder="ex: family-home-charlotte-nc"
-                    required
-                    className="block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 placeholder:text-gray-500 focus:ring-2 focus:ring-inset focus:ring-[#f8ed1a] sm:text-sm sm:leading-6"
-                  />
-                </div>
-              </div>
-
-              {/* CALENDARIO */}
-              <div className="sm:col-span-6">
-                <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Calendar Link (Booking)</label>
-                <div className="mt-2">
-                  <input
-                    type="url"
-                    name="calendarLink"
-                    placeholder="https://cal.com/duenodueno..."
-                    className="block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm sm:leading-6"
-                  />
-                </div>
-              </div>
-
-              {/* FLAGS: Featured & Off Market */}
-              <div className="sm:col-span-6 flex gap-8 pt-4">
-                  <div className="relative flex items-start">
-                    <div className="flex h-6 items-center">
-                      <input
-                        id="isFeatured"
-                        name="isFeatured"
-                        type="checkbox"
-                        className="h-5 w-5 rounded border-gray-600 bg-gray-800 text-[#529e14] focus:ring-[#529e14]"
-                      />
-                    </div>
-                    <div className="ml-3 text-sm leading-6">
-                      <label htmlFor="isFeatured" className="font-bold text-white">Featured Property</label>
-                      <p className="text-gray-500 text-xs">Show on home page slider.</p>
-                    </div>
-                  </div>
-
-                  <div className="relative flex items-start">
-                    <div className="flex h-6 items-center">
-                      <input
-                        id="isOffMarket"
-                        name="isOffMarket"
-                        type="checkbox"
-                        className="h-5 w-5 rounded border-gray-600 bg-gray-800 text-red-500 focus:ring-red-500"
-                      />
-                    </div>
-                    <div className="ml-3 text-sm leading-6">
-                      <label htmlFor="isOffMarket" className="font-bold text-white">Off Market</label>
-                      <p className="text-gray-500 text-xs">Hidden from public catalog.</p>
-                    </div>
-                  </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* SECTION: PAGE SEO & METADATA (NUEVO) */}
-          <div className="border-b border-gray-800 pb-10">
-            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Page SEO & Meta Tags</h2>
-            <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2">
                 
-                {/* SEO English */}
-                <div className="space-y-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">🇺🇸</span>
-                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">SEO English</h3>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Title (Browser Tab)</label>
-                        <input type="text" name="seoTitleEn" className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
-                        <p className="text-[10px] text-gray-500 mt-1">Recommended: 50-60 characters</p>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Description (Google Snippet)</label>
-                        <textarea name="seoDescriptionEn" rows={3} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
-                        <p className="text-[10px] text-gray-500 mt-1">Recommended: 150-160 characters</p>
-                    </div>
+                {/* Status & Slug */}
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
+                    <select name="status" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm">
+                        <option value="AVAILABLE">Available</option>
+                        <option value="UNDER_CONTRACT">Under Contract</option>
+                        <option value="SOLD">Sold</option>
+                        <option value="DRAFT">Draft</option>
+                    </select>
+                </div>
+                <div className="sm:col-span-4">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
+                    <input 
+                        type="text" 
+                        name="slug" 
+                        placeholder="e.g. 123-main-st-memphis" 
+                        required 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                    />
                 </div>
 
-                {/* SEO Spanish */}
-                <div className="space-y-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">🇲🇽</span>
-                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">SEO Español</h3>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Título</label>
-                        <input type="text" name="seoTitleEs" className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase">Meta Descripción</label>
-                        <textarea name="seoDescriptionEs" rows={3} className="mt-1 block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                {/* Location */}
+                <div className="sm:col-span-4">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
+                    <input type="text" name="address" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Contact Phone</label>
+                    <input type="tel" name="phoneNumber" placeholder="901-555-0123" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+
+                <div className="sm:col-span-2 sm:col-start-1">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
+                    <input type="text" name="city" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">State</label>
+                    <input type="text" name="state" defaultValue="TN" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Zip Code</label>
+                    <input type="text" name="zipCode" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+
+                {/* Specs */}
+                <div className="sm:col-span-6 border-t border-gray-700 pt-6 mt-2">
+                    <p className="text-[#f8ed1a] text-xs font-black uppercase mb-4">Specifications</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Bedrooms</label>
+                            <input type="number" name="bedrooms" required className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Bathrooms</label>
+                            <input type="number" step="0.5" name="bathrooms" required className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Sqft</label>
+                            <input type="number" name="sqft" required className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Year</label>
+                            <input type="number" name="yearBuilt" className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
                     </div>
                 </div>
             </div>
-          </div>
+          </AccordionSection>
 
-          {/* SECTION 2: LOCATION & CONTACT */}
-          <div className="border-b border-gray-800 pb-10">
-            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Location & Contact</h2>
-            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              
-              <div className="sm:col-span-4">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Address</label>
-                <input type="text" name="address" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Contact Phone</label>
-                <input 
-                    type="tel" 
-                    name="phoneNumber" 
-                    placeholder="901-555-0123" 
-                    className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" 
-                />
-              </div>
-
-              <div className="sm:col-span-2 sm:col-start-1">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">City</label>
-                <input type="text" name="city" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">State</label>
-                <input type="text" name="state" defaultValue="TN" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Zip Code</label>
-                <input type="text" name="zipCode" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 3: SPECS */}
-          <div className="border-b border-gray-800 pb-10">
-            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Property Specs</h2>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-              
-              <div className="sm:col-span-1">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Bedrooms</label>
-                <input type="number" name="bedrooms" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-1">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Bathrooms</label>
-                <input type="number" step="0.5" name="bathrooms" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-1">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Sqft</label>
-                <input type="number" name="sqft" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-1">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Year Built</label>
-                <input type="number" name="yearBuilt" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 4: FINANCIALS */}
-          <div className="border-b border-gray-800 pb-10 bg-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <h2 className="text-lg font-black leading-7 text-[#529e14] uppercase tracking-wide mb-6">Financial Data (Owner Finance)</h2>
-            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-white uppercase">Total Price ($)</label>
-                <input type="number" step="0.01" name="price" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-[#529e14] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-white uppercase">Down Payment ($)</label>
-                <input type="number" step="0.01" name="downPayment" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
-                <input type="number" step="0.01" name="interestRate" defaultValue="10.0" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-[#529e14] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
-                <input type="number" step="0.01" name="taxes" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-[#529e14] sm:text-sm" />
-              </div>
-
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
-                <input type="number" step="0.01" name="insurance" className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-[#529e14] sm:text-sm" />
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 5: BILINGUAL CONTENT */}
-          <div className="border-b border-gray-800 pb-10">
-            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Content (Bilingual)</h2>
-            <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2">
-              
-              {/* English */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                     <span className="text-xl">🇺🇸</span>
-                     <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">English</h3>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400">Title (EN)</label>
-                  <input type="text" name="titleEn" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400">Description (EN)</label>
-                  <textarea name="descriptionEn" rows={4} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
-                </div>
-              </div>
-
-              {/* Spanish */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                     <span className="text-xl">🇲🇽</span>
-                     <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">Spanish</h3>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400">Title (ES)</label>
-                  <input type="text" name="titleEs" required className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400">Description (ES)</label>
-                  <textarea name="descriptionEs" rows={4} className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* SECTION 6: MEDIA (UPDATED WITH METADATA) */}
-          <div className="pb-8 border-b border-gray-800 pt-10">
-             <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Images & Features</h2>
-             
-             {/* INPUTS OCULTOS JSON PARA SERVER ACTIONS */}
-             {/* Importante: Parsear estos strings en el backend */}
-             <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
-             <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
-             
-             <div className="grid grid-cols-1 gap-10">
-                {/* Componente Drag & Drop Actualizado: Main Image */}
-                <ImageUpload 
-                  label="Main Image" 
-                  value={mainImageFiles} 
-                  onChange={(files) => setMainImageFiles(files)}
-                  multiple={false} 
-                />
-
-                {/* Componente Drag & Drop Actualizado: Gallery */}
-                <ImageUpload 
-                  label="Gallery Images" 
-                  value={galleryImageFiles} 
-                  onChange={(files) => setGalleryImageFiles(files)} 
-                  multiple={true}
-                />
-
-                {/* NUEVO INPUT: VIDEO URL */}
-                <div className="mt-2">
-                    <label className="block text-sm font-bold text-[#f8ed1a] uppercase">Video Tour URL (YouTube/Vimeo)</label>
-                    <div className="mt-2">
-                      <input
-                        type="url"
-                        name="videoUrl"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        className="block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Paste the full link. It will be shown as a button in the gallery.</p>
+          {/* 2. ADVANCED CONFIG & SEO */}
+          <AccordionSection title="Advanced Config & SEO" icon="⚙️">
+            <div className="grid grid-cols-1 gap-6">
+                {/* Flags */}
+                <div className="flex gap-8 flex-wrap p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <div className="flex items-start">
+                        <div className="flex h-6 items-center">
+                          <input id="isFeatured" name="isFeatured" type="checkbox" className="h-5 w-5 rounded bg-gray-800 border-gray-600 text-[#529e14] focus:ring-[#529e14]" />
+                        </div>
+                        <div className="ml-3">
+                          <label htmlFor="isFeatured" className="text-sm font-bold text-white block">Featured Property</label>
+                          <span className="text-xs text-gray-400">Shows in the <strong className="text-[#f8ed1a]">Home Page Carousel</strong>.</span>
+                        </div>
                     </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-400 uppercase">Features (Comma separated)</label>
-                  <textarea name="features" rows={3} placeholder="Garage, Fireplace, Pool, Hardwood Floors..." className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
-                </div>
-             </div>
-          </div>
-
-          {/* SECTION 7: SELLER INFORMATION */}
-          <div className="border-b border-gray-800 pb-10 pt-10">
-            <h2 className="text-lg font-black leading-7 text-white uppercase tracking-wide mb-6">Seller Information</h2>
-            
-            <div className="relative flex items-start mb-8">
-                <div className="flex h-6 items-center">
-                  <input
-                    id="showSeller"
-                    name="showSeller"
-                    type="checkbox"
-                    checked={showSeller}
-                    onChange={(e) => setShowSeller(e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-600 bg-gray-800 text-[#529e14] focus:ring-[#529e14]"
-                  />
-                </div>
-                <div className="ml-3 text-sm leading-6">
-                  <label htmlFor="showSeller" className="font-bold text-white">Enable "Meet Your Seller" Section</label>
-                  <p className="text-gray-500 text-xs">If checked, the seller profile will be displayed on the property page.</p>
-                </div>
-            </div>
-
-            {showSeller && (
-                <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-4 duration-300">
                     
-                    <div className="sm:col-span-2">
-                        <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Role Title</label>
-                        <select 
-                          name="sellerType" 
-                          defaultValue="OWNER"
-                          className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-[#f8ed1a] sm:text-sm"
-                        >
-                          <option value="OWNER">Owner (Dueño)</option>
-                          <option value="AGENT">Sales Agent (Vendedor)</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-4">
-                        <label className="block text-sm font-bold leading-6 text-[#f8ed1a] uppercase">Seller Name</label>
-                        <input 
-                            type="text" 
-                            name="sellerName" 
-                            placeholder="e.g. Maria Gonzalez"
-                            className="mt-2 block w-full rounded-md border-0 py-2 bg-gray-800 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-2 focus:ring-[#f8ed1a] sm:text-sm" 
-                        />
-                    </div>
-
-                    <div className="sm:col-span-6">
-                        <input type="hidden" name="sellerImage" value={sellerImage[0]?.url || ''} />
-                        
-                        <ImageUpload 
-                            label="Seller Photo" 
-                            value={sellerImage} 
-                            onChange={(files) => setSellerImage(files)} 
-                            multiple={false}
-                        />
+                    <div className="flex items-start">
+                        <div className="flex h-6 items-center">
+                          <input id="isOffMarket" name="isOffMarket" type="checkbox" className="h-5 w-5 rounded bg-gray-800 border-gray-600 text-red-500 focus:ring-red-500" />
+                        </div>
+                        <div className="ml-3">
+                          <label htmlFor="isOffMarket" className="text-sm font-bold text-white block">Off Market Deal</label>
+                          <span className="text-xs text-gray-400">Activates the <strong className="text-[#f8ed1a]">Yellow Label</strong>.</span>
+                        </div>
                     </div>
                 </div>
-            )}
-          </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="flex items-center justify-end gap-x-6 pt-6">
+                <div>
+                    <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Calendar Link</label>
+                    <input type="url" name="calendarLink" placeholder="https://cal.com/..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                
+                {/* SEO Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
+                        <input type="text" name="seoTitleEn" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        <textarea name="seoDescriptionEn" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
+                        <input type="text" name="seoTitleEs" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        <textarea name="seoDescriptionEs" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                    </div>
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 3. FINANCIAL DATA */}
+          <AccordionSection title="Financial Data" icon="💰">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
+                    <input type="number" step="0.01" name="price" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">Down Payment ($)</label>
+                    <input type="number" step="0.01" name="downPayment" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
+                    <input type="number" step="0.01" name="interestRate" defaultValue="10.0" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-3">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
+                    <input type="number" step="0.01" name="taxes" className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-3">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
+                    <input type="number" step="0.01" name="insurance" className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 4. MEDIA & CONTENT */}
+          <AccordionSection title="Photos, Video & Descriptions" icon="📷">
+            <div className="space-y-8">
+                {/* Uploads */}
+                <div className="grid grid-cols-1 gap-8">
+                    <ImageUpload label="Main Image" value={mainImageFiles} onChange={setMainImageFiles} multiple={false} />
+                    <ImageUpload label="Gallery Images" value={galleryImageFiles} onChange={setGalleryImageFiles} multiple={true} />
+                </div>
+
+                {/* Video */}
+                <div>
+                    <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Video Tour URL</label>
+                    <input type="url" name="videoUrl" placeholder="https://youtube.com..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+
+                {/* Bilingual Text */}
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-4 border-t border-gray-700">
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇺🇸 English Content</h3>
+                        <input type="text" name="titleEn" placeholder="Title EN" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        <textarea name="descriptionEn" rows={4} placeholder="Description EN" className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇲🇽 Spanish Content</h3>
+                        <input type="text" name="titleEs" placeholder="Title ES" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        <textarea name="descriptionEs" rows={4} placeholder="Description ES" className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                </div>
+
+                {/* Features */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase">Features (Comma separated)</label>
+                    <textarea name="features" rows={2} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 5. SELLER PROFILE */}
+          <AccordionSection title="Seller Profile" icon="👤">
+             <div className="space-y-6">
+                <div className="flex items-center">
+                    <input id="showSeller" name="showSeller" type="checkbox" checked={showSeller} onChange={(e) => setShowSeller(e.target.checked)} className="h-5 w-5 rounded bg-gray-800 text-[#529e14]" />
+                    <label htmlFor="showSeller" className="ml-2 text-sm font-bold text-white">Show "Meet Seller" Section</label>
+                </div>
+                {showSeller && (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 animate-in fade-in">
+                        <div>
+                            <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Role</label>
+                            <select name="sellerType" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 sm:text-sm">
+                                <option value="OWNER">Owner (Dueño)</option>
+                                <option value="AGENT">Agent (Vendedor)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Name</label>
+                            <input type="text" name="sellerName" placeholder="e.g. Maria Gonzalez" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <input type="hidden" name="sellerImage" value={sellerImage[0]?.url || ''} />
+                            <ImageUpload 
+    label="Seller Photo" 
+    value={sellerImage} 
+    onChange={(files) => setSellerImage(files)} 
+    multiple={false}
+    disableMetadata={true} 
+/>                        </div>
+                    </div>
+                )}
+             </div>
+          </AccordionSection>
+
+          {/* ERROR MESSAGE */}
+          {state?.message && (
+            <div className="rounded-md bg-red-900/30 p-4 border border-red-800">
+              <p className="text-sm text-red-400">{state.message}</p>
+            </div>
+          )}
+
+          {/* SUBMIT BUTTON */}
+          <div className="flex items-center justify-end gap-x-6 pt-6 border-t border-gray-800">
             <Link href="/admin" className="text-sm font-bold leading-6 text-gray-400 hover:text-white transition-colors">Cancel</Link>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-[#529e14] px-6 py-3 text-sm font-black text-white shadow-lg hover:bg-[#458510] hover:scale-105 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-lg bg-[#529e14] px-8 py-3 text-sm font-black text-white shadow-lg hover:bg-[#458510] hover:scale-105 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPending ? 'Saving...' : 'Save Property'}
+              {isPending ? 'Saving...' : 'Create Property'}
             </button>
           </div>
 

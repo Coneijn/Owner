@@ -183,9 +183,9 @@ export default async function PropertyDetailPage(props: Props) {
         
         {/* Breadcrumb */}
         <div className="mb-8">
-            <Link href={`/?lang=${lang}#properties`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
-                <span className="text-lg">←</span> {t.back}
-            </Link>
+        <Link href={`/properties?lang=${lang}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
+            <span className="text-lg">←</span> {t.back}
+          </Link>
         </div>
 
         {/* HEADER: Título y Precio */}

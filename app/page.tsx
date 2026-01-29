@@ -121,14 +121,10 @@ export default async function HomePage(props: {
     whereClause.features = { has: searchParams.feature };
   }
 
-  // 1. OBTENEMOS LOS DATOS CRUDOS DE PRISMA
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
   });
-
-  // 2. SOLUCIÓN AL ERROR: CONVERTIMOS DECIMALS A NUMBERS
-  // Esto crea "plain objects" que Next.js sí puede enviar al cliente.
   const properties = rawProperties.map(p => ({
     ...p,
     price: p.price.toNumber(),
@@ -143,31 +139,33 @@ export default async function HomePage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-800 scroll-smooth">
       
-      {/* HEADER  */}
+      {/* HEADER ACTUALIZADO */}
       <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 md:h-20">
-            <div className="flex-shrink-0 flex items-center gap-2">
+            {/* Logo Link */}
+            <Link href={`/?lang=${lang}`} className="flex-shrink-0 flex items-center gap-2">
               <div className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
                  <Image src="/logo.png" alt="Dueño a Dueño Logo" fill className="object-cover" />
               </div>
               <span className="text-base sm:text-xl md:text-2xl font-black uppercase tracking-tight text-white leading-none whitespace-nowrap">
                 DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
               </span>
-            </div>
+            </Link>
             
             <div className="flex items-center gap-2 md:gap-6">
               <nav className="hidden md:flex gap-6 text-white font-medium text-sm">
-                 <Link href="/" className="hover:text-[#f8ed1a] transition">
+                 {/* Home Activo */}
+                 <span className="text-[#f8ed1a] cursor-default">
                     {t.nav.home}
-                 </Link>
-                 <Link href="#properties" className="hover:text-[#f8ed1a] transition">
-                    {t.nav.properties}
-                 </Link>
-                 <Link href="#trust" className="hover:text-[#f8ed1a] transition">
+                 </span>
+                 <Link href={`/properties?lang=${lang}`} className="hover:text-[#f8ed1a] transition">
+                  {t.nav.properties}
+                </Link>
+                 <Link href={`/about-us?lang=${lang}`} className="hover:text-[#f8ed1a] transition">
                     {t.nav.about}
                  </Link>
-                 <Link href="#contact" className="hover:text-[#f8ed1a] transition">
+                 <Link href={`/contact-us?lang=${lang}`} className="hover:text-[#f8ed1a] transition">
                     {t.nav.contact}
                  </Link>
               </nav>
@@ -206,19 +204,24 @@ export default async function HomePage(props: {
             <p className="text-lg md:text-2xl text-gray-200 mb-6 md:mb-8 font-medium shadow-black drop-shadow-md leading-relaxed">
               {t.heroSub}
             </p>
-            <Link href="#properties" className="block w-full sm:w-auto text-center bg-[#529e14] text-white text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-full font-bold hover:bg-[#458510] transition shadow-lg hover:scale-105 transform duration-200">
+            <Link href={`/properties?lang=${lang}`} className="block w-full sm:w-auto text-center bg-[#529e14] text-white text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-full font-bold hover:bg-[#458510] transition shadow-lg hover:scale-105 transform duration-200">
               {t.btnProps}
             </Link>
           </div>
         </div>
       </div>
 
-      {/* TRUST SECTION y FILTERS  */}
+      {/* TRUST SECTION (LINKED) y FILTERS  */}
       <section id="trust" className="bg-[#1a1a1a] py-12 md:py-16 border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight mb-8 md:mb-12">
-            {t.trust.title}
-          </h2>
+          
+          {/* TÍTULO CON ENLACE */}
+          <Link href={`/why-choose-owner-to-dueno?lang=${lang}`}>
+            <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight mb-8 md:mb-12 hover:text-[#f8ed1a] transition-colors cursor-pointer decoration-2 underline-offset-8 hover:underline">
+                {t.trust.title}
+            </h2>
+          </Link>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {t.trust.items.map((item, index) => (
               <div key={index} className="flex flex-col items-center group">
@@ -259,7 +262,6 @@ export default async function HomePage(props: {
             </span>
           </div>
 
-          {/* Pasamos los datos ya convertidos (properties) en lugar de los crudos (rawProperties) */}
           <PropertiesCarousel properties={properties} t={t} lang={lang} />
           
         </div>

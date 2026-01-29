@@ -51,15 +51,18 @@ interface PropertiesCarouselProps {
 }
 
 export default function PropertiesCarousel({ properties, t, lang }: PropertiesCarouselProps) {
+  // --- FILTRO: SOLO PROPIEDADES FEATURED ---
+  const featuredProperties = properties.filter(property => property.isFeatured);
+
   const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 3; // 2 filas de 3 columnas
+  const itemsPerPage = 3; 
 
-  // Calcular número total de páginas
-  const totalPages = Math.ceil(properties.length / itemsPerPage);
+  // Calcular número total de páginas (Usando el array filtrado)
+  const totalPages = Math.ceil(featuredProperties.length / itemsPerPage);
 
-  // Obtener las propiedades visibles actuales
+  // Obtener las propiedades visibles actuales (Usando el array filtrado)
   const startIndex = currentPage * itemsPerPage;
-  const currentProperties = properties.slice(startIndex, startIndex + itemsPerPage);
+  const currentProperties = featuredProperties.slice(startIndex, startIndex + itemsPerPage);
 
   const nextPage = () => {
     if (currentPage < totalPages - 1) {
@@ -73,7 +76,11 @@ export default function PropertiesCarousel({ properties, t, lang }: PropertiesCa
     }
   };
 
-  if (properties.length === 0) {
+  // Verificamos si hay propiedades FEATURED, no totales
+  if (featuredProperties.length === 0) {
+    // Opcional: Si no quieres mostrar nada si no hay destacadas, retorna null
+    // return null; 
+    
     return (
       <div className="text-center py-20 bg-black/10 rounded-xl border-2 border-dashed border-black/20">
         <p className="text-[#1a1a1a] text-xl font-bold">{t.noResults}</p>
@@ -83,7 +90,7 @@ export default function PropertiesCarousel({ properties, t, lang }: PropertiesCa
 
   return (
     <div>
-      {/* GRID DE PROPIEDADES (Máximo 6) */}
+      {/* GRID DE PROPIEDADES */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[600px]">
         {currentProperties.map((property) => {
           const estimatedPayment = calculateEstimatedPayment(
@@ -186,7 +193,7 @@ export default function PropertiesCarousel({ properties, t, lang }: PropertiesCa
         })}
       </div>
 
-      {/* CONTROLES DEL CARRUSEL (Sin dependencias externas) */}
+      {/* CONTROLES DEL CARRUSEL (Solo si hay más de 1 página de destacados) */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center mt-10 gap-6">
           <button
@@ -199,7 +206,6 @@ export default function PropertiesCarousel({ properties, t, lang }: PropertiesCa
             }`}
             aria-label="Página anterior"
           >
-            {/* Icono Izquierda SVG */}
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -219,7 +225,6 @@ export default function PropertiesCarousel({ properties, t, lang }: PropertiesCa
             }`}
             aria-label="Página siguiente"
           >
-            {/* Icono Derecha SVG */}
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>

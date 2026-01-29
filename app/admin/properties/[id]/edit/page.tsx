@@ -9,6 +9,9 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
 
   const property = await prisma.property.findUnique({
     where: { id },
+    include: {
+      images: true, 
+    },
   });
 
   if (!property) {

@@ -170,6 +170,7 @@ export default async function AdminDashboard() {
                           ${property.status === 'AVAILABLE' ? 'bg-[#529e14]/20 text-[#529e14] border border-[#529e14]/30' : ''}
                           ${property.status === 'SOLD' ? 'bg-red-900/20 text-red-500 border border-red-900/30' : ''}
                           ${property.status === 'UNDER_CONTRACT' ? 'bg-yellow-900/20 text-[#f8ed1a] border border-[#f8ed1a]/30' : ''}
+                          ${property.status === 'DRAFT' ? 'bg-orange-900/20 text-orange-400 border border-orange-400/30' : ''}
                         `}>
                           {property.status.replace('_', ' ')}
                         </span>

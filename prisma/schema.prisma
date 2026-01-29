@@ -113,4 +113,5 @@ enum PropertyStatus {
   AVAILABLE
   UNDER_CONTRACT
   SOLD
+  DRAFT
 }

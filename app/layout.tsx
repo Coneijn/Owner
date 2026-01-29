@@ -19,17 +19,18 @@ export const metadata: Metadata = {
   metadataBase: new URL(baseUrl), 
   
   title: {
-    default: "Dueno a Dueno",
-    template: "%s | Dueno a Dueno", 
+    default: "Dueño a Dueño | Compra y Venta Directa en Memphis", // Mejoré un poco el título por defecto
+    template: "%s | Dueño a Dueño", 
   },
-  description: "Buy Sell Direct",
+  description: "Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.",
   
+  // --- CAMBIO IMPORTANTE AQUÍ: index: true ---
   robots: {
-    index: false,
-    follow: false,
+    index: true, 
+    follow: true,
     googleBot: {
-      index: false,
-      follow: false,
+      index: true,
+      follow: true,
       'max-video-preview': -1,
       'max-image-preview': 'large',
       'max-snippet': -1,
@@ -38,7 +39,6 @@ export const metadata: Metadata = {
 
   alternates: {
     canonical: '/', 
-    
     languages: {
       'es': '/',           
       'en': '/?lang=en',   
@@ -56,11 +56,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Google Ads Tag */}
         <Script 
           src="https://www.googletagmanager.com/gtag/js?id=AW-17843139208"
           strategy="afterInteractive"
         />
-
         <Script id="google-ads-tag" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];

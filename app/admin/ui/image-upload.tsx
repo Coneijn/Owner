@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { getPresignedUrl } from '@/lib/s3-actions'; 
 import Image from 'next/image';
@@ -20,9 +20,16 @@ interface ImageUploadProps {
   value: ImageFile[]; 
   onChange: (images: ImageFile[]) => void;
   multiple?: boolean;
+  disableMetadata?: boolean; // <--- NUEVA PROP
 }
 
-export default function ImageUpload({ label, value = [], onChange, multiple = false }: ImageUploadProps) {
+export default function ImageUpload({ 
+  label, 
+  value = [], 
+  onChange, 
+  multiple = false,
+  disableMetadata = false // Por defecto es falso (las casas sí llevan metadata)
+}: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [editingImage, setEditingImage] = useState<ImageFile | null>(null); 
   const [editIndex, setEditIndex] = useState<number>(-1);
@@ -77,7 +84,7 @@ export default function ImageUpload({ label, value = [], onChange, multiple = fa
   };
 
   const openEditModal = (img: ImageFile, index: number) => {
-    setEditingImage({ ...img }); // Copia para editar
+    setEditingImage({ ...img });
     setEditIndex(index);
   };
 
@@ -86,7 +93,7 @@ export default function ImageUpload({ label, value = [], onChange, multiple = fa
         const updatedList = [...value];
         updatedList[editIndex] = editingImage;
         onChange(updatedList);
-        setEditingImage(null); // Cerrar modal
+        setEditingImage(null);
         setEditIndex(-1);
     }
   };
@@ -99,9 +106,9 @@ export default function ImageUpload({ label, value = [], onChange, multiple = fa
       <div className="flex flex-wrap gap-6">
         {value.map((img, i) => (
              <div key={i} className="relative w-32 h-32 rounded-lg overflow-hidden border border-gray-600 group bg-gray-900">
-                <Image src={img.url} alt={img.altText || "Property Image"} fill className="object-cover" />
+                <Image src={img.url} alt={img.altText || "Image"} fill className="object-cover" />
                 
-                {/* BOTÓN ELIMINAR (Top Right) */}
+                {/* BOTÓN ELIMINAR (Siempre visible) */}
                 <button 
                     type="button" 
                     onClick={() => removeImage(i)} 
@@ -113,19 +120,27 @@ export default function ImageUpload({ label, value = [], onChange, multiple = fa
                     </svg>
                 </button>
 
-                <button 
-                    type="button" 
-                    onClick={() => openEditModal(img, i)} 
-                    className="absolute top-0 left-0 bg-blue-600/90 hover:bg-blue-600 text-white p-1.5 z-10"
-                    title="Edit Alt Text & Details"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                        <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                    </svg>
-                </button>
+                {/* BOTÓN EDITAR (Oculto si disableMetadata es true) */}
+                {!disableMetadata && (
+                    <button 
+                        type="button" 
+                        onClick={() => openEditModal(img, i)} 
+                        className="absolute top-0 left-0 bg-blue-600/90 hover:bg-blue-600 text-white p-1.5 z-10"
+                        title="Edit Alt Text & Details"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                        </svg>
+                    </button>
+                )}
 
-                {!img.altText && <div className="absolute bottom-0 w-full bg-red-500/50 text-[10px] text-center text-white font-bold py-1">MISSING ALT</div>}
+                {/* ALERTA MISSING ALT (Oculta si disableMetadata es true) */}
+                {!disableMetadata && !img.altText && (
+                    <div className="absolute bottom-0 w-full bg-red-500/50 text-[10px] text-center text-white font-bold py-1">
+                        MISSING ALT
+                    </div>
+                )}
              </div>
         ))}
       </div>
@@ -158,13 +173,14 @@ export default function ImageUpload({ label, value = [], onChange, multiple = fa
                 </div>
                 
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    {/* Preview pequeña */}
+                    {/* Preview */}
                     <div className="flex justify-center mb-4">
                         <div className="relative w-32 h-32 rounded bg-gray-900 border border-gray-700">
                             <Image src={editingImage.url} alt="Preview" fill className="object-contain" />
                         </div>
                     </div>
 
+                    {/* Metadata Inputs */}
                     <div>
                         <label className="block text-xs font-bold text-[#f8ed1a] uppercase mb-1">Alt Text (Accessibility)</label>
                         <input 
@@ -172,11 +188,12 @@ export default function ImageUpload({ label, value = [], onChange, multiple = fa
                             className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a]"
                             value={editingImage.altText || ''}
                             onChange={(e) => setEditingImage({...editingImage, altText: e.target.value})}
-                            placeholder="Describe the image for screen readers..."
+                            placeholder="Describe the image..."
                         />
                     </div>
+                    {/* ... Resto de inputs (Title, Caption, Desc) ... */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Title (Tooltip)</label>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Title</label>
                         <input 
                             type="text" 
                             className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-[#f8ed1a]"

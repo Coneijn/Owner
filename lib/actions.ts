@@ -71,7 +71,8 @@ export async function createProperty(prevState: any, formData: FormData) {
   const mainImageObj = parseImageData(rawFormData.mainImageData);
   const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
   const imagesToCreate = [];
-
+  const slugInput = rawFormData.slug as string;
+  const sanitizedSlug = slugInput.trim().toLowerCase().replace(/\s+/g, '-');
   if (mainImageObj && mainImageObj.url) {
     imagesToCreate.push({
       url: mainImageObj.url,
@@ -103,7 +104,7 @@ export async function createProperty(prevState: any, formData: FormData) {
   try {
     await prisma.property.create({
       data: {
-        slug: rawFormData.slug as string,
+        slug: sanitizedSlug,
         status: rawFormData.status as PropertyStatus, 
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
@@ -174,8 +175,8 @@ export async function createProperty(prevState: any, formData: FormData) {
 export async function updateProperty(prevState: any, formData: FormData) {
   const id = formData.get('id') as string; 
   const rawFormData = Object.fromEntries(formData.entries());
-
-  // 1. Procesar Imágenes (Igual que en create)
+  const slugInput = rawFormData.slug as string;
+  const sanitizedSlug = slugInput.trim().toLowerCase().replace(/\s+/g, '-');
   const mainImageObj = parseImageData(rawFormData.mainImageData);
   const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
 
@@ -213,7 +214,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
     await prisma.property.update({
       where: { id },
       data: {
-        slug: rawFormData.slug as string,
+        slug: sanitizedSlug,
         status: rawFormData.status as PropertyStatus,
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
