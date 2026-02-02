@@ -1,0 +1,362 @@
+'use client'; 
+
+import Link from 'next/link';
+import { createProperty } from '@/lib/actions';
+import { useActionState, useState, useRef } from 'react'; 
+import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
+
+// --- HELPER COMPONENT: ACCORDION ---
+const AccordionSection = ({ 
+  title, 
+  children, 
+  defaultOpen = false,
+  icon
+}: { 
+  title: string, 
+  children: React.ReactNode, 
+  defaultOpen?: boolean,
+  icon?: string
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border border-gray-700 rounded-lg bg-gray-900/30 overflow-hidden mb-4 transition-all duration-200">
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-750 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+            {icon && <span className="text-lg">{icon}</span>}
+            <h2 className="text-sm md:text-base font-black text-white uppercase tracking-wide">{title}</h2>
+        </div>
+        <span className={`transform transition-transform duration-200 text-[#f8ed1a] ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </button>
+      
+      {isOpen && (
+        <div className="p-6 border-t border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function NewPropertyPage() {
+    const [state, formAction, isPending] = useActionState(createProperty, null);
+    const formRef = useRef<HTMLFormElement>(null);
+    
+    const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
+    const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
+    const [sellerImage, setSellerImage] = useState<ImageFile[]>([]);
+    const [showSeller, setShowSeller] = useState<boolean>(false);
+
+    // Función para validar campos requeridos
+    const validateForm = (): boolean => {
+      if (!formRef.current) return false;
+
+      const price = formRef.current.querySelector('input[name="price"]') as HTMLInputElement;
+      const downPayment = formRef.current.querySelector('input[name="downPayment"]') as HTMLInputElement;
+      const interestRate = formRef.current.querySelector('input[name="interestRate"]') as HTMLInputElement;
+      const taxes = formRef.current.querySelector('input[name="taxes"]') as HTMLInputElement;
+      const insurance = formRef.current.querySelector('input[name="insurance"]') as HTMLInputElement;
+
+      const fieldsToCheck = [
+        { field: price, name: 'Price' },
+        { field: downPayment, name: 'Down Payment' },
+        { field: interestRate, name: 'Interest Rate' },
+        { field: taxes, name: 'Annual Taxes' },
+        { field: insurance, name: 'Annual Insurance' },
+      ];
+
+      // Buscar primer campo vacío o inválido
+      const firstEmptyField = fieldsToCheck.find(({ field }) => !field || !field.value || field.value === '');
+
+      if (firstEmptyField) {
+        firstEmptyField.field?.focus();
+        return false;
+      }
+
+      return true;
+    };
+
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+      if (!validateForm()) {
+        e.preventDefault();
+      }
+    };
+
+  return (
+    <div className="min-h-screen bg-[#1a1a1a] py-10 font-sans text-gray-200">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Header */}
+        <div className="md:flex md:items-center md:justify-between mb-10 border-b border-gray-800 pb-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-3xl font-black leading-7 text-white uppercase tracking-tight sm:truncate">
+              New Property
+            </h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Add a new home to the public catalog.
+            </p>
+          </div>
+          <div className="mt-4 flex md:ml-4 md:mt-0">
+            <Link
+              href="/admin"
+              className="inline-flex items-center rounded-lg bg-white/5 border border-gray-600 px-4 py-2 text-sm font-bold text-gray-300 shadow-sm hover:bg-white/10 hover:text-white transition-colors"
+            >
+              Cancel
+            </Link>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-6 relative">
+          
+          {/* INPUTS OCULTOS JSON PARA IMÁGENES */}
+          <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
+          <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
+
+          {/* 1. STATUS, LOCATION & SPECS */}
+          <AccordionSection title="Status, Location & Specs" icon="📍" defaultOpen={true}>
+            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                
+                {/* Status & Slug */}
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
+                    <select name="status" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm">
+                        <option value="AVAILABLE">Available</option>
+                        <option value="UNDER_CONTRACT">Under Contract</option>
+                        <option value="SOLD">Sold</option>
+                        <option value="DRAFT">Draft</option>
+                    </select>
+                </div>
+                <div className="sm:col-span-4">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
+                    <input 
+                        type="text" 
+                        name="slug" 
+                        placeholder="e.g. 123-main-st-memphis" 
+                        required 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                    />
+                </div>
+
+                {/* Location */}
+                <div className="sm:col-span-4">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
+                    <input type="text" name="address" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Contact Phone</label>
+                    <input type="tel" name="phoneNumber" placeholder="901-555-0123" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+
+                <div className="sm:col-span-2 sm:col-start-1">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
+                    <input type="text" name="city" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">State</label>
+                    <input type="text" name="state" defaultValue="TN" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Zip Code</label>
+                    <input type="text" name="zipCode" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+
+                {/* Specs */}
+                <div className="sm:col-span-6 border-t border-gray-700 pt-6 mt-2">
+                    <p className="text-[#f8ed1a] text-xs font-black uppercase mb-4">Specifications</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Bedrooms</label>
+                            <input type="number" name="bedrooms" required className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Bathrooms</label>
+                            <input type="number" step="0.5" name="bathrooms" required className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Sqft</label>
+                            <input type="number" name="sqft" required className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Year</label>
+                            <input type="number" name="yearBuilt" className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 2. ADVANCED CONFIG & SEO */}
+          <AccordionSection title="Advanced Config & SEO" icon="⚙️">
+            <div className="grid grid-cols-1 gap-6">
+                {/* Flags */}
+                <div className="flex gap-8 flex-wrap p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <div className="flex items-start">
+                        <div className="flex h-6 items-center">
+                          <input id="isFeatured" name="isFeatured" type="checkbox" className="h-5 w-5 rounded bg-gray-800 border-gray-600 text-[#529e14] focus:ring-[#529e14]" />
+                        </div>
+                        <div className="ml-3">
+                          <label htmlFor="isFeatured" className="text-sm font-bold text-white block">Featured Property</label>
+                          <span className="text-xs text-gray-400">Shows in the <strong className="text-[#f8ed1a]">Home Page Carousel</strong>.</span>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                        <div className="flex h-6 items-center">
+                          <input id="isOffMarket" name="isOffMarket" type="checkbox" className="h-5 w-5 rounded bg-gray-800 border-gray-600 text-red-500 focus:ring-red-500" />
+                        </div>
+                        <div className="ml-3">
+                          <label htmlFor="isOffMarket" className="text-sm font-bold text-white block">Off Market Deal</label>
+                          <span className="text-xs text-gray-400">Activates the <strong className="text-[#f8ed1a]">Yellow Label</strong>.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Calendar Link</label>
+                    <input type="url" name="calendarLink" placeholder="https://cal.com/..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                
+                {/* SEO Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
+                        <input type="text" name="seoTitleEn" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        <textarea name="seoDescriptionEn" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
+                        <input type="text" name="seoTitleEs" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        <textarea name="seoDescriptionEs" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                    </div>
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 3. FINANCIAL DATA */}
+          <AccordionSection title="Financial Data" icon="💰">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
+                    <input type="number" step="0.01" name="price" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">Down Payment ($)</label>
+                    <input type="number" step="0.01" name="downPayment" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
+                    <input type="number" step="0.01" name="interestRate" defaultValue="10.0" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-3">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
+                    <input type="number" step="0.01" name="taxes" className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+                <div className="sm:col-span-3">
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
+                    <input type="number" step="0.01" name="insurance" className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 4. MEDIA & CONTENT */}
+          <AccordionSection title="Photos, Video & Descriptions" icon="📷">
+            <div className="space-y-8">
+                {/* Uploads */}
+                <div className="grid grid-cols-1 gap-8">
+                    <ImageUpload label="Main Image" value={mainImageFiles} onChange={setMainImageFiles} multiple={false} />
+                    <ImageUpload label="Gallery Images" value={galleryImageFiles} onChange={setGalleryImageFiles} multiple={true} />
+                </div>
+
+                {/* Video */}
+                <div>
+                    <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Video Tour URL</label>
+                    <input type="url" name="videoUrl" placeholder="https://youtube.com..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                </div>
+
+                {/* Bilingual Text */}
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-4 border-t border-gray-700">
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇺🇸 English Content</h3>
+                        <input type="text" name="titleEn" placeholder="Title EN" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        <textarea name="descriptionEn" rows={4} placeholder="Description EN" className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇲🇽 Spanish Content</h3>
+                        <input type="text" name="titleEs" placeholder="Title ES" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        <textarea name="descriptionEs" rows={4} placeholder="Description ES" className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                    </div>
+                </div>
+
+                {/* Features */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase">Features (Comma separated)</label>
+                    <textarea name="features" rows={2} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 5. SELLER PROFILE */}
+          <AccordionSection title="Seller Profile" icon="👤">
+             <div className="space-y-6">
+                <div className="flex items-center">
+                    <input id="showSeller" name="showSeller" type="checkbox" checked={showSeller} onChange={(e) => setShowSeller(e.target.checked)} className="h-5 w-5 rounded bg-gray-800 text-[#529e14]" />
+                    <label htmlFor="showSeller" className="ml-2 text-sm font-bold text-white">Show "Meet Seller" Section</label>
+                </div>
+                {showSeller && (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 animate-in fade-in">
+                        <div>
+                            <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Role</label>
+                            <select name="sellerType" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 sm:text-sm">
+                                <option value="OWNER">Owner (Dueño)</option>
+                                <option value="AGENT">Agent (Vendedor)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Name</label>
+                            <input type="text" name="sellerName" placeholder="e.g. Maria Gonzalez" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <input type="hidden" name="sellerImage" value={sellerImage[0]?.url || ''} />
+                            <ImageUpload 
+    label="Seller Photo" 
+    value={sellerImage} 
+    onChange={(files) => setSellerImage(files)} 
+    multiple={false}
+    disableMetadata={true} 
+/>                        </div>
+                    </div>
+                )}
+             </div>
+          </AccordionSection>
+
+          {/* ERROR MESSAGE */}
+          {state?.message && (
+            <div className="text-2xl text-red-400">
+              ⚠️
+            </div>
+          )}
+
+          {/* SUBMIT BUTTON */}
+          <div className="flex items-center justify-end gap-x-6 pt-6 border-t border-gray-800">
+            <Link href="/admin" className="text-sm font-bold leading-6 text-gray-400 hover:text-white transition-colors">Cancel</Link>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-lg bg-[#529e14] px-8 py-3 text-sm font-black text-white shadow-lg hover:bg-[#458510] hover:scale-105 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPending ? 'Saving...' : 'Create Property'}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  );
+}
