@@ -68,32 +68,6 @@ function parseImageData(jsonString: unknown) {
 // --- CREATE ---
 export async function createProperty(prevState: any, formData: FormData) {
   const rawFormData = Object.fromEntries(formData.entries());
-  
-  // --- VALIDACIÓN DE CAMPOS FINANCIEROS ---
-  const price = parseFloat(rawFormData.price as string);
-  const downPayment = parseFloat(rawFormData.downPayment as string);
-  const interestRate = parseFloat(rawFormData.interestRate as string);
-  const taxes = parseFloat(rawFormData.taxes as string);
-  const insurance = parseFloat(rawFormData.insurance as string);
-
-  // Validar que no sean null/undefined y sean números positivos
-  if (!price || price <= 0) {
-    return { message: 'Price must be a positive number.' };
-  }
-  if (!downPayment || downPayment <= 0) {
-    return { message: 'Down Payment must be a positive number.' };
-  }
-  if (!interestRate || interestRate <= 0) {
-    return { message: 'Interest Rate must be a positive number.' };
-  }
-  if (!taxes || taxes <= 0) {
-    return { message: 'Annual Taxes must be a positive number.' };
-  }
-  if (!insurance || insurance <= 0) {
-    return { message: 'Annual Insurance must be a positive number.' };
-  }
-  // --- FIN VALIDACIÓN ---
-
   const mainImageObj = parseImageData(rawFormData.mainImageData);
   const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
   const imagesToCreate = [];

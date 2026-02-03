@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { createProperty } from '@/lib/actions';
-import { useActionState, useState, useRef } from 'react'; 
+import { useActionState, useState, useMemo } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 
 // --- HELPER COMPONENT: ACCORDION ---
@@ -46,46 +46,49 @@ const AccordionSection = ({
 
 export default function NewPropertyPage() {
     const [state, formAction, isPending] = useActionState(createProperty, null);
-    const formRef = useRef<HTMLFormElement>(null);
     
+    // Estados para imágenes
     const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
     const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
     const [sellerImage, setSellerImage] = useState<ImageFile[]>([]);
     const [showSeller, setShowSeller] = useState<boolean>(false);
 
-    // Función para validar campos requeridos
-    const validateForm = (): boolean => {
-      if (!formRef.current) return false;
+    // 1) Estado para controlar el STATUS
+    const [status, setStatus] = useState<string>('AVAILABLE');
+    
+    // Determina si la validación es estricta (Todo lo que NO sea Draft requiere datos > 0)
+    const isStrict = status !== 'DRAFT';
 
-      const price = formRef.current.querySelector('input[name="price"]') as HTMLInputElement;
-      const downPayment = formRef.current.querySelector('input[name="downPayment"]') as HTMLInputElement;
-      const interestRate = formRef.current.querySelector('input[name="interestRate"]') as HTMLInputElement;
-      const taxes = formRef.current.querySelector('input[name="taxes"]') as HTMLInputElement;
-      const insurance = formRef.current.querySelector('input[name="insurance"]') as HTMLInputElement;
+    // 2) Estado para el PRECIO y cálculo automático de INSURANCE
+    const [price, setPrice] = useState<number | string>('');
 
-      const fieldsToCheck = [
-        { field: price, name: 'Price' },
-        { field: downPayment, name: 'Down Payment' },
-        { field: interestRate, name: 'Interest Rate' },
-        { field: taxes, name: 'Annual Taxes' },
-        { field: insurance, name: 'Annual Insurance' },
-      ];
+    // Lógica de cálculo de seguro basada en tus rangos
+    const calculatedInsurance = useMemo(() => {
+      const p = Number(price);
+      if (!p) return 2148; // Valor base por defecto si no hay precio
+      
+      if (p > 300000) return 2640;      // 301k - 400k (y superior asumido)
+      if (p > 250000) return 2508;      // 250k - 300k
+      if (p > 125000) return 2400;      // 125k - 250k
+      return 2148;                      // 125k or less
+    }, [price]);
 
-      // Buscar primer campo vacío o inválido
-      const firstEmptyField = fieldsToCheck.find(({ field }) => !field || !field.value || field.value === '');
-
-      if (firstEmptyField) {
-        firstEmptyField.field?.focus();
-        return false;
-      }
-
-      return true;
-    };
-
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-      if (!validateForm()) {
-        e.preventDefault();
-      }
+    // INTERCEPTOR DEL ENVÍO DEL FORMULARIO
+    const handleFormSubmit = (formData: FormData) => {
+        // Si es DRAFT, rellenamos con 0 los campos financieros vacíos
+        // para asegurar que se guarde en la DB sin errores.
+        if (!isStrict) {
+            const financialFields = ['price', 'downPayment', 'interestRate', 'taxes'];
+            financialFields.forEach((field) => {
+                const value = formData.get(field);
+                if (!value || value === '') {
+                    formData.set(field, '0');
+                }
+            });
+        }
+        
+        // Ejecutamos la Server Action original
+        formAction(formData);
     };
 
   return (
@@ -112,8 +115,8 @@ export default function NewPropertyPage() {
           </div>
         </div>
 
-        {/* Form */}
-        <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-6 relative">
+        {/* Form - Usamos action={handleFormSubmit} en lugar de formAction directo */}
+        <form action={handleFormSubmit} className="space-y-6 relative">
           
           {/* INPUTS OCULTOS JSON PARA IMÁGENES */}
           <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
@@ -126,7 +129,12 @@ export default function NewPropertyPage() {
                 {/* Status & Slug */}
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
-                    <select name="status" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm">
+                    <select 
+                        name="status" 
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
+                    >
                         <option value="AVAILABLE">Available</option>
                         <option value="UNDER_CONTRACT">Under Contract</option>
                         <option value="SOLD">Sold</option>
@@ -242,26 +250,82 @@ export default function NewPropertyPage() {
           {/* 3. FINANCIAL DATA */}
           <AccordionSection title="Financial Data" icon="💰">
             <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                
+                {/* 2) INPUT DE PRECIO con validación condicional */}
                 <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
-                    <input type="number" step="0.01" name="price" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">
+                        Total Price ($) {isStrict && <span className="text-red-500">*</span>}
+                    </label>
+                    <input 
+                        type="number" 
+                        step="0.01" 
+                        name="price" 
+                        onChange={(e) => setPrice(e.target.value)}
+                        required={isStrict}
+                        min={isStrict ? "1" : "0"} 
+                        placeholder={!isStrict ? "0.00" : ""}
+                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                    />
                 </div>
+
+                {/* 3) DOWN PAYMENT con opción cero para Draft */}
                 <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold leading-6 text-white uppercase">Down Payment ($)</label>
-                    <input type="number" step="0.01" name="downPayment" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">
+                        Down Payment {isStrict && <span className="text-red-500">*</span>}
+                    </label>
+                    <select 
+                        name="downPayment" 
+                        required={isStrict}
+                        defaultValue={isStrict ? "10000" : "0"}
+                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm"
+                    >
+                        <option value="10000">$10,000</option>
+                        <option value="20000">$20,000</option>
+                        <option value="30000">$30,000</option>
+                        <option value="40000">$40,000</option>
+                        <option value="50000">$50,000</option>
+                    </select>
                 </div>
+
                 <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
-                    <input type="number" step="0.01" name="interestRate" defaultValue="10.0" required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">
+                        Interest Rate (%) {isStrict && <span className="text-red-500">*</span>}
+                    </label>
+                    <input 
+                        type="number" 
+                        step="0.01" 
+                        name="interestRate" 
+                        defaultValue="10.0" 
+                        required={isStrict} 
+                        min={isStrict ? "0.01" : "0"}
+                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                    />
                 </div>
+                
                 <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
-                    <input type="number" step="0.01" name="taxes" className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
+                        Annual Taxes ($) {isStrict && <span className="text-red-500">*</span>}
+                    </label>
+                    <input 
+                        type="number" 
+                        step="0.01" 
+                        name="taxes" 
+                        required={isStrict}
+                        min={isStrict ? "1" : "0"}
+                        placeholder={!isStrict ? "0.00" : ""}
+                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                    />
                 </div>
+                
+                {/* 2) INSURANCE oculto y calculado automáticamente */}
+                <input type="hidden" name="insurance" value={calculatedInsurance} />
                 <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
-                    <input type="number" step="0.01" name="insurance" className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+                    <label className="block text-xs font-bold leading-6 text-gray-500 uppercase">Estimated Annual Insurance</label>
+                    <div className="mt-2 block w-full py-2 px-3 rounded bg-gray-800/50 border border-gray-700 text-gray-400 sm:text-sm cursor-not-allowed">
+                        ${calculatedInsurance.toLocaleString()} (Auto-calculated)
+                    </div>
                 </div>
+
             </div>
           </AccordionSection>
 
@@ -338,8 +402,8 @@ export default function NewPropertyPage() {
 
           {/* ERROR MESSAGE */}
           {state?.message && (
-            <div className="text-2xl text-red-400">
-              ⚠️
+            <div className="rounded-md bg-red-900/30 p-4 border border-red-800">
+              <p className="text-sm text-red-400">{state.message}</p>
             </div>
           )}
 
