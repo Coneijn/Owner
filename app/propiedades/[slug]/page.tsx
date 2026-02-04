@@ -7,7 +7,7 @@ import PropertyGallery from '@/app/components/PropertyGallery';
 import MortgageCalculator from '@/app/components/MortgageCalculator';
 import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import VideoModal from '@/app/components/video-modal';
-
+import Script from 'next/script'
 // --- COLORES CORPORATIVOS ---
 // Yellow: #f8ed1a | Green: #529e14 | Dark: #1a1a1a
 
@@ -66,7 +66,7 @@ const DICTIONARY = {
   }
 };
 
-const DEFAULT_CALENDAR_LINK = "https://cal.com/duenodueno/susie"; 
+const DEFAULT_CALENDAR_LINK = "https://api.leadconnectorhq.com/widget/bookings/scheduleanappointmentcallwithus-230ad544-8f6f-4125-9d14-f1b202f0becc-7fdb3832-39a9-4c80-a146-60233fb444a1-aaa07f1f-456b-4ccc-81e4-adb0ad437aa3-0b2d0529-cb48-461f-b8b5-712b398e91eb-fcbf65a8-70d2-4009-b786-ac4166822f0b-0f63997e-5577-46ae-9f21-00d7deb09698-e6c21248-3365-4355-9454-17fdbd70ec1e-8b95828a-650c-41a7-9b5b-453855dce734-8dda7b22-1142-4021-8dfc-111b3ef84155-f97c6afe-ae0a-48f4-a6cb-868f7ec9020c-5c4b1d30-8e32-4a3d-9142-617df2faa33d-15d6fb8b-f278-4503-98e4-f435ca7bb65e-1cb0ec42-d374-4a1a-b923-59c59dcc4791-c04f60e7-15a7-4cfc-a977-30d02f1c83fe-9e2a0269-9b69-4caa-95c7-327b47eef86a-ffac1d68-518e-4dc2-9bf7-90a8acd0b85d-bb726c61-15c6-4b11-b190-55d7c217c1a3"; 
 
 // 2. Definimos el tipo de Props para reutilizarlo en metadata y en la página
 type Props = {
@@ -154,7 +154,7 @@ export default async function PropertyDetailPage(props: Props) {
   const taxes = property.taxes.toNumber();
   const insurance = property.insurance.toNumber();
   const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
-  const phoneHref = `tel:${property.phoneNumber || '+19016604100'}`;
+  const phoneHref = `tel:${property.phoneNumber || '+19016604115'}`;
   
   const bookingLink = property.calendarLink && property.calendarLink.length > 0 
     ? property.calendarLink 
@@ -164,20 +164,40 @@ export default async function PropertyDetailPage(props: Props) {
     <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
       
       {/* --- NAVBAR --- */}
-      <nav className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-[#f8ed1a]">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-3 group">
-                {/* Asumiendo que logo está en public */}
-                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                     <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-                </div>
-                <span className="text-xl md:text-2xl font-black uppercase tracking-tight text-white group-hover:text-[#f8ed1a] transition-colors">
-                    DUEÑO A <span className="text-[#f8ed1a] group-hover:text-white transition-colors">DUEÑO</span>
-                </span>
+      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          
+          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
+          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
+            <div className="scale-75 origin-top-right md:scale-90">
+              <LanguageSwitch />
+            </div>
+          </div>
+          {/* ------------------------------------------- */}
+
+          <div className="flex justify-between items-center h-16 md:h-20">
+            <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
+              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
+                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+              </div>
+              <span className="text-sm md:text-xl font-black uppercase text-white">
+                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
+              </span>
             </Link>
-            <LanguageSwitch />
+            <div className="flex gap-4 items-center">
+                <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-400">
+                    <Link href={`/?lang=${lang}`} className="hover:text-white transition">Home</Link>
+                    <span className="text-[#f8ed1a]">Properties</span>
+                    <Link href={`/about-us?lang=${lang}`} className="hover:text-white transition">About</Link>
+                    <Link href={`/contact-us?lang=${lang}`} className="hover:text-white transition">Contact</Link>
+                </nav>
+                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
+                  Login
+                </Link>
+            </div>
+          </div>
         </div>
-      </nav>
+      </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
@@ -365,10 +385,17 @@ export default async function PropertyDetailPage(props: Props) {
       </main>
 
       <footer className="bg-[#1a1a1a] text-gray-400 py-12 mt-20 border-t border-gray-800">
+<Script
+  src="https://widgets.leadconnectorhq.com/loader.js"
+  data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+  data-widget-id="6982bc477cd1e65428cc69fe"
+  strategy="afterInteractive" // Se carga cuando la página ya es interactiva
+/>
         <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-sm font-medium">© 2026 Dueño a Dueño.</p>
         </div>
       </footer>
     </div>
+    
   );
 }

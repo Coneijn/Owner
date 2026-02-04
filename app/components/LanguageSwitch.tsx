@@ -8,22 +8,29 @@ export default function LanguageSwitch() {
   const { replace } = useRouter();
 
   const currentLang = searchParams.get('lang') === 'en' ? 'en' : 'es';
+  const nextLang = currentLang === 'es' ? 'en' : 'es';
 
   const toggleLanguage = () => {
     const params = new URLSearchParams(searchParams);
-    const newLang = currentLang === 'es' ? 'en' : 'es';
-    params.set('lang', newLang);
+    params.set('lang', nextLang);
     replace(`${pathname}?${params.toString()}`);
   };
 
   return (
     <button
       onClick={toggleLanguage}
-      className="flex items-center gap-2 px-3 py-1 rounded-full border border-gray-300 text-sm font-medium hover:bg-gray-50 transition-colors"
+      className="
+        px-4 py-2
+        rounded-full
+        border-2 border-yellow-400
+        bg-white
+        text-black
+        text-sm font-medium
+        hover:bg-yellow-50
+        transition-colors
+      "
     >
-      <span className={currentLang === 'es' ? 'font-bold text-blue-600' : 'text-gray-400'}>ES</span>
-      <span className="text-gray-300">|</span>
-      <span className={currentLang === 'en' ? 'font-bold text-blue-600' : 'text-gray-400'}>EN</span>
+      {nextLang === 'en' ? 'English' : 'Español'}
     </button>
   );
 }

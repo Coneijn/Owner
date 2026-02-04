@@ -150,7 +150,17 @@ export default async function AboutPage(props: {
       
       {/* --- HEADER --- */}
       <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-20 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          
+          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
+          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
+            <div className="scale-75 origin-top-right md:scale-90">
+              <LanguageSwitch />
+            </div>
+          </div>
+          {/* ------------------------------------------- */}
+
+          <div className="flex justify-between items-center h-16 md:h-20">
             <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
               <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
                  <Image src="/logo.png" alt="Logo" fill className="object-cover" />
@@ -167,8 +177,11 @@ export default async function AboutPage(props: {
                     <span className="text-[#f8ed1a] cursor-default">{t.nav.about}</span>
                     <Link href={`/contact-us?lang=${lang}`} className="hover:text-white transition">{t.nav.contact}</Link>
                 </nav>
-                <div className="scale-90"><LanguageSwitch /></div>
+                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
+                  Login
+                </Link>
             </div>
+          </div>
         </div>
       </header>
 
