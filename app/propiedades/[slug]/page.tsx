@@ -7,7 +7,7 @@ import PropertyGallery from '@/app/components/PropertyGallery';
 import MortgageCalculator from '@/app/components/MortgageCalculator';
 import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import VideoModal from '@/app/components/video-modal';
-
+import Script from 'next/script'
 // --- COLORES CORPORATIVOS ---
 // Yellow: #f8ed1a | Green: #529e14 | Dark: #1a1a1a
 
@@ -385,10 +385,17 @@ export default async function PropertyDetailPage(props: Props) {
       </main>
 
       <footer className="bg-[#1a1a1a] text-gray-400 py-12 mt-20 border-t border-gray-800">
+<Script
+  src="https://widgets.leadconnectorhq.com/loader.js"
+  data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+  data-widget-id="6982bc477cd1e65428cc69fe"
+  strategy="afterInteractive" // Se carga cuando la página ya es interactiva
+/>
         <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-sm font-medium">© 2026 Dueño a Dueño.</p>
         </div>
       </footer>
     </div>
+    
   );
 }

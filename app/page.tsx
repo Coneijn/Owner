@@ -6,7 +6,7 @@ import SearchFilters from './components/SearchFilters';
 import LanguageSwitch from './components/LanguageSwitch'; 
 import PropertiesCarousel from './components/PropertiesCarousel'; 
 import { Prisma } from '@prisma/client';
-
+import Script from 'next/script'
 const DICTIONARY = { 
    es: {
         nav: {
@@ -331,6 +331,12 @@ export default async function HomePage(props: {
         <div className="max-w-7xl mx-auto px-4 text-center mt-8 md:mt-12 pt-8 border-t border-gray-800 text-gray-500 text-sm">
           <p>© 2026 Dueño a Dueño. </p>
         </div>
+        <Script
+          src="https://widgets.leadconnectorhq.com/loader.js"
+          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+          data-widget-id="6982bc477cd1e65428cc69fe"
+          strategy="afterInteractive" // Se carga cuando la página ya es interactiva
+        />
       </footer>
     </div>
   );
