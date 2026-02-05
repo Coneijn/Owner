@@ -26,6 +26,9 @@ const DICTIONARY = {
     back: "Volver al catálogo",
     available: "Disponible",
     unavailable: "No Disponible",
+    underContract: "Bajo Contrato",
+    sold: "Vendido",
+    draft: "Borrador",
     aboutTitle: "SOBRE ESTA PROPIEDAD",
     featuresTitle: "CARACTERÍSTICAS",
     beds: "Habitaciones",
@@ -34,10 +37,10 @@ const DICTIONARY = {
     year: "Año",
     interestedTitle: "¿TE INTERESA ESTA CASA?",
     interestedSub: "Agenda una visita hoy mismo o habla con nuestro asistente virtual.",
-    btnSchedule: "AGENDAR VISITA",
-    btnCall: "LLAMAR A AGENTE (IA)",
+    btnSchedule: "AGENDAR RECORRIDO",
+    btnCall: "LLAMAR AHORA",
     location: "Ubicación",
-    meetSeller: "CONOCE A TU VENDEDOR",
+    meetSeller: "CONOCE AL DUEÑO",
     sellerRole: "Vendedor",
     videoBtn: "VER VIDEO TOUR", 
     ownerTitle: "Dueño de la Propiedad", 
@@ -47,6 +50,9 @@ const DICTIONARY = {
     back: "Back to catalog",
     available: "Available",
     unavailable: "Not Available",
+    underContract: "Under Contract",
+    sold: "Sold",
+    draft: "Draft",
     aboutTitle: "ABOUT THIS PROPERTY",
     featuresTitle: "FEATURES",
     beds: "Bedrooms",
@@ -55,10 +61,10 @@ const DICTIONARY = {
     year: "Year Built",
     interestedTitle: "INTERESTED IN THIS HOME?",
     interestedSub: "Schedule a visit today or talk to our AI assistant.",
-    btnSchedule: "SCHEDULE VISIT",
-    btnCall: "CALL AGENT (AI)",
+    btnSchedule: "SCHEDULE HOME TOUR",
+    btnCall: "CALL NOW",
     location: "Location",
-    meetSeller: "MEET YOUR SELLER",
+    meetSeller: "MEET YOUR OWNER",
     sellerRole: "Seller",
     videoBtn: "WATCH VIDEO TOUR", 
     ownerTitle: "Property Owner", 
@@ -154,7 +160,7 @@ export default async function PropertyDetailPage(props: Props) {
   const taxes = property.taxes.toNumber();
   const insurance = property.insurance.toNumber();
   const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
-  const phoneHref = `tel:${property.phoneNumber || '+19016604115'}`;
+  const phoneHref = `tel:${property.phoneNumber || '9016-604-115'}`;
   
   const bookingLink = property.calendarLink && property.calendarLink.length > 0 
     ? property.calendarLink 
@@ -221,10 +227,38 @@ export default async function PropertyDetailPage(props: Props) {
             <div className="text-left lg:text-right">
                 <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">{formatMoney(price)}</p>
                 <div className="mt-2">
-                    <span className={`inline-block px-4 py-1 rounded text-sm font-black uppercase tracking-wider
-                        ${property.status === 'AVAILABLE' ? 'bg-[#f8ed1a] text-[#1a1a1a]' : 'bg-red-100 text-red-800'}`}>
-                        {property.status === 'AVAILABLE' ? t.available : t.unavailable}
-                    </span>
+                    {/* LÓGICA DE ESTADOS MEJORADA */}
+{(() => {
+    let statusColor = "bg-gray-200 text-gray-600";
+    let statusText = "N/A";
+
+    switch (property.status) {
+        case 'AVAILABLE':
+            statusColor = "bg-[#f8ed1a] text-[#1a1a1a]";
+            statusText = t.available;
+            break;
+        case 'UNDER_CONTRACT':
+            statusColor = "bg-orange-500 text-white";
+            statusText = t.underContract;
+            break;
+        case 'SOLD':
+            statusColor = "bg-red-600 text-white";
+            statusText = t.sold;
+            break;
+            case 'DRAFT':
+            statusColor = "bg-gray-600 text-white";
+            statusText = t.draft;
+            break;
+        default:
+            statusText = property.status; 
+    }
+
+    return (
+        <span className={`inline-block px-4 py-1 rounded text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
+            {statusText}
+        </span>
+    );
+})()}
                 </div>
             </div>
         </div>
@@ -375,7 +409,7 @@ export default async function PropertyDetailPage(props: Props) {
                                 href={phoneHref} 
                                 className="w-full flex items-center justify-center bg-transparent border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300"
                             >
-                                📞 {t.btnCall}
+                                📞 {t.btnCall}: {property.phoneNumber || '(901) 660-4115'}
                             </a>
                         </div>
                     </div>

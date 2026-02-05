@@ -4,6 +4,13 @@ import Link from 'next/link';
 import { createProperty } from '@/lib/actions';
 import { useActionState, useState, useMemo } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
+import dynamic from 'next/dynamic'; 
+
+// Importamos el mapa dinámicamente (sin SSR para evitar errores de ventana)
+const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
+  ssr: false,
+  loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
+});
 
 // --- HELPER COMPONENT: ACCORDION ---
 const AccordionSection = ({ 
@@ -55,28 +62,38 @@ export default function NewPropertyPage() {
 
     // 1) Estado para controlar el STATUS
     const [status, setStatus] = useState<string>('AVAILABLE');
-    
-    // Determina si la validación es estricta (Todo lo que NO sea Draft requiere datos > 0)
     const isStrict = status !== 'DRAFT';
 
-    // 2) Estado para el PRECIO y cálculo automático de INSURANCE
+    // 2) Estado para el PRECIO
     const [price, setPrice] = useState<number | string>('');
+    
+    // --- ESTADOS DE UBICACIÓN (Inicializados con comillas vacías para evitar errores) ---
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [stateLoc, setStateLoc] = useState('TN'); 
+    const [zipCode, setZipCode] = useState('');
+    
+    // Coordenadas
+    const [coords, setCoords] = useState({ lat: 35.1495, lng: -90.0490 });
+    const handleLocationChange = (lat: number, lng: number) => {
+        setCoords({ lat, lng });
+    };
+    
+    // Cadena de búsqueda automática para el mapa
+    const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
 
-    // Lógica de cálculo de seguro basada en tus rangos
+    // Lógica de cálculo de seguro
     const calculatedInsurance = useMemo(() => {
       const p = Number(price);
-      if (!p) return 2148; // Valor base por defecto si no hay precio
-      
-      if (p > 300000) return 2640;      // 301k - 400k (y superior asumido)
-      if (p > 250000) return 2508;      // 250k - 300k
-      if (p > 125000) return 2400;      // 125k - 250k
-      return 2148;                      // 125k or less
+      if (!p) return 2148; 
+      if (p > 300000) return 2640;      
+      if (p > 250000) return 2508;      
+      if (p > 125000) return 2400;      
+      return 2148;                      
     }, [price]);
 
-    // INTERCEPTOR DEL ENVÍO DEL FORMULARIO
+    // INTERCEPTOR DEL ENVÍO
     const handleFormSubmit = (formData: FormData) => {
-        // Si es DRAFT, rellenamos con 0 los campos financieros vacíos
-        // para asegurar que se guarde en la DB sin errores.
         if (!isStrict) {
             const financialFields = ['price', 'downPayment', 'interestRate', 'taxes'];
             financialFields.forEach((field) => {
@@ -86,8 +103,6 @@ export default function NewPropertyPage() {
                 }
             });
         }
-        
-        // Ejecutamos la Server Action original
         formAction(formData);
     };
 
@@ -115,7 +130,7 @@ export default function NewPropertyPage() {
           </div>
         </div>
 
-        {/* Form - Usamos action={handleFormSubmit} en lugar de formAction directo */}
+        {/* Form */}
         <form action={handleFormSubmit} className="space-y-6 relative">
           
           {/* INPUTS OCULTOS JSON PARA IMÁGENES */}
@@ -152,27 +167,56 @@ export default function NewPropertyPage() {
                     />
                 </div>
 
-                {/* Location */}
+                {/* Location - INPUTS BLINDADOS CON || '' */}
                 <div className="sm:col-span-4">
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
-                    <input type="text" name="address" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <input 
+                        type="text" 
+                        name="address" 
+                        required 
+                        value={address || ''} // <--- CORREGIDO: Evita undefined
+                        onChange={(e) => setAddress(e.target.value)} 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                    />
                 </div>
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Contact Phone</label>
-                    <input type="tel" name="phoneNumber" placeholder="901-555-0123" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <input type="tel" name="phoneNumber" placeholder="9016-604-115" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                 </div>
 
                 <div className="sm:col-span-2 sm:col-start-1">
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
-                    <input type="text" name="city" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <input 
+                        type="text" 
+                        name="city" 
+                        required 
+                        value={city || ''} // <--- CORREGIDO
+                        onChange={(e) => setCity(e.target.value)} 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                    />
                 </div>
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">State</label>
-                    <input type="text" name="state" defaultValue="TN" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <input 
+                        type="text" 
+                        name="state" 
+                        value={stateLoc || ''} // <--- CORREGIDO
+                        onChange={(e) => setStateLoc(e.target.value)} 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                    />
                 </div>
+                
+                {/* Zip Code */}
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Zip Code</label>
-                    <input type="text" name="zipCode" required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <input 
+                        type="text" 
+                        name="zipCode" 
+                        required 
+                        value={zipCode || ''} // <--- CORREGIDO
+                        onChange={(e) => setZipCode(e.target.value)}
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                    />
                 </div>
 
                 {/* Specs */}
@@ -251,7 +295,6 @@ export default function NewPropertyPage() {
           <AccordionSection title="Financial Data" icon="💰">
             <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
                 
-                {/* 2) INPUT DE PRECIO con validación condicional */}
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-white uppercase">
                         Total Price ($) {isStrict && <span className="text-red-500">*</span>}
@@ -268,7 +311,6 @@ export default function NewPropertyPage() {
                     />
                 </div>
 
-                {/* 3) DOWN PAYMENT con opción cero para Draft */}
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-white uppercase">
                         Down Payment {isStrict && <span className="text-red-500">*</span>}
@@ -317,7 +359,6 @@ export default function NewPropertyPage() {
                     />
                 </div>
                 
-                {/* 2) INSURANCE oculto y calculado automáticamente */}
                 <input type="hidden" name="insurance" value={calculatedInsurance} />
                 <div className="sm:col-span-3">
                     <label className="block text-xs font-bold leading-6 text-gray-500 uppercase">Estimated Annual Insurance</label>
@@ -332,19 +373,16 @@ export default function NewPropertyPage() {
           {/* 4. MEDIA & CONTENT */}
           <AccordionSection title="Photos, Video & Descriptions" icon="📷">
             <div className="space-y-8">
-                {/* Uploads */}
                 <div className="grid grid-cols-1 gap-8">
                     <ImageUpload label="Main Image" value={mainImageFiles} onChange={setMainImageFiles} multiple={false} />
                     <ImageUpload label="Gallery Images" value={galleryImageFiles} onChange={setGalleryImageFiles} multiple={true} />
                 </div>
 
-                {/* Video */}
                 <div>
                     <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Video Tour URL</label>
                     <input type="url" name="videoUrl" placeholder="https://youtube.com..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                 </div>
 
-                {/* Bilingual Text */}
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-4 border-t border-gray-700">
                     <div className="space-y-4">
                         <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇺🇸 English Content</h3>
@@ -358,10 +396,52 @@ export default function NewPropertyPage() {
                     </div>
                 </div>
 
-                {/* Features */}
                 <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase">Features (Comma separated)</label>
                     <textarea name="features" rows={2} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                </div>
+            </div>
+          </AccordionSection>
+
+          {/* 4.5 LOCATION & ACCESS (Interactivo) */}
+          <AccordionSection title="Location & Access" icon="🐸🗺️">
+            <div className="space-y-6">
+                {/* EL MAPA INTERACTIVO */}
+                <div className="w-full">
+                    <LocationPicker 
+                        lat={coords.lat} 
+                        lng={coords.lng} 
+                        searchQuery={fullAddressQuery}
+                        onLocationChange={handleLocationChange} 
+                    />
+                </div>
+
+                {/* LOS INPUTS */}
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Latitude</label>
+                        <input 
+                            type="text" 
+                            name="latitude" 
+                            value={coords.lat}
+                            onChange={(e) => setCoords({...coords, lat: Number(e.target.value)})}
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Longitude</label>
+                        <input 
+                            type="text" 
+                            name="longitude" 
+                            value={coords.lng}
+                            onChange={(e) => setCoords({...coords, lng: Number(e.target.value)})}
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Lockbox Code</label>
+                        <input type="text" name="lockboxCode" placeholder="e.g. 1234" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    </div>
                 </div>
             </div>
           </AccordionSection>
@@ -389,12 +469,13 @@ export default function NewPropertyPage() {
                         <div className="sm:col-span-2">
                             <input type="hidden" name="sellerImage" value={sellerImage[0]?.url || ''} />
                             <ImageUpload 
-    label="Seller Photo" 
-    value={sellerImage} 
-    onChange={(files) => setSellerImage(files)} 
-    multiple={false}
-    disableMetadata={true} 
-/>                        </div>
+                                label="Seller Photo" 
+                                value={sellerImage} 
+                                onChange={(files) => setSellerImage(files)} 
+                                multiple={false}
+                                disableMetadata={true} 
+                            />
+                        </div>
                     </div>
                 )}
              </div>

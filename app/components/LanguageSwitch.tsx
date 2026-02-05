@@ -20,12 +20,12 @@ export default function LanguageSwitch() {
     <button
       onClick={toggleLanguage}
       className="
-        px-4 py-2
+        px-5 py-3
         rounded-full
-        border-2 border-yellow-400
-        bg-white
+        border-4 border-[#529e14]
+        bg-yellow-300
         text-black
-        text-sm font-medium
+        text-lg font-semibold
         hover:bg-yellow-50
         transition-colors
       "

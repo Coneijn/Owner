@@ -4,6 +4,13 @@ import Link from 'next/link';
 import { useActionState, useState } from 'react'; 
 import { updateProperty } from '@/lib/actions';
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
+import dynamic from 'next/dynamic';
+
+// Importamos el mapa dinámicamente (sin SSR)
+const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
+  ssr: false,
+  loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
+});
 
 // --- TYPES ---
 interface PropertyData {
@@ -44,6 +51,10 @@ interface PropertyData {
   sellerType?: string | null;
   sellerName?: string | null;
   sellerImage?: string | null;
+  // Campos nuevos (opcionales por si TS se queja)
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  lockboxCode?: string | null;
 }
 
 // --- HELPER COMPONENT: ACCORDION ---
@@ -114,14 +125,32 @@ export default function EditForm({ property }: { property: PropertyData }) {
   const [sellerImageFiles, setSellerImageFiles] = useState<ImageFile[]>(property.sellerImage ? [{ url: property.sellerImage }] : []);
   const [showSeller, setShowSeller] = useState<boolean>(property.showSeller || false);
 
+  // --- LOCATION STATE (Inicializado con datos existentes) ---
+  const [address, setAddress] = useState(property.address || '');
+  const [city, setCity] = useState(property.city || '');
+  const [stateLoc, setStateLoc] = useState(property.state || 'TN');
+  const [zipCode, setZipCode] = useState(property.zipCode || '');
+  
+  // Coordenadas iniciales: Si existen en DB las usa, si no, usa default Memphis
+  const [coords, setCoords] = useState({ 
+    lat: Number((property as any).latitude) || 35.1495, 
+    lng: Number((property as any).longitude) || -90.0490 
+  });
+
+  const handleLocationChange = (lat: number, lng: number) => {
+      setCoords({ lat, lng });
+  };
+  
+  // Query dinámica para el mapa
+  const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
+
   // --- SMS ALERT STATE ---
   const [smsTarget, setSmsTarget] = useState<'ZIP' | 'ALL'>('ZIP');
   const [smsMessage, setSmsMessage] = useState('');
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsStatus, setSmsStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
-  const [showSmsModal, setShowSmsModal] = useState(false); // Modal state
+  const [showSmsModal, setShowSmsModal] = useState(false);
 
-  // 1. Triggered by the button -> Opens Modal
   const handlePreSendSms = () => {
     if (!smsMessage.trim()) {
         setSmsStatus({ type: 'error', msg: 'Please enter a message body before sending.' });
@@ -131,9 +160,8 @@ export default function EditForm({ property }: { property: PropertyData }) {
     setShowSmsModal(true);
   };
 
-  // 2. Triggered by Modal -> Sends Request
   const executeSendSms = async () => {
-    setShowSmsModal(false); // Close modal
+    setShowSmsModal(false);
     setIsSendingSms(true);
     
     try {
@@ -144,7 +172,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
             propertySlug: property.slug,
             propertyTitle: property.titleEn,
             targetAudience: smsTarget, 
-            targetZipCode: property.zipCode, 
+            targetZipCode: zipCode, // Usamos el estado actualizado
             messageBody: smsMessage,
             sentAt: new Date().toISOString()
         };
@@ -190,27 +218,58 @@ export default function EditForm({ property }: { property: PropertyData }) {
                       <option value="DRAFT">Draft</option>
                   </select>
               </div>
-              <div className="sm:col-span-4">
+              <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Phone Number</label>
+                  <input type="text" name="phoneNumber" defaultValue={property.phoneNumber || '9016-604-115'}  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+              </div>
+              <div className="sm:col-span-2">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
                   <input type="text" name="slug" defaultValue={property.slug} required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
 
-              {/* Location */}
+              {/* Location - INPUTS CONTROLADOS (Value + OnChange) */}
               <div className="sm:col-span-3">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
-                  <input type="text" name="address" defaultValue={property.address} required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  <input 
+                    type="text" 
+                    name="address" 
+                    value={address} // <--- CONTROLADO
+                    onChange={(e) => setAddress(e.target.value)}
+                    required 
+                    className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                  />
               </div>
               <div className="sm:col-span-1">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
-                  <input type="text" name="city" defaultValue={property.city} required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  <input 
+                    type="text" 
+                    name="city" 
+                    value={city} // <--- CONTROLADO
+                    onChange={(e) => setCity(e.target.value)}
+                    required 
+                    className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                  />
               </div>
               <div className="sm:col-span-1">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">State</label>
-                  <input type="text" name="state" defaultValue={property.state || ''} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  <input 
+                    type="text" 
+                    name="state" 
+                    value={stateLoc} // <--- CONTROLADO
+                    onChange={(e) => setStateLoc(e.target.value)}
+                    className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                  />
               </div>
               <div className="sm:col-span-1">
                   <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Zip Code</label>
-                  <input type="text" name="zipCode" defaultValue={property.zipCode} required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  <input 
+                    type="text" 
+                    name="zipCode" 
+                    value={zipCode} // <--- CONTROLADO
+                    onChange={(e) => setZipCode(e.target.value)}
+                    required 
+                    className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                  />
               </div>
 
               {/* Specs */}
@@ -238,7 +297,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
           </div>
         </AccordionSection>
 
-        {/* 2. ADVANCED CONFIG & SEO (Moved Up) */}
+        {/* 2. ADVANCED CONFIG & SEO */}
         <AccordionSection title="Advanced Config & SEO" icon="⚙️" defaultOpen={false}>
           <div className="grid grid-cols-1 gap-6">
               {/* Flags & Links */}
@@ -348,6 +407,55 @@ export default function EditForm({ property }: { property: PropertyData }) {
           </div>
         </AccordionSection>
 
+        {/* 4.5 LOCATION & ACCESS (Interactivo con Mapa) */}
+        <AccordionSection title="Location & Access" icon="🐸🗺️">
+            <div className="space-y-6">
+                {/* EL MAPA INTERACTIVO */}
+                <div className="w-full">
+                    <LocationPicker 
+                        lat={coords.lat} 
+                        lng={coords.lng} 
+                        searchQuery={fullAddressQuery}
+                        onLocationChange={handleLocationChange} 
+                    />
+                </div>
+
+                {/* LOS INPUTS */}
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Latitude</label>
+                        <input 
+                            type="text" 
+                            name="latitude" 
+                            value={coords.lat}
+                            onChange={(e) => setCoords({...coords, lat: Number(e.target.value)})}
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Longitude</label>
+                        <input 
+                            type="text" 
+                            name="longitude" 
+                            value={coords.lng}
+                            onChange={(e) => setCoords({...coords, lng: Number(e.target.value)})}
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Lockbox Code</label>
+                        <input 
+                            type="text" 
+                            name="lockboxCode" 
+                            defaultValue={(property as any).lockboxCode || ''} 
+                            placeholder="e.g. 1234" 
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                        />
+                    </div>
+                </div>
+            </div>
+        </AccordionSection>
+
         {/* 5. SELLER INFO */}
         <AccordionSection title="Seller Profile" icon="👤">
           <div className="space-y-6">
@@ -398,7 +506,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                                   onChange={() => setSmsTarget('ZIP')}
                                   className="text-[#529e14] focus:ring-[#529e14] bg-gray-800 border-gray-600"
                               />
-                              <span className="text-white text-sm">Target Zip Code Only ({property.zipCode})</span>
+                              <span className="text-white text-sm">Target Zip Code Only ({zipCode})</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                               <input 
@@ -484,7 +592,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                 <p className="text-gray-300 text-lg mb-6 leading-relaxed">
                     You are about to send an SMS blast to: <br/>
                     <strong className="text-white text-xl block mt-2 p-3 bg-gray-900 rounded border border-gray-700 text-center">
-                        {smsTarget === 'ZIP' ? `Buyers in Zip Code: ${property.zipCode}` : 'ALL Active Buyers'}
+                        {smsTarget === 'ZIP' ? `Buyers in Zip Code: ${zipCode}` : 'ALL Active Buyers'}
                     </strong>
                 </p>
                 
