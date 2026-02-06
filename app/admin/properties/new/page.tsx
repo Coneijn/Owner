@@ -6,7 +6,7 @@ import { useActionState, useState, useMemo } from 'react';
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 import dynamic from 'next/dynamic'; 
 
-// Importamos el mapa dinámicamente (sin SSR para evitar errores de ventana)
+// Importamos el mapa dinámicamente (sin SSR)
 const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
   ssr: false,
   loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
@@ -62,12 +62,15 @@ export default function NewPropertyPage() {
 
     // 1) Estado para controlar el STATUS
     const [status, setStatus] = useState<string>('AVAILABLE');
-    const isStrict = status !== 'DRAFT';
+    
+    // --- LÓGICA DE VALIDACIÓN ESTRICTA ---
+    // Si es DRAFT o COMING_SOON, relajamos la validación de campos financieros
+    const isStrict = status !== 'DRAFT' && status !== 'COMING_SOON';
 
-    // 2) Estado para el PRECIO
+    // 2) Estado para el PRECIO (para cálculo de seguro)
     const [price, setPrice] = useState<number | string>('');
     
-    // --- ESTADOS DE UBICACIÓN (Inicializados con comillas vacías para evitar errores) ---
+    // --- ESTADOS DE UBICACIÓN ---
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
     const [stateLoc, setStateLoc] = useState('TN'); 
@@ -82,7 +85,7 @@ export default function NewPropertyPage() {
     // Cadena de búsqueda automática para el mapa
     const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
 
-    // Lógica de cálculo de seguro
+    // Lógica de cálculo de seguro estimado
     const calculatedInsurance = useMemo(() => {
       const p = Number(price);
       if (!p) return 2148; 
@@ -94,6 +97,7 @@ export default function NewPropertyPage() {
 
     // INTERCEPTOR DEL ENVÍO
     const handleFormSubmit = (formData: FormData) => {
+        // Si no es estricto (Draft/Coming Soon), rellenamos con 0 los financieros vacíos
         if (!isStrict) {
             const financialFields = ['price', 'downPayment', 'interestRate', 'taxes'];
             financialFields.forEach((field) => {
@@ -154,9 +158,24 @@ export default function NewPropertyPage() {
                         <option value="UNDER_CONTRACT">Under Contract</option>
                         <option value="SOLD">Sold</option>
                         <option value="DRAFT">Draft</option>
+                        <option value="COMING_SOON">Coming Soon</option>
                     </select>
                 </div>
-                <div className="sm:col-span-4">
+
+                {/* AVAILABLE DATE (Solo visible en COMING_SOON) */}
+                {status === 'COMING_SOON' && (
+                    <div className="sm:col-span-2 animate-in fade-in slide-in-from-top-2">
+                         <label className="block text-xs font-bold leading-6 text-blue-400 uppercase">Available Date</label>
+                         <input 
+                            type="date" 
+                            name="availableDate" 
+                            className="mt-2 block w-full rounded bg-gray-800 border border-blue-500/50 text-white shadow-sm ring-1 ring-inset ring-blue-500/20 focus:ring-blue-500 sm:text-sm" 
+                        />
+                    </div>
+                )}
+                
+                {/* Ajuste de columna para Slug dependiendo si se muestra fecha o no */}
+                <div className={`${status === 'COMING_SOON' ? 'sm:col-span-2' : 'sm:col-span-4'}`}>
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
                     <input 
                         type="text" 
@@ -167,14 +186,14 @@ export default function NewPropertyPage() {
                     />
                 </div>
 
-                {/* Location - INPUTS BLINDADOS CON || '' */}
+                {/* Location */}
                 <div className="sm:col-span-4">
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
                     <input 
                         type="text" 
                         name="address" 
                         required 
-                        value={address || ''} // <--- CORREGIDO: Evita undefined
+                        value={address}
                         onChange={(e) => setAddress(e.target.value)} 
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
                     />
@@ -190,7 +209,7 @@ export default function NewPropertyPage() {
                         type="text" 
                         name="city" 
                         required 
-                        value={city || ''} // <--- CORREGIDO
+                        value={city}
                         onChange={(e) => setCity(e.target.value)} 
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
                     />
@@ -200,7 +219,7 @@ export default function NewPropertyPage() {
                     <input 
                         type="text" 
                         name="state" 
-                        value={stateLoc || ''} // <--- CORREGIDO
+                        value={stateLoc}
                         onChange={(e) => setStateLoc(e.target.value)} 
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
                     />
@@ -213,7 +232,7 @@ export default function NewPropertyPage() {
                         type="text" 
                         name="zipCode" 
                         required 
-                        value={zipCode || ''} // <--- CORREGIDO
+                        value={zipCode}
                         onChange={(e) => setZipCode(e.target.value)}
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
                     />
@@ -416,7 +435,7 @@ export default function NewPropertyPage() {
                     />
                 </div>
 
-                {/* LOS INPUTS */}
+                {/* LOS INPUTS - Ahora conectados para el Server Action */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                     <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase">Latitude</label>
@@ -440,7 +459,12 @@ export default function NewPropertyPage() {
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Lockbox Code</label>
-                        <input type="text" name="lockboxCode" placeholder="e.g. 1234" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                        <input 
+                          type="text" 
+                          name="lockboxCode" 
+                          placeholder="e.g. 1234" 
+                          className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                        />
                     </div>
                 </div>
             </div>
@@ -489,7 +513,7 @@ export default function NewPropertyPage() {
           )}
 
           {/* SUBMIT BUTTON */}
-          <div className="flex items-center justify-end gap-x-6 pt-6 border-t border-gray-800">
+          <div className="flex items-center justify-end gap-x-6 pt-6 border-t border-gray-800 pb-16">
             <Link href="/admin" className="text-sm font-bold leading-6 text-gray-400 hover:text-white transition-colors">Cancel</Link>
             <button
               type="submit"

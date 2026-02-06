@@ -33,6 +33,11 @@ const DICTIONARY = {
             price: "Precio Total",
             monthly: "Mensualidad Est.",
             details: "Ver Detalles"
+        },
+        // Etiquetas de estado
+        status: {
+            available: "DISPONIBLE",
+            comingSoon: "PRÓXIMAMENTE"
         }
     },
     en: {
@@ -56,6 +61,11 @@ const DICTIONARY = {
             price: "Total Price",
             monthly: "Est. Monthly",
             details: "View Details"
+        },
+        // Status labels
+        status: {
+            available: "AVAILABLE",
+            comingSoon: "COMING SOON"
         }
     }
 };
@@ -107,7 +117,9 @@ export default async function CatalogPage(props: {
 
   // --- 1. LÓGICA DE FILTRADO ---
   const whereClause: Prisma.PropertyWhereInput = {
-    status: 'AVAILABLE',
+    status: {
+      in: ['AVAILABLE', 'COMING_SOON'] // <--- Esto trae ambas
+    },
   };
 
   if (searchParams?.zip) {
@@ -292,7 +304,6 @@ export default async function CatalogPage(props: {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {properties.map((property) => {
                         // --- CÁLCULO DE PAGO UNIFICADO ---
-                        // Calculamos el pago estimado usando la misma lógica que PropertiesCarousel
                         const estimatedPayment = calculateEstimatedPayment(
                             property.price,
                             property.downPayment,
@@ -300,6 +311,11 @@ export default async function CatalogPage(props: {
                             property.insurance,
                             property.interestRate
                         );
+
+                        // Lógica de Estado para la etiqueta
+                        const isComingSoon = property.status === 'COMING_SOON';
+                        const statusLabel = isComingSoon ? t.status.comingSoon : t.status.available;
+                        const statusColor = isComingSoon ? 'bg-blue-600 text-white' : 'bg-[#529e14] text-white';
 
                         return (
                             <div key={property.id} className="group bg-[#242424] rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-[#f8ed1a] transition-all duration-300 hover:shadow-[0_0_20px_rgba(248,237,26,0.15)] flex flex-col">
@@ -312,9 +328,12 @@ export default async function CatalogPage(props: {
                                         fill 
                                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                                     />
-                                    <div className="absolute top-4 left-4 bg-[#529e14] text-white text-xs font-black px-3 py-1 rounded uppercase shadow-md">
-                                        AVAILABLE
+                                    
+                                    {/* ETIQUETA DE ESTADO DINÁMICA */}
+                                    <div className={`absolute top-4 left-4 text-xs font-black px-3 py-1 rounded uppercase shadow-md ${statusColor}`}>
+                                        {statusLabel}
                                     </div>
+
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pt-12">
                                         <h3 className="text-white font-bold text-lg leading-tight truncate">
                                             {property.address}
@@ -348,16 +367,19 @@ export default async function CatalogPage(props: {
                                             </div>
                                         </div>
                                         
-                                        {/* Precios */}
+                                        {/* Precios (Ocultar mensualidad si es Coming Soon opcionalmente, pero no se pidió) */}
                                         <div className="space-y-1 mb-4">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-400 font-bold uppercase">{t.catalog.price}</span>
                                                 <span className="text-white font-bold">{formatMoney(property.price)}</span>
                                             </div>
+                                            
+                                            {/* Si es COMING_SOON, tal vez quieras ocultar el pago mensual, 
+                                                pero como no se pidió explícitamente en este archivo (solo en slug), 
+                                                lo dejo visible. Si quieres ocultarlo agrega la condición !isComingSoon && (...) 
+                                            */}
                                             <div className="flex justify-between items-center bg-gray-800/50 p-2 rounded">
                                                 <span className="text-[#f8ed1a] font-bold uppercase text-xs">{t.catalog.monthly}</span>
-                                                
-                                                {/* AQUÍ ESTÁ LA CORRECCIÓN VISUAL */}
                                                 <span className="text-[#f8ed1a] font-black text-lg">
                                                     {formatMoney(estimatedPayment)}
                                                 </span>

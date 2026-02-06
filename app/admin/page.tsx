@@ -2,7 +2,7 @@ import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image';
-import DeletePropertyButton from '@/app/admin/ui/delete-button';
+import DashboardClient from './dashboard-client';
 
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
@@ -15,17 +15,29 @@ const formatMoney = (amount: number | unknown) => {
 export default async function AdminDashboard() {
   const session = await auth();
 
-  const properties = await prisma.property.findMany({
+  // 1. Obtenemos los datos crudos de Prisma
+  const rawProperties = await prisma.property.findMany({
     orderBy: { createdAt: 'desc' },
   });
 
+  // 2. TRANSFORMACIÓN: Convertimos los objetos Decimal a Number plano
+  const properties = rawProperties.map((p) => ({
+    ...p,
+    price: Number(p.price),
+    downPayment: Number(p.downPayment),
+    interestRate: Number(p.interestRate),
+    taxes: Number(p.taxes),
+    insurance: Number(p.insurance),
+  }));
+
+  // Calculamos stats usando ya los datos convertidos
   const totalProperties = properties.length;
   const availableProperties = properties.filter((p) => p.status === 'AVAILABLE').length;
   const soldProperties = properties.filter((p) => p.status === 'SOLD' || p.status === 'UNDER_CONTRACT').length;
   
   const totalInventoryValue = properties
     .filter(p => p.status === 'AVAILABLE')
-    .reduce((acc, curr) => acc + Number(curr.price), 0);
+    .reduce((acc, curr) => acc + (curr.price), 0);
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
@@ -50,18 +62,24 @@ export default async function AdminDashboard() {
             
             <div className="flex items-center gap-6">
               
-              {/* --- NUEVO: BOTÓN API/JSON PARA AGENTES --- */}
-              {/* Es discreto, solo visible en desktop, útil para desarrolladores */}
+              {/* --- NUEVO BOTÓN: BLOG ADMIN --- */}
+              <Link 
+                href="/admin/blog" 
+                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
+              >
+                  <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">📰</span> 
+                  <span>Blog</span>
+              </Link>
+
+              {/* BOTÓN API/JSON */}
               <Link 
                 href="/api/agent/inventory" 
                 target="_blank"
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
-                title="Abrir inventario en formato JSON para Agentes de IA"
               >
                   <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">🤖</span> 
                   <span>AI JSON</span>
               </Link>
-              {/* ------------------------------------------ */}
 
               <div className="text-right hidden sm:block border-l border-gray-800 pl-6">
                 <p className="text-sm text-white font-bold">{session?.user?.name || 'Administrator'}</p>
@@ -69,7 +87,6 @@ export default async function AdminDashboard() {
                 <Link 
                   href="/admin/user_settings" 
                   className="text-xs text-gray-500 hover:text-[#f8ed1a] transition-colors hover:underline underline-offset-2"
-                  title="Configuración de usuario"
                 >
                   {session?.user?.email}
                 </Link>
@@ -106,102 +123,17 @@ export default async function AdminDashboard() {
           </Link>
         </div>
 
-        {/* --- STATS CARDS --- */}
+        {/* --- STATS CARDS (Resumen Superior) --- */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
           <StatCard title="Total Properties" value={totalProperties} icon="🏠" />
-          <StatCard title="Available" value={availableProperties} icon="✅" color="text-[#529e14]" /> {/* Verde */}
-          <StatCard title="Sold / Contract" value={soldProperties} icon="🤝" color="text-[#f8ed1a]" /> {/* Amarillo */}
+          <StatCard title="Available" value={availableProperties} icon="✅" color="text-[#529e14]" />
+          <StatCard title="Sold / Contract" value={soldProperties} icon="🤝" color="text-[#f8ed1a]" />
           <StatCard title="Inventory Value" value={formatMoney(totalInventoryValue)} icon="💰" />
         </div>
 
-        {/* --- TABLA DE PROPIEDADES --- */}
-        <div className="bg-[#1a1a1a] shadow-2xl rounded-xl overflow-hidden border border-gray-800">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-800">
-              <thead className="bg-gray-900">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Property</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Price</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Specs</th>
-                  <th className="px-6 py-4 text-right text-xs font-black text-gray-400 uppercase tracking-widest">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-[#1a1a1a] divide-y divide-gray-800">
-                {properties.length === 0 ? (
-                   <tr>
-                     <td colSpan={5} className="px-6 py-16 text-center text-gray-500">
-                       No properties registered yet. Create your first one!
-                     </td>
-                   </tr>
-                ) : (
-                  properties.map((property) => (
-                    <tr key={property.id} className="hover:bg-white/5 transition-colors group">
-                      {/* Columna: Casa (Imagen + Título) */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-12 w-12 flex-shrink-0 bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                             {property.mainImage ? (
-                               <img src={property.mainImage} alt="" className="h-full w-full object-cover" />
-                             ) : (
-                               <div className="h-full w-full flex items-center justify-center text-gray-600 text-xs">N/A</div>
-                             )}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-bold text-white truncate max-w-[200px]" title={property.titleEn || property.titleEs}>
-                              {property.titleEn || property.titleEs}
-                            </div>
-                            <div className="text-xs text-gray-500 truncate max-w-[200px] mt-0.5">
-                              {property.address}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      {/* Columna: Precio */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-[#f8ed1a] font-bold">{formatMoney(property.price)}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">Down: {formatMoney(property.downPayment)}</div>
-                      </td>
+        {/* --- CLIENT DASHBOARD (Listas Colapsables y Paginación) --- */}
+        <DashboardClient properties={properties} />
 
-                      {/* Columna: Estado */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-[10px] leading-5 font-black uppercase tracking-wider rounded-full 
-                          ${property.status === 'AVAILABLE' ? 'bg-[#529e14]/20 text-[#529e14] border border-[#529e14]/30' : ''}
-                          ${property.status === 'SOLD' ? 'bg-red-900/20 text-red-500 border border-red-900/30' : ''}
-                          ${property.status === 'UNDER_CONTRACT' ? 'bg-yellow-900/20 text-[#f8ed1a] border border-[#f8ed1a]/30' : ''}
-                          ${property.status === 'DRAFT' ? 'bg-orange-900/20 text-orange-400 border border-orange-400/30' : ''}
-                        `}>
-                          {property.status.replace('_', ' ')}
-                        </span>
-                      </td>
-
-                      {/* Columna: Specs */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-medium">
-                        {property.bedrooms} beds • {property.bathrooms} baths
-                      </td>
-
-                      {/* Columna: Acciones */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end items-center gap-4">
-                            <Link href={`/propiedades/${property.slug}`} target="_blank" className="text-gray-500 hover:text-white transition-colors" title="View on site">
-                                👁️
-                            </Link>
-                            <Link href={`/admin/properties/${property.id}/edit`} className="text-blue-400 hover:text-blue-300 font-bold uppercase text-xs tracking-wide">
-                                Edit
-                            </Link>
-                            
-                           {/* Botón seguro de borrado */}
-                           <DeletePropertyButton id={property.id} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </main>
     </div>
   );

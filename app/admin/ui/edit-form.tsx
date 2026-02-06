@@ -12,6 +12,15 @@ const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), {
   loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
 });
 
+// --- HELPER PARA FECHAS ---
+// Convierte ISO String o Date object a formato YYYY-MM-DD para el input HTML
+const formatDateForInput = (dateVal: string | Date | null | undefined) => {
+    if (!dateVal) return '';
+    const date = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+};
+
 // --- TYPES ---
 interface PropertyData {
   id: string;
@@ -51,10 +60,11 @@ interface PropertyData {
   sellerType?: string | null;
   sellerName?: string | null;
   sellerImage?: string | null;
-  // Campos nuevos (opcionales por si TS se queja)
+  // Campos nuevos
   latitude?: number | string | null;
   longitude?: number | string | null;
   lockboxCode?: string | null;
+  availableDate?: Date | string | null; // <--- NUEVO
 }
 
 // --- HELPER COMPONENT: ACCORDION ---
@@ -98,6 +108,9 @@ const AccordionSection = ({
 
 export default function EditForm({ property }: { property: PropertyData }) {
   const [state, formAction, isPending] = useActionState(updateProperty, null);
+
+  // --- STATUS STATE (Para controlar "Coming Soon") ---
+  const [status, setStatus] = useState<string>(property.status);
 
   // --- IMAGE STATE ---
   const initialMain: ImageFile[] = property.images && property.images.length > 0
@@ -172,7 +185,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
             propertySlug: property.slug,
             propertyTitle: property.titleEn,
             targetAudience: smsTarget, 
-            targetZipCode: zipCode, // Usamos el estado actualizado
+            targetZipCode: zipCode, 
             messageBody: smsMessage,
             sentAt: new Date().toISOString()
         };
@@ -208,21 +221,42 @@ export default function EditForm({ property }: { property: PropertyData }) {
         {/* 1. STATUS & LOCATION (Default Open) */}
         <AccordionSection title="Status, Location & Specs" icon="📍" defaultOpen={true}>
           <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+              
               {/* Status & Slug */}
               <div className="sm:col-span-2">
                   <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
-                  <select name="status" defaultValue={property.status} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm">
+                  <select 
+                    name="status" 
+                    value={status} // Controlado por React State
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
+                  >
                       <option value="AVAILABLE">Available</option>
                       <option value="UNDER_CONTRACT">Under Contract</option>
                       <option value="SOLD">Sold</option>
                       <option value="DRAFT">Draft</option>
+                      <option value="COMING_SOON">Coming Soon</option>
                   </select>
               </div>
+
+              {/* INPUT DE FECHA - SOLO VISIBLE SI ES COMING SOON */}
+              {status === 'COMING_SOON' && (
+                <div className="sm:col-span-2 animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-xs font-bold leading-6 text-blue-400 uppercase">Available Date</label>
+                    <input 
+                        type="date" 
+                        name="availableDate" 
+                        defaultValue={formatDateForInput(property.availableDate)}
+                        className="mt-2 block w-full rounded bg-gray-800 border border-blue-500/50 text-white shadow-sm ring-1 ring-inset ring-blue-500/20 focus:ring-blue-500 sm:text-sm" 
+                    />
+                </div>
+              )}
+
               <div className="sm:col-span-2">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Phone Number</label>
                   <input type="text" name="phoneNumber" defaultValue={property.phoneNumber || '9016-604-115'}  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-6">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
                   <input type="text" name="slug" defaultValue={property.slug} required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
@@ -233,7 +267,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   <input 
                     type="text" 
                     name="address" 
-                    value={address} // <--- CONTROLADO
+                    value={address} 
                     onChange={(e) => setAddress(e.target.value)}
                     required 
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
@@ -244,7 +278,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   <input 
                     type="text" 
                     name="city" 
-                    value={city} // <--- CONTROLADO
+                    value={city} 
                     onChange={(e) => setCity(e.target.value)}
                     required 
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
@@ -255,7 +289,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   <input 
                     type="text" 
                     name="state" 
-                    value={stateLoc} // <--- CONTROLADO
+                    value={stateLoc} 
                     onChange={(e) => setStateLoc(e.target.value)}
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
                   />
@@ -265,7 +299,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   <input 
                     type="text" 
                     name="zipCode" 
-                    value={zipCode} // <--- CONTROLADO
+                    value={zipCode} 
                     onChange={(e) => setZipCode(e.target.value)}
                     required 
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 

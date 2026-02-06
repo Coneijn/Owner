@@ -65,6 +65,21 @@ function parseImageData(jsonString: unknown) {
   }
 }
 
+
+// Helper para procesar fechas vacías o inválidas
+function parseDate(dateString: unknown): Date | null {
+  if (typeof dateString !== 'string' || !dateString) return null;
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+// Helper para procesar coordenadas (evita NaN)
+function parseFloatSafe(value: unknown): number | null {
+  if (!value) return null;
+  const parsed = parseFloat(value as string);
+  return isNaN(parsed) ? null : parsed;
+}
+
 // --- CREATE ---
 export async function createProperty(prevState: any, formData: FormData) {
   const rawFormData = Object.fromEntries(formData.entries());
@@ -73,6 +88,8 @@ export async function createProperty(prevState: any, formData: FormData) {
   const imagesToCreate = [];
   const slugInput = rawFormData.slug as string;
   const sanitizedSlug = slugInput.trim().toLowerCase().replace(/\s+/g, '-');
+
+  // Procesamiento de imágenes (Igual que antes)
   if (mainImageObj && mainImageObj.url) {
     imagesToCreate.push({
       url: mainImageObj.url,
@@ -109,6 +126,9 @@ export async function createProperty(prevState: any, formData: FormData) {
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
         calendarLink: rawFormData.calendarLink as string,
+        
+        // --- NUEVO: Fecha disponible ---
+        availableDate: parseDate(rawFormData.availableDate),
 
         // SEO Fields
         seoTitleEn: rawFormData.seoTitleEn as string,
@@ -136,6 +156,11 @@ export async function createProperty(prevState: any, formData: FormData) {
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
         
+        // --- NUEVO: Coordenadas y Acceso ---
+        latitude: parseFloatSafe(rawFormData.latitude),
+        longitude: parseFloatSafe(rawFormData.longitude),
+        lockboxCode: rawFormData.lockboxCode as string,
+
         // Specs
         bedrooms: Number(rawFormData.bedrooms),
         bathrooms: Number(rawFormData.bathrooms),
@@ -143,13 +168,12 @@ export async function createProperty(prevState: any, formData: FormData) {
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
         
-        // Multimedia (Legacy Fields)
+        // Multimedia
         mainImage: mainImageObj?.url || '',
         galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
         features: processFeatures(rawFormData.features),
 
-        // RELACIÓN DE IMÁGENES (NUEVO MODELO)
         images: {
           create: imagesToCreate
         },
@@ -182,6 +206,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   const imagesToCreate = [];
 
+  // Procesamiento de imágenes (Igual que antes)
   if (mainImageObj && mainImageObj.url) {
     imagesToCreate.push({
       url: mainImageObj.url,
@@ -220,6 +245,9 @@ export async function updateProperty(prevState: any, formData: FormData) {
         isOffMarket: rawFormData.isOffMarket === 'on',
         calendarLink: rawFormData.calendarLink as string,
         
+        // --- NUEVO: Fecha disponible ---
+        availableDate: parseDate(rawFormData.availableDate),
+        
         // SEO Fields
         seoTitleEn: rawFormData.seoTitleEn as string,
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
@@ -246,6 +274,11 @@ export async function updateProperty(prevState: any, formData: FormData) {
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
         
+        // --- NUEVO: Coordenadas y Acceso ---
+        latitude: parseFloatSafe(rawFormData.latitude),
+        longitude: parseFloatSafe(rawFormData.longitude),
+        lockboxCode: rawFormData.lockboxCode as string,
+        
         // Specs
         bedrooms: Number(rawFormData.bedrooms),
         bathrooms: Number(rawFormData.bathrooms),
@@ -253,7 +286,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
         
-        // Multimedia (Legacy)
+        // Multimedia
         mainImage: mainImageObj?.url || '',
         galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,

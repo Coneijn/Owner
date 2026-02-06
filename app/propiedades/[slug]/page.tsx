@@ -2,12 +2,14 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image'; 
-import { Metadata, ResolvingMetadata } from 'next'; // <--- 1. Importar tipos de Next
+import { Metadata, ResolvingMetadata } from 'next';
 import PropertyGallery from '@/app/components/PropertyGallery';
 import MortgageCalculator from '@/app/components/MortgageCalculator';
 import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import VideoModal from '@/app/components/video-modal';
-import Script from 'next/script'
+import Script from 'next/script';
+import PropertyShare from '@/app/components/PropertyShare';
+
 // --- COLORES CORPORATIVOS ---
 // Yellow: #f8ed1a | Green: #529e14 | Dark: #1a1a1a
 
@@ -29,6 +31,7 @@ const DICTIONARY = {
     underContract: "Bajo Contrato",
     sold: "Vendido",
     draft: "Borrador",
+    comingSoon: "Próximamente", // <--- Agregado para el switch de colores
     aboutTitle: "SOBRE ESTA PROPIEDAD",
     featuresTitle: "CARACTERÍSTICAS",
     beds: "Habitaciones",
@@ -53,6 +56,7 @@ const DICTIONARY = {
     underContract: "Under Contract",
     sold: "Sold",
     draft: "Draft",
+    comingSoon: "Coming Soon", // <--- Agregado
     aboutTitle: "ABOUT THIS PROPERTY",
     featuresTitle: "FEATURES",
     beds: "Bedrooms",
@@ -74,25 +78,20 @@ const DICTIONARY = {
 
 const DEFAULT_CALENDAR_LINK = "https://api.leadconnectorhq.com/widget/bookings/scheduleanappointmentcallwithus-230ad544-8f6f-4125-9d14-f1b202f0becc-7fdb3832-39a9-4c80-a146-60233fb444a1-aaa07f1f-456b-4ccc-81e4-adb0ad437aa3-0b2d0529-cb48-461f-b8b5-712b398e91eb-fcbf65a8-70d2-4009-b786-ac4166822f0b-0f63997e-5577-46ae-9f21-00d7deb09698-e6c21248-3365-4355-9454-17fdbd70ec1e-8b95828a-650c-41a7-9b5b-453855dce734-8dda7b22-1142-4021-8dfc-111b3ef84155-f97c6afe-ae0a-48f4-a6cb-868f7ec9020c-5c4b1d30-8e32-4a3d-9142-617df2faa33d-15d6fb8b-f278-4503-98e4-f435ca7bb65e-1cb0ec42-d374-4a1a-b923-59c59dcc4791-c04f60e7-15a7-4cfc-a977-30d02f1c83fe-9e2a0269-9b69-4caa-95c7-327b47eef86a-ffac1d68-518e-4dc2-9bf7-90a8acd0b85d-bb726c61-15c6-4b11-b190-55d7c217c1a3"; 
 
-// 2. Definimos el tipo de Props para reutilizarlo en metadata y en la página
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
 };
 
-// 3. FUNCIÓN GENERATE METADATA
 export async function generateMetadata(
   props: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  // Leer parámetros
   const params = await props.params;
   const searchParams = await props.searchParams;
   const slug = params.slug;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
 
-  // Buscar propiedad (Next.js deduplica esta petición automáticamente si usas fetch, 
-  // pero con Prisma es buena práctica cachear o simplemente confiar en la rapidez de la DB por ID)
   const property = await prisma.property.findUnique({
     where: { slug },
     select: {
@@ -114,7 +113,6 @@ export async function generateMetadata(
     };
   }
 
-  // Lógica de fallback: Si no hay SEO title, usa el título normal
   const title = lang === 'en' 
     ? (property.seoTitleEn || property.titleEn)
     : (property.seoTitleEs || property.titleEs);
@@ -123,7 +121,6 @@ export async function generateMetadata(
     ? (property.seoDescriptionEn || property.descriptionEn)
     : (property.seoDescriptionEs || property.descriptionEs);
 
-  // Recortar descripción si es muy larga (opcional, Google lo hace solo, pero es buena práctica)
   const metaDescription = description.length > 160 ? description.substring(0, 157) + '...' : description;
 
   return {
@@ -132,14 +129,13 @@ export async function generateMetadata(
     openGraph: {
       title: title,
       description: metaDescription,
-      images: [property.mainImage], // Usa la imagen principal para compartir en redes
+      images: [property.mainImage],
       locale: lang === 'es' ? 'es_MX' : 'en_US',
       type: 'website',
     },
   };
 }
 
-// 4. COMPONENTE DE PÁGINA
 export default async function PropertyDetailPage(props: Props) {
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
@@ -173,13 +169,11 @@ export default async function PropertyDetailPage(props: Props) {
       <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           
-          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
           <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
             <div className="scale-75 origin-top-right md:scale-90">
               <LanguageSwitch />
             </div>
           </div>
-          {/* ------------------------------------------- */}
 
           <div className="flex justify-between items-center h-16 md:h-20">
             <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
@@ -227,38 +221,42 @@ export default async function PropertyDetailPage(props: Props) {
             <div className="text-left lg:text-right">
                 <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">{formatMoney(price)}</p>
                 <div className="mt-2">
-                    {/* LÓGICA DE ESTADOS MEJORADA */}
-{(() => {
-    let statusColor = "bg-gray-200 text-gray-600";
-    let statusText = "N/A";
+                    {/* LÓGICA DE ESTADOS */}
+                    {(() => {
+                        let statusColor = "bg-gray-200 text-gray-600";
+                        let statusText = "N/A";
 
-    switch (property.status) {
-        case 'AVAILABLE':
-            statusColor = "bg-[#f8ed1a] text-[#1a1a1a]";
-            statusText = t.available;
-            break;
-        case 'UNDER_CONTRACT':
-            statusColor = "bg-orange-500 text-white";
-            statusText = t.underContract;
-            break;
-        case 'SOLD':
-            statusColor = "bg-red-600 text-white";
-            statusText = t.sold;
-            break;
-            case 'DRAFT':
-            statusColor = "bg-gray-600 text-white";
-            statusText = t.draft;
-            break;
-        default:
-            statusText = property.status; 
-    }
+                        switch (property.status) {
+                            case 'AVAILABLE':
+                                statusColor = "bg-[#f8ed1a] text-[#1a1a1a]";
+                                statusText = t.available;
+                                break;
+                            case 'UNDER_CONTRACT':
+                                statusColor = "bg-orange-500 text-white";
+                                statusText = t.underContract;
+                                break;
+                            case 'SOLD':
+                                statusColor = "bg-red-600 text-white";
+                                statusText = t.sold;
+                                break;
+                            case 'DRAFT':
+                                statusColor = "bg-gray-600 text-white";
+                                statusText = t.draft;
+                                break;
+                            case 'COMING_SOON':
+                                statusColor = "bg-blue-600 text-white";
+                                statusText = t.comingSoon;
+                                break;
+                            default:
+                                statusText = property.status; 
+                        }
 
-    return (
-        <span className={`inline-block px-4 py-1 rounded text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
-            {statusText}
-        </span>
-    );
-})()}
+                        return (
+                            <span className={`inline-block px-4 py-1 rounded text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
+                                {statusText}
+                            </span>
+                        );
+                    })()}
                 </div>
             </div>
         </div>
@@ -315,10 +313,9 @@ export default async function PropertyDetailPage(props: Props) {
                     )}
                     {property.showSeller && (
                       <div className="mt-8 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center gap-6 relative overflow-hidden group">
-                        {/* Decoración */}
                         <div className="absolute top-0 right-0 w-24 h-24 bg-[#529e14]/10 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
-
-                        {/* Foto */}
+                        
+                        {/* Foto Vendedor */}
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
                            <div className="w-full h-full rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-[#f8ed1a]">
                               {property.sellerImage ? (
@@ -374,17 +371,19 @@ export default async function PropertyDetailPage(props: Props) {
                 
                 <div className="sticky top-24 space-y-8">
                     
-                    {/* Calculadora */}
-                    <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100">
-                         <MortgageCalculator 
-                            price={price}
-                            defaultDownPayment={downPayment}
-                            interestRate={interestRate}
-                            taxes={taxes}
-                            insurance={insurance}
-                            lang={lang}
-                        />
-                    </div>
+                    {/* --- CALCULADORA (Oculta si es COMING_SOON) --- */}
+                    {property.status !== 'COMING_SOON' && (
+                        <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100">
+                             <MortgageCalculator 
+                                price={price}
+                                defaultDownPayment={downPayment}
+                                interestRate={interestRate}
+                                taxes={taxes}
+                                insurance={insurance}
+                                lang={lang}
+                            />
+                        </div>
+                    )}
 
                     {/* Botones de Acción */}
                     <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden">
@@ -413,23 +412,29 @@ export default async function PropertyDetailPage(props: Props) {
                             </a>
                         </div>
                     </div>
+
+                    {/* --- COMPONENTE DE COMPARTIR --- */}
+                    <PropertyShare 
+                        title={lang === 'en' ? property.titleEn : property.titleEs} 
+                        slug={slug} 
+                        lang={lang} 
+                    />
                 </div>
             </div>
         </div>
       </main>
 
       <footer className="bg-[#1a1a1a] text-gray-400 py-12 mt-20 border-t border-gray-800">
-<Script
-  src="https://widgets.leadconnectorhq.com/loader.js"
-  data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-  data-widget-id="6982bc477cd1e65428cc69fe"
-  strategy="afterInteractive" // Se carga cuando la página ya es interactiva
-/>
+        <Script
+          src="https://widgets.leadconnectorhq.com/loader.js"
+          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+          data-widget-id="6982bc477cd1e65428cc69fe"
+          strategy="afterInteractive"
+        />
         <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-sm font-medium">© 2026 Dueño a Dueño.</p>
         </div>
       </footer>
     </div>
-    
   );
 }

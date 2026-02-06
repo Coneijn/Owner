@@ -54,6 +54,12 @@ const DICTIONARY = {
                 hasImage: true // Flag para renderizar la imagen
             }
         ]
+      },
+      // --- NUEVA SECCIÓN DE BLOG (EN) ---
+      blogCta: {
+        title: "STAY INFORMED WITH OUR BLOG",
+        text: "Discover the latest real estate news, tips for buyers and sellers, and market updates in Memphis.",
+        btn: "VISIT OUR BLOG"
       }
     },
     faq: {
@@ -116,6 +122,12 @@ const DICTIONARY = {
                 hasImage: true
             }
         ]
+      },
+      // --- NUEVA SECCIÓN DE BLOG (ES) ---
+      blogCta: {
+        title: "MANTENTE INFORMADO CON NUESTRO BLOG",
+        text: "Descubre las últimas noticias inmobiliarias, consejos para compradores y vendedores, y actualizaciones del mercado en Memphis.",
+        btn: "VISITAR EL BLOG"
       }
     },
     faq: {
@@ -290,6 +302,31 @@ export default async function AboutPage(props: {
                     </div>
                 ))}
             </div>
+        </div>
+      </section>
+
+      {/* --- NUEVA SECCIÓN: BLOG CALL TO ACTION --- */}
+      <section className="py-16 px-4 bg-[#1a1a1a] text-center">
+        <div className="max-w-4xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 p-10 rounded-2xl border border-gray-700 shadow-2xl relative overflow-hidden group hover:border-[#f8ed1a] transition-colors">
+            {/* Decoración Superior */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#529e14] to-[#f8ed1a]"></div>
+            
+            {/* Decoración de fondo */}
+            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#f8ed1a] opacity-5 rounded-full blur-3xl pointer-events-none group-hover:opacity-10 transition-opacity"></div>
+
+            <h2 className="text-3xl md:text-4xl font-black text-white uppercase mb-4 tracking-tight relative z-10">
+                {t.sections.blogCta.title}
+            </h2>
+            <p className="text-gray-300 mb-8 text-lg md:text-xl max-w-2xl mx-auto relative z-10">
+                {t.sections.blogCta.text}
+            </p>
+            
+            <Link 
+                href={`/blog?lang=${lang}`}
+                className="inline-block bg-[#f8ed1a] text-[#1a1a1a] font-black uppercase px-8 py-4 rounded-lg hover:bg-white hover:scale-105 transition-all shadow-lg relative z-10"
+            >
+                {t.sections.blogCta.btn}
+            </Link>
         </div>
       </section>
 

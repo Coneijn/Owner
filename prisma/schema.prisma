@@ -55,7 +55,11 @@ model Property {
   zipCode      String
   phoneNumber  String?
   calendarLink String?
-
+// CAMPOS DE UBICACIÓN 
+  latitude     Float?
+  longitude    Float?
+  lockboxCode  String?
+  availableDate DateTime?
   // --- Especificaciones Técnicas ---
   bedrooms  Int
   bathrooms Float
@@ -84,7 +88,29 @@ model Property {
   sellerImage String?
   sellerType  String? @default("OWNER")
 }
-
+model Post {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  slug          String   @unique
+  isPublished   Boolean  @default(false)
+  
+  // Contenido Bilingüe
+  titleEn       String
+  titleEs       String
+  contentEn     String   @db.Text // Puede ser Markdown o HTML
+  contentEs     String   @db.Text
+  
+  // Multimedia
+  mainImage     String?
+  
+  // SEO (Opcional, pero recomendado)
+  seoTitleEn    String?
+  seoDescEn     String?
+  seoTitleEs    String?
+  seoDescEs     String?
+}
 model PropertyImage {
   id  String @id @default(cuid())
   url String
@@ -114,4 +140,5 @@ enum PropertyStatus {
   UNDER_CONTRACT
   SOLD
   DRAFT
+  COMING_SOON
 }
