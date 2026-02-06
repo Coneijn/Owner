@@ -3,22 +3,18 @@ import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth'; 
 import SearchFilters from './components/SearchFilters'; 
-import LanguageSwitch from './components/LanguageSwitch'; 
 import PropertiesCarousel from './components/PropertiesCarousel'; 
 import { Prisma } from '@prisma/client';
-import Script from 'next/script'
+import Script from 'next/script';
+import Header from '@/app/components/Header'; // <--- Header Importado
+
+// --- DICCIONARIO ---
 const DICTIONARY = { 
    es: {
-        nav: {
-            home: "Inicio",
-            properties: "Propiedades",
-            about: "Nosotros",
-            contact: "Contacto"
-        },
+        // Se eliminó 'nav' y 'btnApply' porque ahora están en el componente Header
         heroTitle: "TU CASA PROPIA, SIN BANCOS NI COMPLICACIONES",
         heroSub: "Financiamiento directo de Dueño a Dueño. Si el banco te dijo que no, nosotros te decimos que SÍ.",
         btnProps: "Ver casas disponibles",
-        btnApply: "Login",
         availableTitle: "PROPIEDADES DESTACADAS",
         monthlyPayment: "Pago Mensual Est.",
         totalPrice: "Precio Total",
@@ -52,16 +48,9 @@ const DICTIONARY = {
         }
     },
     en: {
-        nav: {
-            home: "Home",
-            properties: "Properties",
-            about: "About Us",
-            contact: "Contact"
-        },
         heroTitle: "YOUR OWN HOME, NO BANKS, NO HASSLE",
         heroSub: "Direct Owner-to-Owner financing. If the bank said no, we say YES.",
         btnProps: "See Available Homes",
-        btnApply: "Login",
         availableTitle: "FEATURED PROPERTIES",
         monthlyPayment: "Est. Monthly Pmt",
         totalPrice: "Total Price",
@@ -109,6 +98,7 @@ export default async function HomePage(props: {
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
 
+  // --- Lógica de Búsqueda ---
   const whereClause: Prisma.PropertyWhereInput = {
     status: 'AVAILABLE',
   };
@@ -121,10 +111,12 @@ export default async function HomePage(props: {
     whereClause.features = { has: searchParams.feature };
   }
 
+  // --- Consulta a Base de Datos ---
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
   });
+
   const properties = rawProperties.map(p => ({
     ...p,
     price: p.price.toNumber(),
@@ -139,60 +131,12 @@ export default async function HomePage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-800 scroll-smooth">
       
-      {/* HEADER ACTUALIZADO */}
-      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          {/* --- NUEVA UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
-          {/* Posicionado absolutamente arriba a la derecha. 
-              No ocupa espacio en el flujo (no aumenta altura) pero siempre es visible. */}
-          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
-            <div className="scale-75 origin-top-right md:scale-90">
-              <LanguageSwitch />
-            </div>
-          </div>
-          {/* ------------------------------------------- */}
+      {/* --- HEADER IMPLEMENTADO --- */}
+      <Header lang={lang} activePage="home" />
 
-          <div className="flex justify-between items-center h-16 md:h-20">
-            {/* Logo Link */}
-            <Link href={`/?lang=${lang}`} className="flex-shrink-0 flex items-center gap-2">
-              <div className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Dueño a Dueño Logo" fill className="object-cover" />
-              </div>
-              <span className="text-base sm:text-xl md:text-2xl font-black uppercase tracking-tight text-white leading-none whitespace-nowrap">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-            
-            <div className="flex items-center gap-2 md:gap-6">
-              <nav className="hidden md:flex gap-6 text-white font-medium text-sm">
-                 {/* Home Activo */}
-                 <span className="text-[#f8ed1a] cursor-default">
-                    {t.nav.home}
-                 </span>
-                 <Link href={`/properties?lang=${lang}`} className="hover:text-[#f8ed1a] transition">
-                  {t.nav.properties}
-                </Link>
-                 <Link href={`/about-us?lang=${lang}`} className="hover:text-[#f8ed1a] transition">
-                    {t.nav.about}
-                 </Link>
-                 <Link href={`/contact-us?lang=${lang}`} className="hover:text-[#f8ed1a] transition">
-                    {t.nav.contact}
-                 </Link>
-              </nav>
-
-              <div className="flex items-center gap-2 md:gap-3">
-                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-2.5 py-2 md:px-5 md:py-2 rounded-md font-bold text-[10px] sm:text-xs md:text-sm transition-colors uppercase shadow-md whitespace-nowrap">
-                  {t.btnApply}
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* HERO SECTION  */}
+      {/* --- HERO SECTION --- */}
       <div className="relative bg-[#1a1a1a] pt-10 pb-20 md:pt-24 md:pb-32 px-4 overflow-hidden">
+        {/* Fondo de Imagen */}
         <div className="absolute inset-0 z-0 opacity-40">
             <Image 
               src="/casa.png" 
@@ -204,6 +148,8 @@ export default async function HomePage(props: {
               sizes="100vw" 
             />
         </div>
+        
+        {/* Contenido Hero */}
         <div className="max-w-7xl mx-auto relative z-10 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div className="text-left">
             <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-black text-white mb-4 md:mb-6 uppercase tracking-tighter leading-tight md:leading-none shadow-black drop-shadow-lg ">
@@ -219,11 +165,10 @@ export default async function HomePage(props: {
         </div>
       </div>
 
-      {/* TRUST SECTION (LINKED) y FILTERS  */}
+      {/* --- TRUST SECTION --- */}
       <section id="trust" className="bg-[#1a1a1a] py-12 md:py-16 border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           
-          {/* TÍTULO CON ENLACE */}
           <Link href={`/why-choose-owner-to-dueno?lang=${lang}`}>
             <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight mb-8 md:mb-12 hover:text-[#f8ed1a] transition-colors cursor-pointer decoration-2 underline-offset-8 hover:underline">
                 {t.trust.title}
@@ -250,6 +195,7 @@ export default async function HomePage(props: {
         </div>
       </section>
 
+      {/* --- FILTROS DE BÚSQUEDA --- */}
       <div className="bg-[#1a1a1a] py-6 border-b border-gray-800">
          <div className="max-w-7xl mx-auto px-4">
             <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
@@ -258,7 +204,7 @@ export default async function HomePage(props: {
          </div>
       </div>
 
-      {/* --- FEATURED PROPERTIES CON CARRUSEL --- */}
+      {/* --- FEATURED PROPERTIES (CARRUSEL) --- */}
       <main id="properties" className="bg-[#f8ed1a] py-12 md:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-10 border-b-4 border-black pb-4 gap-4">
@@ -275,12 +221,16 @@ export default async function HomePage(props: {
         </div>
       </main>
 
-      {/* FOOTER  */}
+      {/* --- FOOTER --- */}
       <footer id="contact" className="bg-[#1a1a1a] text-white py-12 md:py-16 border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
-        <div className="relative h-64 md:h-80 w-full rounded-xl overflow-hidden bg-gray-800 border-2 border-[#f8ed1a] hidden md:block">
+            
+            {/* Imagen Footer */}
+            <div className="relative h-64 md:h-80 w-full rounded-xl overflow-hidden bg-gray-800 border-2 border-[#f8ed1a] hidden md:block">
                  <div className="absolute inset-0 bg-[url('/foot.png')] bg-cover bg-fit opacity-80" />
             </div>
+
+            {/* Info Contacto */}
             <div className="text-center md:text-left">
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight mb-6 md:mb-8 text-white">{t.footerContact}</h2>
                 <div className="flex items-center gap-4 mb-6 justify-center md:justify-start">
@@ -290,40 +240,25 @@ export default async function HomePage(props: {
                     <span className="text-xl md:text-2xl font-bold tracking-wide">901-660-4100</span>
                 </div>
                 <div className="space-y-4">
-                    <div className="space-y-4">
-                {/* Facebook */}
-                <a 
-                  href="https://www.facebook.com/duenoaduenoo" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity"
-                >
-                  <Image src="/facebook.png" alt="Facebook" width={24} height={24} />
-                  <span className="font-medium">Dueño A Dueño</span>
-                </a>
+                    <div className="flex flex-col gap-4">
+                        {/* Facebook */}
+                        <a href="https://www.facebook.com/duenoaduenoo" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity">
+                          <Image src="/facebook.png" alt="Facebook" width={24} height={24} />
+                          <span className="font-medium">Dueño A Dueño</span>
+                        </a>
 
-                {/* Instagram */}
-                <a 
-                  href="https://www.instagram.com/duenoaduenoo" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity"
-                >
-                  <Image src="/instagram.png" alt="Instagram" width={24} height={24} />
-                  <span className="font-medium">@duenoaduenoo</span>
-                </a>
+                        {/* Instagram */}
+                        <a href="https://www.instagram.com/duenoaduenoo" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity">
+                          <Image src="/instagram.png" alt="Instagram" width={24} height={24} />
+                          <span className="font-medium">@duenoaduenoo</span>
+                        </a>
 
-                {/* TikTok */}
-                <a 
-                  href="https://www.tiktok.com/@duenoaduenoo" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity"
-                >
-                  <Image src="/tiktok.png" alt="TikTok" width={24} height={24} />
-                  <span className="font-medium">@duenoaduenoo</span>
-                </a>
-</div>
+                        {/* TikTok */}
+                        <a href="https://www.tiktok.com/@duenoaduenoo" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 justify-center md:justify-start hover:opacity-75 transition-opacity">
+                          <Image src="/tiktok.png" alt="TikTok" width={24} height={24} />
+                          <span className="font-medium">@duenoaduenoo</span>
+                        </a>
+                    </div>
                 </div>
             </div>
            
@@ -331,11 +266,13 @@ export default async function HomePage(props: {
         <div className="max-w-7xl mx-auto px-4 text-center mt-8 md:mt-12 pt-8 border-t border-gray-800 text-gray-500 text-sm">
           <p>© 2026 Dueño a Dueño. </p>
         </div>
+        
+        {/* Chat Widget Script */}
         <Script
           src="https://widgets.leadconnectorhq.com/loader.js"
           data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
           data-widget-id="6982bc477cd1e65428cc69fe"
-          strategy="afterInteractive" // Se carga cuando la página ya es interactiva
+          strategy="afterInteractive"
         />
       </footer>
     </div>

@@ -1,7 +1,5 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import { Metadata } from 'next';
+import Header from '@/app/components/Header';
 
 // --- METADATA (SEO) ---
 export const metadata: Metadata = {
@@ -16,9 +14,9 @@ const FORM_URLS = {
 };
 
 // --- DICCIONARIO ---
+// Nota: Se ha eliminado la sección 'nav' ya que ahora la maneja el componente Header
 const DICTIONARY = {
   en: {
-    nav: { home: "Home", properties: "Properties", about: "About Us", contact: "Contact" },
     hero: {
       title: "CONTACT US",
       subtitle: "We are here to help you connect directly."
@@ -98,7 +96,6 @@ const DICTIONARY = {
     }
   },
   es: {
-    nav: { home: "Inicio", properties: "Propiedades", about: "Nosotros", contact: "Contacto" },
     hero: {
       title: "CONTÁCTANOS",
       subtitle: "Estamos aquí para ayudarte a conectar directamente."
@@ -189,42 +186,9 @@ export default async function ContactPage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
-      {/* --- HEADER --- */}
-      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
-          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
-            <div className="scale-75 origin-top-right md:scale-90">
-              <LanguageSwitch />
-            </div>
-          </div>
-          {/* ------------------------------------------- */}
-
-          <div className="flex justify-between items-center h-16 md:h-20">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
-              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-              </div>
-              <span className="text-sm md:text-xl font-black uppercase text-white">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-            <div className="flex gap-4 items-center">
-                <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-400">
-                    <Link href={`/?lang=${lang}`} className="hover:text-white transition">{t.nav.home}</Link>
-                    <Link href={`/properties?lang=${lang}`} className="hover:text-white transition">{t.nav.properties}</Link>
-                    <Link href={`/about-us?lang=${lang}`} className="hover:text-white transition">{t.nav.about}</Link>
-                    {/* Contacto Activo (Amarillo y sin link) */}
-                    <span className="text-[#f8ed1a]">{t.nav.contact}</span>
-                </nav>
-                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
-                  Login
-                </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* --- HEADER IMPLEMENTADO --- */}
+      {/* Pasamos 'lang' y la página activa 'contact' */}
+      <Header lang={lang} activePage="contact" />
 
       {/* --- HERO --- */}
       <section className="bg-gradient-to-b from-gray-900 to-[#1a1a1a] py-16 px-4 text-center border-b border-gray-800">

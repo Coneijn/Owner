@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
-import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import { Metadata } from 'next';
+import Header from '@/app/components/Header';
 
 // --- METADATA (SEO) ---
 export const metadata: Metadata = {
@@ -12,7 +11,6 @@ export const metadata: Metadata = {
 // --- DICCIONARIO ---
 const DICTIONARY = {
   en: {
-    nav: { home: "Home", properties: "Properties", about: "About Us", contact: "Contact" },
     hero: {
       title: "WHY CHOOSE Dueño A Dueño",
       subtitle: "OWNER-TO-OWNER FINANCING"
@@ -131,9 +129,7 @@ const DICTIONARY = {
         ]
     }
   },
-  // --- SPANISH (PLACEHOLDERS based on English Structure) ---
   es: {
-    nav: { home: "Inicio", properties: "Propiedades", about: "Nosotros", contact: "Contacto" },
     hero: {
       title: "¿POR QUÉ ELEGIR OWNER TO DUEÑO?",
       subtitle: "FINANCIAMIENTO DE DUEÑO A DUEÑO"
@@ -249,42 +245,8 @@ export default async function WhyChoosePage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
-      {/* --- HEADER --- */}
-      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
-          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
-            <div className="scale-75 origin-top-right md:scale-90">
-              <LanguageSwitch />
-            </div>
-          </div>
-          {/* ------------------------------------------- */}
-
-          <div className="flex justify-between items-center h-16 md:h-20">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
-              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-              </div>
-              <span className="text-sm md:text-xl font-black uppercase text-white">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-            <div className="flex gap-4 items-center">
-                <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-400">
-                    <Link href={`/?lang=${lang}`} className="hover:text-white transition">{t.nav.home}</Link>
-                    {/* CAMBIO APLICADO: PROPERTIES */}
-                    <Link href={`/properties?lang=${lang}`} className="hover:text-white transition">{t.nav.properties}</Link>
-                    <Link href={`/about-us?lang=${lang}`} className="hover:text-white transition">{t.nav.about}</Link>
-                    <Link href={`/contact-us?lang=${lang}`} className="hover:text-white transition">{t.nav.contact}</Link>
-                </nav>
-                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
-                  Login
-                </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* --- HEADER IMPLEMENTADO --- */}
+      <Header lang={lang} activePage="about" />
 
       {/* --- HERO SECTION --- */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-[#121212] border-b border-gray-800 text-center">

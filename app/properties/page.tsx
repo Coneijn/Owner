@@ -1,19 +1,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/auth'; 
-import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import { Prisma } from '@prisma/client';
+import Header from '@/app/components/Header'; // <--- Importamos el Header
 
 // --- CONSTANTES DE FINANCIAMIENTO ---
-// Importante: Estas deben coincidir con PropertiesCarousel para que los montos sean iguales
 const DEFAULT_TERM_YEARS = 30;
 const SERVICE_FEE = 39;
 
 // --- DICCIONARIO ---
 const DICTIONARY = { 
    es: {
-        nav: { home: "Inicio", properties: "Propiedades", about: "Nosotros", contact: "Contacto" },
         filters: {
             title: "FILTRAR BÚSQUEDA",
             zip: "Código Postal",
@@ -34,14 +31,12 @@ const DICTIONARY = {
             monthly: "Mensualidad Est.",
             details: "Ver Detalles"
         },
-        // Etiquetas de estado
         status: {
             available: "DISPONIBLE",
             comingSoon: "PRÓXIMAMENTE"
         }
     },
     en: {
-        nav: { home: "Home", properties: "Properties", about: "About Us", contact: "Contact" },
         filters: {
             title: "FILTER SEARCH",
             zip: "Zip Code",
@@ -62,7 +57,6 @@ const DICTIONARY = {
             monthly: "Est. Monthly",
             details: "View Details"
         },
-        // Status labels
         status: {
             available: "AVAILABLE",
             comingSoon: "COMING SOON"
@@ -70,7 +64,7 @@ const DICTIONARY = {
     }
 };
 
-// --- HELPER DE CÁLCULO (Lógica Unificada) ---
+// --- HELPER DE CÁLCULO ---
 const calculateEstimatedPayment = (
   price: number,
   downPayment: number,
@@ -85,7 +79,6 @@ const calculateEstimatedPayment = (
 
   let principalAndInterest = 0;
   if (monthlyRate > 0) {
-    // Fórmula de Amortización Francesa
     principalAndInterest =
       (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
       (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
@@ -110,7 +103,7 @@ export default async function CatalogPage(props: {
   }>;
 }) {
   const searchParams = await props.searchParams;
-  const session = await auth();
+  // const session = await auth(); // No se usa en el renderizado público actual
 
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
@@ -118,7 +111,7 @@ export default async function CatalogPage(props: {
   // --- 1. LÓGICA DE FILTRADO ---
   const whereClause: Prisma.PropertyWhereInput = {
     status: {
-      in: ['AVAILABLE', 'COMING_SOON'] // <--- Esto trae ambas
+      in: ['AVAILABLE', 'COMING_SOON']
     },
   };
 
@@ -173,42 +166,8 @@ export default async function CatalogPage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
       
-      {/* --- HEADER --- */}
-      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
-          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
-            <div className="scale-75 origin-top-right md:scale-90">
-              <LanguageSwitch />
-            </div>
-          </div>
-          {/* ------------------------------------------- */}
-
-          <div className="flex justify-between items-center h-16 md:h-20">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
-              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-              </div>
-              <span className="text-sm md:text-xl font-black uppercase text-white">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-
-            <div className="flex gap-4 items-center">
-                <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-400">
-                    <Link href={`/?lang=${lang}`} className="hover:text-white transition">{t.nav.home}</Link>
-                    <span className="text-[#f8ed1a]">{t.nav.properties}</span>
-                    <Link href={`/about-us?lang=${lang}`} className="hover:text-white transition">{t.nav.about}</Link>
-                    <Link href={`/contact-us?lang=${lang}`} className="hover:text-white transition">{t.nav.contact}</Link>
-                </nav>
-                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
-                  Login
-                </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* --- HEADER IMPLEMENTADO --- */}
+      <Header lang={lang} activePage="properties" />
 
       {/* --- LAYOUT PRINCIPAL --- */}
       <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row min-h-[calc(100vh-80px)]">
@@ -367,17 +326,13 @@ export default async function CatalogPage(props: {
                                             </div>
                                         </div>
                                         
-                                        {/* Precios (Ocultar mensualidad si es Coming Soon opcionalmente, pero no se pidió) */}
+                                        {/* Precios */}
                                         <div className="space-y-1 mb-4">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-400 font-bold uppercase">{t.catalog.price}</span>
                                                 <span className="text-white font-bold">{formatMoney(property.price)}</span>
                                             </div>
                                             
-                                            {/* Si es COMING_SOON, tal vez quieras ocultar el pago mensual, 
-                                                pero como no se pidió explícitamente en este archivo (solo en slug), 
-                                                lo dejo visible. Si quieres ocultarlo agrega la condición !isComingSoon && (...) 
-                                            */}
                                             <div className="flex justify-between items-center bg-gray-800/50 p-2 rounded">
                                                 <span className="text-[#f8ed1a] font-bold uppercase text-xs">{t.catalog.monthly}</span>
                                                 <span className="text-[#f8ed1a] font-black text-lg">
@@ -387,6 +342,7 @@ export default async function CatalogPage(props: {
                                         </div>
                                     </div>
 
+                                    {/* Link Corregido */}
                                     <Link 
                                         href={`/propiedades/${property.slug}?lang=${lang}`} 
                                         className="block w-full text-center bg-white text-black font-black uppercase py-3 rounded hover:bg-[#f8ed1a] transition-colors"

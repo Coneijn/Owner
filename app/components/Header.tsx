@@ -73,10 +73,10 @@ export default function Header({ lang, activePage }: HeaderProps) {
                     <Link href={`/about-us?lang=${lang}`} className={getLinkClass('about')}>
                         {t.about}
                     </Link>
-                    {/* Nuevo enlace al Blog 
+                    {/* Nuevo enlace al Blog */}
                     <Link href={`/blog?lang=${lang}`} className={getLinkClass('blog')}>
                         {t.blog}
-                    </Link> */}
+                    </Link> 
                     <Link href={`/contact-us?lang=${lang}`} className={getLinkClass('contact')}>
                         {t.contact}
                     </Link>

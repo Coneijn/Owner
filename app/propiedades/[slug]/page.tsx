@@ -3,9 +3,9 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image'; 
 import { Metadata, ResolvingMetadata } from 'next';
+import Header from '@/app/components/Header'; // <--- Header Importado
 import PropertyGallery from '@/app/components/PropertyGallery';
 import MortgageCalculator from '@/app/components/MortgageCalculator';
-import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import VideoModal from '@/app/components/video-modal';
 import Script from 'next/script';
 import PropertyShare from '@/app/components/PropertyShare';
@@ -31,7 +31,7 @@ const DICTIONARY = {
     underContract: "Bajo Contrato",
     sold: "Vendido",
     draft: "Borrador",
-    comingSoon: "Próximamente", // <--- Agregado para el switch de colores
+    comingSoon: "Próximamente", 
     aboutTitle: "SOBRE ESTA PROPIEDAD",
     featuresTitle: "CARACTERÍSTICAS",
     beds: "Habitaciones",
@@ -56,7 +56,7 @@ const DICTIONARY = {
     underContract: "Under Contract",
     sold: "Sold",
     draft: "Draft",
-    comingSoon: "Coming Soon", // <--- Agregado
+    comingSoon: "Coming Soon", 
     aboutTitle: "ABOUT THIS PROPERTY",
     featuresTitle: "FEATURES",
     beds: "Bedrooms",
@@ -165,39 +165,9 @@ export default async function PropertyDetailPage(props: Props) {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
       
-      {/* --- NAVBAR --- */}
-      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
-            <div className="scale-75 origin-top-right md:scale-90">
-              <LanguageSwitch />
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center h-16 md:h-20">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
-              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-              </div>
-              <span className="text-sm md:text-xl font-black uppercase text-white">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-            <div className="flex gap-4 items-center">
-                <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-400">
-                    <Link href={`/?lang=${lang}`} className="hover:text-white transition">Home</Link>
-                    <span className="text-[#f8ed1a]">Properties</span>
-                    <Link href={`/about-us?lang=${lang}`} className="hover:text-white transition">About</Link>
-                    <Link href={`/contact-us?lang=${lang}`} className="hover:text-white transition">Contact</Link>
-                </nav>
-                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
-                  Login
-                </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* --- HEADER IMPLEMENTADO --- */}
+      {/* ActivePage properties mantiene el link "Propiedades" iluminado */}
+      <Header lang={lang} activePage="properties" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         

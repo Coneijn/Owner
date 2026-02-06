@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import LanguageSwitch from '@/app/components/LanguageSwitch'; 
 import { Metadata } from 'next';
+import Header from '@/app/components/Header';
 
 // --- METADATA (SEO) ---
 export const metadata: Metadata = {
@@ -13,7 +13,6 @@ export const metadata: Metadata = {
 // --- DICCIONARIO DE CONTENIDO ---
 const DICTIONARY = {
   en: {
-    nav: { home: "Home", properties: "Properties", about: "About Us", contact: "Contact" },
     hero: {
       title: "ABOUT US",
       subtitle: "YOUR OWN HOME, NO BANKS, NO HASSLE"
@@ -51,11 +50,10 @@ const DICTIONARY = {
             {
                 title: "FILTER SEARCH:",
                 desc: "You can use our filters to narrow things down by Zip Code or your price range. If you need three bedrooms and two bathrooms to accommodate your family, you can use our filters to find only those houses. It’s all about finding the right fit, and fast.",
-                hasImage: true // Flag para renderizar la imagen
+                hasImage: true 
             }
         ]
       },
-      // --- NUEVA SECCIÓN DE BLOG (EN) ---
       blogCta: {
         title: "STAY INFORMED WITH OUR BLOG",
         text: "Discover the latest real estate news, tips for buyers and sellers, and market updates in Memphis.",
@@ -81,7 +79,6 @@ const DICTIONARY = {
     }
   },
   es: {
-    nav: { home: "Inicio", properties: "Propiedades", about: "Nosotros", contact: "Contacto" },
     hero: {
       title: "SOBRE NOSOTROS",
       subtitle: "TU PROPIA CASA, SIN BANCOS, SIN COMPLICACIONES"
@@ -123,7 +120,6 @@ const DICTIONARY = {
             }
         ]
       },
-      // --- NUEVA SECCIÓN DE BLOG (ES) ---
       blogCta: {
         title: "MANTENTE INFORMADO CON NUESTRO BLOG",
         text: "Descubre las últimas noticias inmobiliarias, consejos para compradores y vendedores, y actualizaciones del mercado en Memphis.",
@@ -150,7 +146,7 @@ const DICTIONARY = {
   }
 };
 
-export default async function AboutPage(props: {
+export default async function HomePage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
   const searchParams = await props.searchParams;
@@ -160,42 +156,9 @@ export default async function AboutPage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
-      {/* --- HEADER --- */}
-      <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          {/* --- UBICACIÓN DEL BOTÓN DE IDIOMA --- */}
-          <div className="absolute top-25 right-4 sm:right-6 lg:right-8 z-20">
-            <div className="scale-75 origin-top-right md:scale-90">
-              <LanguageSwitch />
-            </div>
-          </div>
-          {/* ------------------------------------------- */}
-
-          <div className="flex justify-between items-center h-16 md:h-20">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-2">
-              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-              </div>
-              <span className="text-sm md:text-xl font-black uppercase text-white">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-            <div className="flex gap-4 items-center">
-                <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-400">
-                    <Link href={`/?lang=${lang}`} className="hover:text-white transition">{t.nav.home}</Link>
-                    <Link href={`/properties?lang=${lang}`} className="hover:text-white transition">{t.nav.properties}</Link>
-                    {/* Active State */}
-                    <span className="text-[#f8ed1a] cursor-default">{t.nav.about}</span>
-                    <Link href={`/contact-us?lang=${lang}`} className="hover:text-white transition">{t.nav.contact}</Link>
-                </nav>
-                <Link href="/login" className="bg-[#f8ed1a] text-[#1a1a1a] hover:bg-yellow-300 px-3 py-2 md:px-4 md:py-2 rounded-md font-bold text-xs md:text-sm transition-colors uppercase">
-                  Login
-                </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* --- HEADER IMPLEMENTADO --- */}
+      {/* CAMBIO: activePage="about" para reflejar que el contenido es "Sobre Nosotros" */}
+      <Header lang={lang} activePage="about" />
 
       {/* --- HERO SECTION --- */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#1a1a1a] to-gray-900 border-b border-gray-800">
@@ -283,18 +246,14 @@ export default async function AboutPage(props: {
                             </p>
                         </div>
                         
-                        {/* IMAGEN FILTER SEARCH (Columna Derecha, Dimensiones Exactas) */}
+                        {/* IMAGEN FILTER SEARCH (Columna Derecha) */}
                         {item.hasImage && (
-                            // Hemos quitado "relative" y "fill" del padre para que la imagen dicte el tamaño
                             <div className="w-full md:w-auto flex justify-center md:justify-end mt-4 md:mt-0">
                                 <Image 
                                     src="/filtersearch.png" 
                                     alt="Filter Search Preview" 
-                                    // Dimensiones explícitas para mantener el aspect ratio de 314x570
                                     width={314} 
                                     height={570}
-                                    // "max-w-full" asegura que no se salga en móviles
-                                    // "h-auto" mantiene la proporción al escalar
                                     className="rounded-lg border-2 border-gray-700 shadow-2xl object-contain max-w-full h-auto"
                                 />
                             </div>
@@ -305,7 +264,7 @@ export default async function AboutPage(props: {
         </div>
       </section>
 
-      {/* --- NUEVA SECCIÓN: BLOG CALL TO ACTION --- */}
+      {/* --- BLOG CALL TO ACTION --- */}
       <section className="py-16 px-4 bg-[#1a1a1a] text-center">
         <div className="max-w-4xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 p-10 rounded-2xl border border-gray-700 shadow-2xl relative overflow-hidden group hover:border-[#f8ed1a] transition-colors">
             {/* Decoración Superior */}

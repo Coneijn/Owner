@@ -1,18 +1,16 @@
-// app/map/page.tsx
-import { prisma } from '@/lib/prisma'; // 1. Importar Prisma
+import { prisma } from '@/lib/prisma';
 import MapLoader from './MapLoader';
 
-export const dynamic = 'force-dynamic'; // Opcional: Para asegurar que no cachee datos viejos si cambian mucho
+export const dynamic = 'force-dynamic';
 
 export default async function MapaPage() {
   
-  // 2. Obtener datos REALES de la base de datos
-  // Filtramos para traer solo las que tienen latitud y longitud
+  // 1. Obtener datos (Asegurando traer el SLUG)
   const propertiesRaw = await prisma.property.findMany({
     where: {
       latitude: { not: null },
       longitude: { not: null },
-      status: 'AVAILABLE', // Opcional: Si solo quieres mostrar las disponibles
+      status: 'AVAILABLE',
     },
     select: {
       id: true,
@@ -21,41 +19,35 @@ export default async function MapaPage() {
       price: true,
       latitude: true,
       longitude: true,
-      slug: true,
-      mainImage: true, // Útil para el popup del mapa
-      bedrooms: true,
-      bathrooms: true,
-      sqft: true,
+      slug: true, // <--- Importante: Seleccionar slug
     }
   });
 
-  // 3. Transformar datos (Mapeo)
-  // Convertimos Decimal a Number y renombramos campos si es necesario
+  // 2. Transformar datos para el cliente
   const properties = propertiesRaw.map(p => ({
     id: p.id,
-    title: p.titleEn, // Usamos el título en inglés (o el que prefieras)
+    title: p.titleEn,
     address: p.address,
-    price: Number(p.price), // IMPORTANTE: Convertir Decimal a Number
-    lat: p.latitude as number, // Prisma devuelve Float? (null o number), aquí aseguramos que es number
+    price: Number(p.price),
+    lat: p.latitude as number,
     lng: p.longitude as number,
-    slug: p.slug,
-    image: p.mainImage,
-    bed: p.bedrooms,
-    bath: p.bathrooms,
-    sqft: p.sqft
+    slug: p.slug // <--- Importante: Pasar slug
   }));
 
   return (
-    <main className="flex flex-col h-screen">
-       <div className="p-4 bg-white shadow-md z-10 relative">
-          <h1 className="text-2xl font-black uppercase text-gray-800">Mapa de Propiedades</h1>
-          <p className="text-sm text-gray-500">
-            Explora las {properties.length} casas disponibles en Memphis.
-          </p>
+    <main className="flex flex-col h-[calc(100vh-80px)]">
+       {/* Barra superior flotante o fija */}
+       <div className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm z-10 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-black uppercase text-[#1a1a1a]">Mapa de Propiedades</h1>
+            <p className="text-xs text-gray-500">
+                Mostrando {properties.length} ubicaciones disponibles
+            </p>
+          </div>
        </div>
        
-       <div className="flex-1 relative">
-          {/* Pasamos los datos reales */}
+       {/* Contenedor del mapa */}
+       <div className="flex-1 relative w-full">
           <MapLoader properties={properties} />
        </div>
     </main>

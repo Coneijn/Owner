@@ -1,20 +1,19 @@
-// app/map/MapLoader.tsx
 'use client';
 
 import dynamic from 'next/dynamic';
 
-// Aquí movemos la lógica del dynamic import
-// Al estar en un archivo 'use client', Next.js ya no se queja
+// Importación dinámica apuntando al archivo vecino './MapClient'
 const MapClient = dynamic(() => import('./MapClient'), { 
   ssr: false,
   loading: () => (
-    <div className="flex h-screen items-center justify-center bg-gray-100">
-      <p className="text-xl font-bold text-gray-500 animate-pulse">Cargando Mapa...</p>
+    <div className="flex h-full w-full items-center justify-center bg-gray-50">
+      <p className="text-sm font-bold text-gray-400 animate-pulse uppercase tracking-widest">
+        Cargando Mapa...
+      </p>
     </div>
   ) 
 });
 
-// Este componente recibe las propiedades y se las pasa al mapa real
 export default function MapLoader({ properties }: { properties: any[] }) {
   return <MapClient properties={properties} />;
 }
