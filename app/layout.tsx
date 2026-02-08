@@ -19,12 +19,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(baseUrl), 
   
   title: {
-    default: "Dueño a Dueño | Compra y Venta Directa en Memphis", // Mejoré un poco el título por defecto
+    default: "Dueño a Dueño | Compra y Venta Directa en Memphis",
     template: "%s | Dueño a Dueño", 
   },
   description: "Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.",
   
-  // --- CAMBIO IMPORTANTE AQUÍ: index: true ---
   robots: {
     index: true, 
     follow: true,
@@ -56,7 +55,23 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* Google Ads Tag */}
+        {/* --- 1. META PIXEL SCRIPT (Javascript) --- */}
+        <Script id="meta-pixel" strategy="afterInteractive">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '1252009270175766');
+            fbq('track', 'PageView');
+          `}
+        </Script>
+
+        {/* --- 2. GOOGLE ADS TAG (Ya existente) --- */}
         <Script 
           src="https://www.googletagmanager.com/gtag/js?id=AW-17843139208"
           strategy="afterInteractive"
@@ -70,6 +85,17 @@ export default function RootLayout({
             gtag('config', 'AW-17843139208');
           `}
         </Script>
+
+        {/* --- 3. META PIXEL NOSCRIPT (Imagen Fallback) --- */}
+        <noscript>
+          <img 
+            height="1" 
+            width="1" 
+            style={{ display: 'none' }} 
+            src="https://www.facebook.com/tr?id=1252009270175766&ev=PageView&noscript=1"
+            alt=""
+          />
+        </noscript>
 
         {children}
       </body>
