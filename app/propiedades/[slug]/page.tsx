@@ -166,7 +166,6 @@ export default async function PropertyDetailPage(props: Props) {
     <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
       
       {/* --- HEADER IMPLEMENTADO --- */}
-      {/* ActivePage properties mantiene el link "Propiedades" iluminado */}
       <Header lang={lang} activePage="properties" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -190,7 +189,19 @@ export default async function PropertyDetailPage(props: Props) {
             </div>
             <div className="text-left lg:text-right">
                 <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">{formatMoney(price)}</p>
-                <div className="mt-2">
+                
+                {/* --- AQUÍ MUESTRO EL BOTÓN DE COMPARTIR Y EL ESTADO JUNTOS --- */}
+                <div className="mt-2 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
+                    
+                    {/* BOTÓN COMPARTIR (Movido aquí) */}
+                    <div className="shrink-0">
+                       <PropertyShare 
+                          title={lang === 'en' ? property.titleEn : property.titleEs} 
+                          slug={slug} 
+                          lang={lang} 
+                       />
+                    </div>
+
                     {/* LÓGICA DE ESTADOS */}
                     {(() => {
                         let statusColor = "bg-gray-200 text-gray-600";
@@ -222,7 +233,7 @@ export default async function PropertyDetailPage(props: Props) {
                         }
 
                         return (
-                            <span className={`inline-block px-4 py-1 rounded text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
+                            <span className={`inline-block px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
                                 {statusText}
                             </span>
                         );
@@ -382,13 +393,6 @@ export default async function PropertyDetailPage(props: Props) {
                             </a>
                         </div>
                     </div>
-
-                    {/* --- COMPONENTE DE COMPARTIR --- */}
-                    <PropertyShare 
-                        title={lang === 'en' ? property.titleEn : property.titleEs} 
-                        slug={slug} 
-                        lang={lang} 
-                    />
                 </div>
             </div>
         </div>

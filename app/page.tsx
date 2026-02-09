@@ -6,14 +6,14 @@ import SearchFilters from './components/SearchFilters';
 import PropertiesCarousel from './components/PropertiesCarousel'; 
 import { Prisma } from '@prisma/client';
 import Script from 'next/script';
-import Header from '@/app/components/Header'; // <--- Header Importado
+import Header from '@/app/components/Header'; 
+import MapLoader from '@/app/map/MapLoader'; 
 
 // --- DICCIONARIO ---
 const DICTIONARY = { 
    es: {
-        // Se eliminó 'nav' y 'btnApply' porque ahora están en el componente Header
         heroTitle: "TU CASA PROPIA, SIN BANCOS NI COMPLICACIONES",
-        heroSub: "Financiamiento directo de Dueño a Dueño. Si el banco te dijo que no, nosotros te decimos que SÍ.",
+        heroSub: "Explora el mapa y encuentra tu nuevo hogar. Financiamiento directo de Dueño a Dueño.",
         btnProps: "Ver casas disponibles",
         availableTitle: "PROPIEDADES DESTACADAS",
         monthlyPayment: "Pago Mensual Est.",
@@ -45,11 +45,12 @@ const DICTIONARY = {
             { title: "SIN BUROCRACIA", desc: "Proceso rápido y sencillo, sin bancos.", icon: "/handshake.png" },
             { title: "ACCESO DIRECTO", desc: "Trato directo con los dueños.", icon: "/key.png" }
           ]
-        }
+        },
+        mapBtn: "Ver Pantalla Completa"
     },
     en: {
         heroTitle: "YOUR OWN HOME, NO BANKS, NO HASSLE",
-        heroSub: "Direct Owner-to-Owner financing. If the bank said no, we say YES.",
+        heroSub: "Explore the map and find your new home. Direct Owner-to-Owner financing.",
         btnProps: "See Available Homes",
         availableTitle: "FEATURED PROPERTIES",
         monthlyPayment: "Est. Monthly Pmt",
@@ -81,7 +82,8 @@ const DICTIONARY = {
             { title: "NO BUREAUCRACY", desc: "Fast and simple process, no banks.", icon: "/handshake.png" },
             { title: "DIRECT ACCESS", desc: "Direct deal with owners.", icon: "/key.png" }
           ]
-        }
+        },
+        mapBtn: "View Full Map"
     }
 };
 
@@ -111,7 +113,7 @@ export default async function HomePage(props: {
     whereClause.features = { has: searchParams.feature };
   }
 
-  // --- Consulta a Base de Datos ---
+  // --- Consulta 1: Propiedades para el Carrusel/Lista ---
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
@@ -128,42 +130,100 @@ export default async function HomePage(props: {
     updatedAt: p.updatedAt.toISOString(),
   }));
 
+  // --- 2. Consulta 2: DATOS PARA EL MAPA ---
+  const mapPropertiesRaw = await prisma.property.findMany({
+    where: {
+      latitude: { not: null },
+      longitude: { not: null },
+      status: 'AVAILABLE',
+    },
+    select: {
+      id: true,
+      titleEn: true,
+      titleEs: true,
+      address: true,
+      price: true,
+      latitude: true,
+      longitude: true,
+      slug: true,
+      mainImage: true,
+      bedrooms: true,
+      bathrooms: true,
+      sqft: true,
+    }
+  });
+
+  const mapProperties = mapPropertiesRaw.map(p => ({
+    id: p.id,
+    title: lang === 'en' ? p.titleEn : p.titleEs,
+    address: p.address,
+    price: Number(p.price),
+    lat: p.latitude as number,
+    lng: p.longitude as number,
+    slug: p.slug,
+    image: p.mainImage,
+    beds: p.bedrooms,
+    baths: p.bathrooms,
+    sqft: p.sqft
+  }));
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-800 scroll-smooth">
       
-      {/* --- HEADER IMPLEMENTADO --- */}
+      {/* --- HEADER --- */}
       <Header lang={lang} activePage="home" />
 
-      {/* --- HERO SECTION --- */}
-      <div className="relative bg-[#1a1a1a] pt-10 pb-20 md:pt-24 md:pb-32 px-4 overflow-hidden">
-        {/* Fondo de Imagen */}
-        <div className="absolute inset-0 z-0 opacity-40">
-            <Image 
-              src="/casa.png" 
-              alt="Casa background"
-              fill priority={true} 
-              fetchPriority="high" 
-              decoding="sync"      
-              className="object-cover object-center" 
-              sizes="100vw" 
-            />
-        </div>
-        
-        {/* Contenido Hero */}
-        <div className="max-w-7xl mx-auto relative z-10 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-          <div className="text-left">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-black text-white mb-4 md:mb-6 uppercase tracking-tighter leading-tight md:leading-none shadow-black drop-shadow-lg ">
-              {t.heroTitle}
-            </h1>
-            <p className="text-lg md:text-2xl text-gray-200 mb-6 md:mb-8 font-medium shadow-black drop-shadow-md leading-relaxed">
-              {t.heroSub}
-            </p>
-            <Link href={`/properties?lang=${lang}`} className="block w-full sm:w-auto text-center bg-[#529e14] text-white text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-full font-bold hover:bg-[#458510] transition shadow-lg hover:scale-105 transform duration-200">
-              {t.btnProps}
-            </Link>
+      {/* --- HERO MAP SECTION --- */}
+      <section className="relative bg-[#1a1a1a] pt-8 pb-16 px-4">
+          <div className="max-w-7xl mx-auto">
+              
+              {/* Bloque de Texto + Botón "Arribita" */}
+              <div className="text-center mb-6">
+                  <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-white mb-4 uppercase tracking-tighter leading-tight md:leading-none">
+                      {t.heroTitle}
+                  </h1>
+                  <p className="text-lg md:text-xl text-gray-300 font-medium max-w-3xl mx-auto mb-8">
+                      {t.heroSub}
+                  </p>
+
+                  {/* --- BOTÓN MOVIDO AQUÍ (ARRIBA DEL MAPA) --- */}
+                  <div className="flex justify-center">
+                    <Link 
+                        href={`/properties?lang=${lang}`} 
+                        className="
+                            bg-[#f8ed1a] text-[#1a1a1a] 
+                            px-8 py-3 
+                            rounded-full 
+                            font-black uppercase tracking-wider text-sm
+                            shadow-[4px_4px_0px_rgba(255,255,255,0.2)] border-2 border-transparent
+                            hover:scale-105 hover:bg-white hover:border-[#f8ed1a]
+                            transition-all duration-300
+                            flex items-center gap-3
+                        "
+                    >
+                        {t.btnProps} {/* "Ver casas disponibles" */}
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                    </Link>
+                  </div>
+              </div>
+
+              {/* CONTENEDOR DEL MAPA (LIMPIO) */}
+              <div className="w-full h-[550px] md:h-[650px] rounded-3xl overflow-hidden shadow-2xl border-4 border-[#529e14] ring-4 ring-white/10 relative z-0">
+                  <MapLoader properties={mapProperties} />
+                  
+                  {/* Botón flotante inferior solo para Pantalla Completa (dentro del mapa) */}
+                  <a 
+                    href={`/map?lang=${lang}`} 
+                    className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-sm text-[#1a1a1a] px-5 py-2 rounded-full font-bold text-xs shadow-lg z-[1000] border border-gray-200 hover:bg-[#f8ed1a] transition-colors uppercase tracking-wider flex items-center gap-2"
+                  >
+                    <span>{t.mapBtn}</span>
+                    <span>↗</span>
+                  </a>
+              </div>
           </div>
-        </div>
-      </div>
+      </section>
 
       {/* --- TRUST SECTION --- */}
       <section id="trust" className="bg-[#1a1a1a] py-12 md:py-16 border-t border-gray-800">
