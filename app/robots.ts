@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin/'], 
+      disallow: ['/admin/', '/login/'],
     },
     sitemap: 'https://ownertodueno.com/sitemap.xml',
   };

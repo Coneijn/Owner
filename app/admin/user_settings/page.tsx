@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChangePasswordForm, CreateUserForm, UserListTable } from '../ui/client-components';
+import { ChangePasswordForm, CreateUserForm, UserListTable, TwoFactorManager } from '../ui/client-components';
 
 export default async function UserSettingsPage() {
   const session = await auth();
@@ -12,7 +12,13 @@ export default async function UserSettingsPage() {
     redirect('/');
   }
 
-  // Obtener todos los usuarios
+  // 1. Obtener datos del usuario ACTUAL para ver estado de 2FA
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { isTwoFactorEnabled: true, email: true }
+  });
+
+  // 2. Obtener todos los usuarios para la tabla
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     select: { id: true, name: true, email: true, role: true, createdAt: true }, 
@@ -21,8 +27,7 @@ export default async function UserSettingsPage() {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200 relative">
       
-      {/* NAVBAR CORREGIDO */}
-      {/* Se cambió z-10 a z-50 y se asegura el bg-[#1a1a1a] sólido */}
+      {/* NAVBAR */}
       <nav className="sticky top-0 z-50 w-full bg-[#1a1a1a] border-b border-gray-800 shadow-xl">
         <div className="max-w-4xl mx-auto px-4 h-20 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -42,9 +47,8 @@ export default async function UserSettingsPage() {
       {/* MAIN CONTENT */}
       <main className="max-w-3xl mx-auto py-12 px-4 space-y-12 relative z-0">
         
-        {/* 1. SECCIÓN: SEGURIDAD PERSONAL */}
+        {/* 1. SECCIÓN: SEGURIDAD PERSONAL (PASSWORD) */}
         <section className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 shadow-2xl relative overflow-hidden group hover:border-gray-700 transition-colors">
-            {/* Decoración */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#f8ed1a] opacity-5 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
             
             <div className="relative z-10">
@@ -61,9 +65,38 @@ export default async function UserSettingsPage() {
             </div>
         </section>
 
+        {/* 1.5. SECCIÓN NUEVA: TWO-FACTOR AUTHENTICATION */}
+        <section className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 shadow-2xl relative overflow-hidden group hover:border-[#f8ed1a] transition-colors">
+            {/* Decoración Azul/Cyan para diferenciar seguridad avanzada */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
+
+            <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                        🛡️ Two-Factor Auth (2FA)
+                    </h2>
+                    {currentUser?.isTwoFactorEnabled && (
+                        <span className="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold uppercase tracking-wider">
+                            Active
+                        </span>
+                    )}
+                </div>
+                
+                <p className="text-sm text-gray-400 mb-8 max-w-lg">
+                    Add an extra layer of security. Use an app like Google Authenticator or Authy to scan the QR code.
+                </p>
+
+                <div className="max-w-xl">
+                    <TwoFactorManager 
+                        isEnabled={currentUser?.isTwoFactorEnabled || false} 
+                        email={currentUser?.email || ''} 
+                    />
+                </div>
+            </div>
+        </section>
+
         {/* 2. SECCIÓN: CREAR USUARIO */}
         <section className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 shadow-2xl relative overflow-hidden group hover:border-gray-700 transition-colors">
-            {/* Decoración */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#529e14] opacity-5 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
             
             <div className="relative z-10">

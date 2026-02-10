@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PropertyStatus } from '@prisma/client';
 
-// --- AUTH ---
+// lib/actions.ts (Solo la función authenticate)
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
@@ -21,9 +21,17 @@ export async function authenticate(
     if (error instanceof AuthError) {
       switch (error.type) {
         case 'CredentialsSignin':
-          return 'Credenciales inválidas. Verifica tu correo y contraseña.';
+          return 'Invalid credentials. Please check your email and password.';
+        
+        case 'CallbackRouteError':
+          const cause = error.cause as any;
+          if (cause?.err?.message === '2FA_REQUIRED') {
+             return '2FA_REQUIRED'; 
+          }
+          return 'Authentication error.';
+
         default:
-          return 'Algo salió mal. Inténtalo de nuevo.';
+          return 'Something went wrong. Please try again.';
       }
     }
     throw error;

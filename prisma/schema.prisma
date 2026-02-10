@@ -17,6 +17,8 @@ model User {
   role      Role     @default(ADMIN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  twoFactorSecret String? // El secreto generado por otplib
+  isTwoFactorEnabled Boolean @default(false)
 }
 
 // 3. Modelo de Propiedad 

@@ -1,3 +1,4 @@
+// lib/user-actions.ts
 'use server';
 
 import { auth } from '@/auth';
@@ -5,38 +6,42 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
+import { 
+  generateTwoFactorSecret, 
+  generateQrFromSecret, 
+  verifyTwoFactorToken 
+} from '@/lib/otp'; 
 
-// --- 1. CAMBIAR MI CONTRASEÑA ---
-export async function updateOwnPassword(prevState: any, formData: FormData) {
+// ==========================================
+// 1. CAMBIAR MI CONTRASEÑA (Renombrado a changePassword)
+// ==========================================
+export async function changePassword(formData: FormData) {
   const session = await auth();
-  if (!session?.user?.email) return { message: 'No autorizado' };
+  if (!session?.user?.email) return { error: 'No autorizado' };
 
   const currentPassword = formData.get('currentPassword') as string;
   const newPassword = formData.get('newPassword') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
 
   if (newPassword !== confirmPassword) {
-    return { message: 'Las nuevas contraseñas no coinciden.' };
+    return { error: 'Las nuevas contraseñas no coinciden.' };
   }
 
   if (newPassword.length < 6) {
-    return { message: 'La contraseña debe tener al menos 6 caracteres.' };
+    return { error: 'La contraseña debe tener al menos 6 caracteres.' };
   }
 
-  // Buscar usuario en BD para obtener el hash actual
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
   });
 
-  if (!user) return { message: 'Usuario no encontrado.' };
+  if (!user) return { error: 'Usuario no encontrado.' };
 
-  // Verificar contraseña actual
   const passwordsMatch = await bcrypt.compare(currentPassword, user.password);
   if (!passwordsMatch) {
-    return { message: 'La contraseña actual es incorrecta.' };
+    return { error: 'La contraseña actual es incorrecta.' };
   }
 
-  // Hashear y guardar nueva
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   await prisma.user.update({
     where: { email: session.user.email },
@@ -44,20 +49,27 @@ export async function updateOwnPassword(prevState: any, formData: FormData) {
   });
 
   revalidatePath('/admin/user_settings');
-  return { message: 'Contraseña actualizada correctamente.', success: true };
+  return { success: true };
 }
 
-// --- 2. CREAR NUEVO USUARIO ---
-export async function createNewUser(prevState: any, formData: FormData) {
+// ==========================================
+// 2. CREAR USUARIO (Renombrado a createUser)
+// ==========================================
+export async function createUser(formData: FormData) {
+  const session = await auth();
+  
   const name = formData.get('name') as string;
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  
+  // 2. Obtener el string, convertirlo a Mayúsculas (si tu Enum es ADMIN) y castearlo
+  const rawRole = formData.get('role') as string; 
+  const role = (rawRole ? rawRole.toUpperCase() : 'USER') as Role;
 
-  if (!email || !password || !name) return { message: 'Todos los campos son obligatorios.' };
+  if (!email || !password || !name) return { error: 'Todos los campos son obligatorios.' };
 
-  // Verificar si ya existe
   const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) return { message: 'El correo ya está registrado.' };
+  if (existingUser) return { error: 'El correo ya está registrado.' };
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -67,22 +79,48 @@ export async function createNewUser(prevState: any, formData: FormData) {
         name,
         email,
         password: hashedPassword,
-        role: 'ADMIN', // Por defecto todos admin como solicitaste
+        role: role, // Ahora sí es de tipo 'Role'
       },
     });
   } catch (error) {
-    return { message: 'Error al crear usuario.' };
+    console.error(error);
+    return { error: 'Error al crear usuario en base de datos.' };
   }
 
   revalidatePath('/admin/user_settings');
-  return { message: 'Usuario creado exitosamente.', success: true };
+  return { success: true, tempPassword: password }; 
+}
+// ==========================================
+// 3. ELIMINAR USUARIO (Agregado deleteUser)
+// ==========================================
+export async function deleteUser(userId: string) {
+  const session = await auth();
+  if (!session?.user?.email) return { error: 'No autorizado' };
+
+  try {
+    // Evitar que se borre a sí mismo
+    const userToDelete = await prisma.user.findUnique({ where: { id: userId } });
+    if (userToDelete?.email === session.user.email) {
+        return { error: 'No puedes eliminar tu propia cuenta desde aquí.' };
+    }
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+    
+    revalidatePath('/admin/user_settings');
+    return { success: true };
+  } catch (error) {
+    return { error: 'Error al eliminar usuario.' };
+  }
 }
 
-// --- 3. RESTABLECER CONTRASEÑA (ADMIN OVERRIDE) ---
-export async function adminResetPassword(userId: string) {
-  // Generar contraseña aleatoria de 8 caracteres
+// ==========================================
+// 4. RESETEAR PASSWORD (Renombrado a resetUserPassword)
+// ==========================================
+export async function resetUserPassword(userId: string) {
+  // Generar contraseña aleatoria
   const newRawPassword = Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
-  
   const hashedPassword = await bcrypt.hash(newRawPassword, 10);
 
   try {
@@ -92,10 +130,87 @@ export async function adminResetPassword(userId: string) {
     });
     
     revalidatePath('/admin/user_settings');
-    // Devolvemos la contraseña cruda para mostrarla al admin UNA SOLA VEZ
     return { success: true, newPassword: newRawPassword };
   } catch (error) {
     console.error(error);
-    return { success: false, message: 'Error al restablecer.' };
+    return { error: 'Error al restablecer la contraseña.' };
+  }
+}
+
+// ==========================================
+// 5. GESTIÓN 2FA (Mantenemos lo que ya funcionaba)
+// ==========================================
+
+export async function setupTwoFactor() {
+  const session = await auth();
+  if (!session?.user?.email) throw new Error("No autorizado");
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { twoFactorSecret: true }
+  });
+
+  let secret = user?.twoFactorSecret;
+  let qrCodeUrl = '';
+
+  if (secret) {
+    // Reutilizar secreto existente
+    qrCodeUrl = await generateQrFromSecret(session.user.email, secret);
+  } else {
+    // Generar nuevo
+    const generated = await generateTwoFactorSecret(session.user.email);
+    secret = generated.secret;
+    qrCodeUrl = generated.qrCodeUrl;
+
+    await prisma.user.update({
+      where: { email: session.user.email },
+      data: { twoFactorSecret: secret }
+    });
+  }
+
+  return { secret, qrCodeUrl };
+}
+
+export async function confirmTwoFactor(token: string) {
+    const session = await auth();
+    if (!session?.user?.email) return { error: "No autorizado" };
+  
+    const user = await prisma.user.findUnique({ 
+      where: { email: session.user.email } 
+    });
+  
+    if (!user?.twoFactorSecret) return { error: "Configuración no iniciada" };
+  
+    const isValid = verifyTwoFactorToken(token, user.twoFactorSecret);
+  
+    if (isValid) {
+      await prisma.user.update({
+        where: { email: session.user.email },
+        data: { isTwoFactorEnabled: true }
+      });
+      revalidatePath('/admin/user_settings');
+      return { success: true };
+    } else {
+      return { error: "Código inválido. Intenta de nuevo." };
+    }
+}
+
+export async function disableTwoFactor() {
+  const session = await auth();
+  if (!session?.user?.email) return { error: "No autorizado" };
+
+  try {
+    await prisma.user.update({
+      where: { email: session.user.email },
+      data: { 
+        isTwoFactorEnabled: false,
+        twoFactorSecret: null 
+      }
+    });
+
+    revalidatePath('/admin/user_settings');
+    return { success: true };
+  } catch (error) {
+    return { error: "Error al desactivar 2FA." };
   }
 }
