@@ -56,12 +56,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     },
-    {
-      url: `${BASE_URL}/login`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.5,
-    },
   ];
 
   // 4. Combinar y retornar todo
