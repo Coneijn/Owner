@@ -1,28 +1,23 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useState, useCallback, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
-// --- CONFIGURACIÓN DEL ICONO DE LA RANITA 🐸 ---
-const frogIcon = L.icon({
-  iconUrl: '/frog-pin.png',       // Tu imagen en la carpeta public
-  iconRetinaUrl: '/frog-pin.png', // Usamos la misma para pantallas HD
-  iconSize: [50, 50],             // TAMAÑO: Ajusta esto si se ve muy grande o chico (ancho, alto)
-  iconAnchor: [25, 50],           // EL PICO: [mitad del ancho, alto total] para que la punta toque el mapa
-  popupAnchor: [0, -50],          // Donde saldría el texto si le pones popup
-  // shadowUrl: null,             // Sin sombra para que se vea limpio
-});
+// --- CONFIGURACIÓN ---
+const containerStyle = {
+  width: '100%',
+  height: '300px',
+  borderRadius: '0.5rem'
+};
 
-// Componente auxiliar para volar a la nueva ubicación
-function MapUpdater({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo(center, 16); // Zoom 16 para ver calles bien
-  }, [center, map]);
-  return null;
-}
+const defaultCenter = {
+  lat: 35.1495,
+  lng: -90.0490
+};
+
+// 1. DEFINIMOS LAS LIBRERÍAS FUERA (Igual que en el padre)
+// Esto es vital para que coincida exactamente con la configuración de NewPropertyPage
+const libraries: ("places")[] = ["places"];
 
 interface LocationPickerProps {
   lat: number;
@@ -32,74 +27,94 @@ interface LocationPickerProps {
 }
 
 export default function LocationPicker({ lat, lng, searchQuery, onLocationChange }: LocationPickerProps) {
-  // Coordenadas: Si vienen vacías o 0, usa Memphis por defecto
-  const position: [number, number] = [lat || 35.1495, lng || -90.0490];
-  const markerRef = useRef<L.Marker>(null);
+  // 2. AGREGAMOS 'libraries' AQUÍ
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries // <--- ESTA LÍNEA FALTABA Y CAUSABA EL ERROR
+  });
 
-  const eventHandlers = useMemo(
-    () => ({
-      dragend() {
-        const marker = markerRef.current;
-        if (marker != null) {
-          const { lat, lng } = marker.getLatLng();
-          onLocationChange(Number(lat.toFixed(6)), Number(lng.toFixed(6)));
-        }
-      },
-    }),
-    [onLocationChange]
-  );
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  
+  // Usamos coordenadas recibidas o el default
+  const center = (lat && lng) ? { lat, lng } : defaultCenter;
 
-  // Efecto: Buscar dirección completa cuando cambia el searchQuery
+  const onLoad = useCallback(function callback(map: google.maps.Map) {
+    setMap(map);
+  }, []);
+
+  const onUnmount = useCallback(function callback(map: google.maps.Map) {
+    setMap(null);
+  }, []);
+
+  // --- BUSCADOR DE DIRECCIONES (GEOCODING) ---
   useEffect(() => {
-    if (searchQuery && searchQuery.length > 10) {
-      const fetchCoords = async () => {
-        try {
-          // Buscamos en OpenStreetMap
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`
-          );
-          const data = await response.json();
-          if (data && data.length > 0) {
-            const newLat = parseFloat(data[0].lat);
-            const newLng = parseFloat(data[0].lon);
-            onLocationChange(newLat, newLng);
+    if (isLoaded && map && searchQuery && searchQuery.length > 10) {
+      const delayDebounceFn = setTimeout(() => {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: searchQuery }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            const location = results[0].geometry.location;
+            const newLat = location.lat();
+            const newLng = location.lng();
+            
+            // Actualizamos mapa y estado padre
+            map.panTo({ lat: newLat, lng: newLng });
+            map.setZoom(16);
+            onLocationChange(Number(newLat.toFixed(6)), Number(newLng.toFixed(6)));
           }
-        } catch (error) {
-          console.error("Error buscando dirección:", error);
-        }
-      };
-      
-      // Esperamos 1.5s después de que dejes de escribir para buscar
-      const timeoutId = setTimeout(fetchCoords, 1500);
-      return () => clearTimeout(timeoutId);
+        });
+      }, 1500); // Esperar 1.5s después de que el usuario deje de escribir
+
+      return () => clearTimeout(delayDebounceFn);
     }
-  }, [searchQuery, onLocationChange]);
+  }, [isLoaded, map, searchQuery, onLocationChange]);
+
+  // --- ARRASTRAR MARCADOR ---
+  const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      const newLat = e.latLng.lat();
+      const newLng = e.latLng.lng();
+      onLocationChange(Number(newLat.toFixed(6)), Number(newLng.toFixed(6)));
+    }
+  };
+
+  if (!isLoaded) {
+    return (
+        <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">
+            Loading Google Maps...
+        </div>
+    );
+  }
 
   return (
     <div className="h-[300px] w-full rounded-lg overflow-hidden border border-gray-600 z-0 relative">
-      <MapContainer 
-        center={position} 
-        zoom={13} 
-        scrollWheelZoom={false} 
-        className="h-full w-full" 
-        style={{ zIndex: 1 }}
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={13}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        options={{
+            disableDefaultUI: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+        }}
       >
-        <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        <Marker
+            position={center}
+            draggable={true}
+            onDragEnd={onMarkerDragEnd}
+            icon={{
+                url: '/frog-pin.png',
+                scaledSize: new window.google.maps.Size(50, 50),
+                anchor: new window.google.maps.Point(25, 50)
+            }}
         />
-        <Marker 
-          draggable={true} 
-          eventHandlers={eventHandlers} 
-          position={position} 
-          ref={markerRef} 
-          icon={frogIcon} // <--- AQUÍ USAMOS TU ICONO
-        />
-        <MapUpdater center={position} />
-      </MapContainer>
+      </GoogleMap>
       
       {/* Overlay informativo */}
-      <div className="absolute bottom-2 left-2 bg-white/90 p-2 rounded text-xs text-black font-bold z-[1000] pointer-events-none shadow-lg">
+      <div className="absolute bottom-2 left-2 bg-white/90 p-2 rounded text-xs text-black font-bold z-[10] pointer-events-none shadow-lg">
         Drag 🐸 to adjust location
       </div>
     </div>

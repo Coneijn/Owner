@@ -2,21 +2,26 @@
 
 import Link from 'next/link';
 import { createProperty } from '@/lib/actions';
-import { useActionState, useState, useMemo } from 'react'; 
+import { useActionState, useState, useMemo, useRef } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 import dynamic from 'next/dynamic'; 
+// NUEVO: Importamos herramientas de Google Maps
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
-// Importamos el mapa dinámicamente (sin SSR)
+// Importamos el mapa dinámicamente
 const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
   ssr: false,
   loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
 });
 
+// NUEVO: Definimos las librerías fuera del componente para evitar recargas constantes
+const libraries: ("places")[] = ["places"];
+
 // --- HELPER COMPONENT: ACCORDION ---
 const AccordionSection = ({ 
   title, 
   children, 
-  defaultOpen = false,
+  defaultOpen = false, 
   icon
 }: { 
   title: string, 
@@ -54,6 +59,16 @@ const AccordionSection = ({
 export default function NewPropertyPage() {
     const [state, formAction, isPending] = useActionState(createProperty, null);
     
+    // --- NUEVO: Cargar Script de Google para Autocomplete ---
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        libraries: libraries // Importante: incluir 'places'
+    });
+
+    // Referencia al objeto Autocomplete
+    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
     // Estados para imágenes
     const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
     const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
@@ -63,11 +78,9 @@ export default function NewPropertyPage() {
     // 1) Estado para controlar el STATUS
     const [status, setStatus] = useState<string>('AVAILABLE');
     
-    // --- LÓGICA DE VALIDACIÓN ESTRICTA ---
-    // Si es DRAFT o COMING_SOON, relajamos la validación de campos financieros
     const isStrict = status !== 'DRAFT' && status !== 'COMING_SOON';
 
-    // 2) Estado para el PRECIO (para cálculo de seguro)
+    // 2) Estado para el PRECIO
     const [price, setPrice] = useState<number | string>('');
     
     // --- ESTADOS DE UBICACIÓN ---
@@ -78,6 +91,7 @@ export default function NewPropertyPage() {
     
     // Coordenadas
     const [coords, setCoords] = useState({ lat: 35.1495, lng: -90.0490 });
+    
     const handleLocationChange = (lat: number, lng: number) => {
         setCoords({ lat, lng });
     };
@@ -85,19 +99,56 @@ export default function NewPropertyPage() {
     // Cadena de búsqueda automática para el mapa
     const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
 
+    // --- NUEVO: Manejador cuando Google Autocomplete selecciona una dirección ---
+    const onPlaceChanged = () => {
+        if (autocompleteRef.current) {
+            const place = autocompleteRef.current.getPlace();
+            
+            if (place.geometry && place.geometry.location) {
+                // 1. Actualizar coordenadas
+                const lat = place.geometry.location.lat();
+                const lng = place.geometry.location.lng();
+                setCoords({ lat, lng });
+
+                // 2. Desglosar componentes de dirección
+                let streetNumber = "";
+                let route = "";
+                let newCity = "";
+                let newState = "";
+                let newZip = "";
+
+                place.address_components?.forEach(component => {
+                    const types = component.types;
+                    if (types.includes("street_number")) streetNumber = component.long_name;
+                    if (types.includes("route")) route = component.long_name;
+                    if (types.includes("locality")) newCity = component.long_name;
+                    if (types.includes("administrative_area_level_1")) newState = component.short_name;
+                    if (types.includes("postal_code")) newZip = component.long_name;
+                });
+
+                // 3. Actualizar campos del formulario
+                // Si hay calle y número, los combinamos. Si no, usamos el 'formatted_address' o lo que haya.
+                const fullStreet = (streetNumber && route) ? `${streetNumber} ${route}` : (place.name || address);
+                
+                setAddress(fullStreet);
+                if (newCity) setCity(newCity);
+                if (newState) setStateLoc(newState);
+                if (newZip) setZipCode(newZip);
+            }
+        }
+    };
+
     // Lógica de cálculo de seguro estimado
     const calculatedInsurance = useMemo(() => {
       const p = Number(price);
       if (!p) return 2148; 
-      if (p > 300000) return 2640;      
-      if (p > 250000) return 2508;      
-      if (p > 125000) return 2400;      
-      return 2148;                      
+      if (p > 300000) return 2640;       
+      if (p > 250000) return 2508;       
+      if (p > 125000) return 2400;       
+      return 2148;                       
     }, [price]);
 
-    // INTERCEPTOR DEL ENVÍO
     const handleFormSubmit = (formData: FormData) => {
-        // Si no es estricto (Draft/Coming Soon), rellenamos con 0 los financieros vacíos
         if (!isStrict) {
             const financialFields = ['price', 'downPayment', 'interestRate', 'taxes'];
             financialFields.forEach((field) => {
@@ -162,7 +213,6 @@ export default function NewPropertyPage() {
                     </select>
                 </div>
 
-                {/* AVAILABLE DATE (Solo visible en COMING_SOON) */}
                 {status === 'COMING_SOON' && (
                     <div className="sm:col-span-2 animate-in fade-in slide-in-from-top-2">
                          <label className="block text-xs font-bold leading-6 text-blue-400 uppercase">Available Date</label>
@@ -174,7 +224,6 @@ export default function NewPropertyPage() {
                     </div>
                 )}
                 
-                {/* Ajuste de columna para Slug dependiendo si se muestra fecha o no */}
                 <div className={`${status === 'COMING_SOON' ? 'sm:col-span-2' : 'sm:col-span-4'}`}>
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
                     <input 
@@ -186,21 +235,37 @@ export default function NewPropertyPage() {
                     />
                 </div>
 
-                {/* Location */}
+                {/* --- LOCATION (CON AUTOCOMPLETE) --- */}
                 <div className="sm:col-span-4">
-                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
-                    <input 
-                        type="text" 
-                        name="address" 
-                        required 
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)} 
-                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
-                    />
+                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address (Search Here)</label>
+                    {isLoaded ? (
+                        <Autocomplete
+                            onLoad={(auto) => (autocompleteRef.current = auto)}
+                            onPlaceChanged={onPlaceChanged}
+                        >
+                            <input 
+                                type="text" 
+                                name="address" 
+                                required 
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)} 
+                                placeholder="Type to search Google Maps..."
+                                className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm placeholder-gray-500" 
+                            />
+                        </Autocomplete>
+                    ) : (
+                        <input 
+                            type="text" 
+                            disabled
+                            placeholder="Loading Maps..."
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-gray-500 cursor-not-allowed sm:text-sm" 
+                        />
+                    )}
                 </div>
+
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Contact Phone</label>
-                    <input type="tel" name="phoneNumber" placeholder="9016-604-115" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                    <input type="tel" name="phoneNumber" placeholder="901-660-4115" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                 </div>
 
                 <div className="sm:col-span-2 sm:col-start-1">
@@ -225,7 +290,6 @@ export default function NewPropertyPage() {
                     />
                 </div>
                 
-                {/* Zip Code */}
                 <div className="sm:col-span-2">
                     <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Zip Code</label>
                     <input 
@@ -266,7 +330,6 @@ export default function NewPropertyPage() {
           {/* 2. ADVANCED CONFIG & SEO */}
           <AccordionSection title="Advanced Config & SEO" icon="⚙️">
             <div className="grid grid-cols-1 gap-6">
-                {/* Flags */}
                 <div className="flex gap-8 flex-wrap p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                     <div className="flex items-start">
                         <div className="flex h-6 items-center">
@@ -294,7 +357,6 @@ export default function NewPropertyPage() {
                     <input type="url" name="calendarLink" placeholder="https://cal.com/..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                 </div>
                 
-                {/* SEO Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
                     <div>
                         <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>

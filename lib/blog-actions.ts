@@ -52,7 +52,22 @@ export async function updatePost(formData: FormData) {
 
 export async function deletePost(formData: FormData) {
   const id = formData.get('id') as string;
-  await prisma.post.delete({ where: { id } });
+
+  if (!id) return;
+
+  try {
+    await prisma.post.delete({
+      where: { id },
+    });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    // En caso de error, no redirigimos para que el usuario vea qué pasó
+    return { message: 'Error deleting post' };
+  }
+
+  // 1. Revalidar para actualizar la caché de la lista
   revalidatePath('/admin/blog');
-  revalidatePath('/blog');
+
+  // 2. REDIRECCIONAR para sacarnos de la página 404 (el post ya no existe)
+  redirect('/admin/blog'); 
 }

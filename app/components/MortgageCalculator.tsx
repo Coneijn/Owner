@@ -70,7 +70,7 @@ export default function MortgageCalculator({
     const monthlyTaxes = taxes / 12;
     const monthlyInsurance = insurance / 12;
 
-    // CAMBIO: Sumamos el SERVICE_FEE al total
+    // Sumamos el SERVICE_FEE al total
     setMonthlyPayment(principalAndInterest + monthlyTaxes + monthlyInsurance + SERVICE_FEE);
 
   }, [price, downPayment, termYears, interestRate, taxes, insurance]);
@@ -109,7 +109,7 @@ export default function MortgageCalculator({
             type="range" 
             min={defaultDownPayment} 
             max={price * 0.5} 
-            step={1000}
+            step={5000} // <--- AQUI ESTÁ EL CAMBIO (Antes 1000)
             value={downPayment}
             onChange={(e) => setDownPayment(Number(e.target.value))}
             className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#529e14]"

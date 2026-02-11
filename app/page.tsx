@@ -211,7 +211,9 @@ export default async function HomePage(props: {
 
               {/* CONTENEDOR DEL MAPA (LIMPIO) */}
               <div className="w-full h-[550px] md:h-[650px] rounded-3xl overflow-hidden shadow-2xl border-4 border-[#529e14] ring-4 ring-white/10 relative z-0">
-                  <MapLoader properties={mapProperties} />
+                  
+                  {/* AQUÍ ESTABA EL CAMBIO NECESARIO: AGREGAR lang={lang} */}
+                  <MapLoader properties={mapProperties} lang={lang} />
                   
                   {/* Botón flotante inferior solo para Pantalla Completa (dentro del mapa) */}
                   <a 

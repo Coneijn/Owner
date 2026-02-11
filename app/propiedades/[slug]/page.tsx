@@ -1,19 +1,14 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import Image from 'next/image'; 
-import { Metadata, ResolvingMetadata } from 'next';
-import Header from '@/app/components/Header'; // <--- Header Importado
+import Image from 'next/image';
+import Header from '@/app/components/Header';
 import PropertyGallery from '@/app/components/PropertyGallery';
 import MortgageCalculator from '@/app/components/MortgageCalculator';
 import VideoModal from '@/app/components/video-modal';
-import Script from 'next/script';
 import PropertyShare from '@/app/components/PropertyShare';
 
-// --- COLORES CORPORATIVOS ---
-// Yellow: #f8ed1a | Green: #529e14 | Dark: #1a1a1a
-
-// Helper para dinero
+// --- HELPER PARA FORMATO DE MONEDA ---
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -22,7 +17,7 @@ const formatMoney = (amount: number) => {
   }).format(amount);
 };
 
-// DICCIONARIO DE TRADUCCIONES
+// --- DICCIONARIO DE TRADUCCIONES ---
 const DICTIONARY = {
   es: {
     back: "Volver al catálogo",
@@ -31,383 +26,284 @@ const DICTIONARY = {
     underContract: "Bajo Contrato",
     sold: "Vendido",
     draft: "Borrador",
-    comingSoon: "Próximamente", 
+    comingSoon: "Próximamente",
     aboutTitle: "SOBRE ESTA PROPIEDAD",
     featuresTitle: "CARACTERÍSTICAS",
     beds: "Habitaciones",
     baths: "Baños",
-    sqft: "Sq Ft",
+    sqft: "Pies Cuadrados",
     year: "Año",
     interestedTitle: "¿TE INTERESA ESTA CASA?",
-    interestedSub: "Agenda una visita hoy mismo o habla con nuestro asistente virtual.",
+    interestedSub: "Agenda una visita hoy mismo, aplica en línea o habla con nuestro equipo.",
     btnSchedule: "AGENDAR RECORRIDO",
+    btnApply: "APLICAR AHORA", // <--- NUEVO
     btnCall: "LLAMAR AHORA",
-    location: "Ubicación",
-    meetSeller: "CONOCE AL DUEÑO",
-    sellerRole: "Vendedor",
-    videoBtn: "VER VIDEO TOUR", 
-    ownerTitle: "Dueño de la Propiedad", 
-    agentTitle: "Asesor de Ventas",    
+    videoTitle: "VIDEO RECORRIDO",
+    calcTitle: "CALCULADORA",
+    locationTitle: "UBICACIÓN",
+    price: "Precio Total",
+    down: "Enganche"
   },
   en: {
     back: "Back to catalog",
     available: "Available",
-    unavailable: "Not Available",
+    unavailable: "Unavailable",
     underContract: "Under Contract",
     sold: "Sold",
     draft: "Draft",
-    comingSoon: "Coming Soon", 
+    comingSoon: "Coming Soon",
     aboutTitle: "ABOUT THIS PROPERTY",
     featuresTitle: "FEATURES",
     beds: "Bedrooms",
-    baths: "Baths",
+    baths: "Bathrooms",
     sqft: "Sq Ft",
     year: "Year Built",
     interestedTitle: "INTERESTED IN THIS HOME?",
-    interestedSub: "Schedule a visit today or talk to our AI assistant.",
+    interestedSub: "Schedule a visit today, apply online, or talk to our team.",
     btnSchedule: "SCHEDULE HOME TOUR",
+    btnApply: "APPLY NOW", // <--- NUEVO
     btnCall: "CALL NOW",
-    location: "Location",
-    meetSeller: "MEET YOUR OWNER",
-    sellerRole: "Seller",
-    videoBtn: "WATCH VIDEO TOUR", 
-    ownerTitle: "Property Owner", 
-    agentTitle: "Sales Agent",    
+    videoTitle: "VIDEO TOUR",
+    calcTitle: "CALCULATOR",
+    locationTitle: "LOCATION",
+    price: "Total Price",
+    down: "Down Payment"
   }
 };
 
-const DEFAULT_CALENDAR_LINK = "https://api.leadconnectorhq.com/widget/bookings/scheduleanappointmentcallwithus-230ad544-8f6f-4125-9d14-f1b202f0becc-7fdb3832-39a9-4c80-a146-60233fb444a1-aaa07f1f-456b-4ccc-81e4-adb0ad437aa3-0b2d0529-cb48-461f-b8b5-712b398e91eb-fcbf65a8-70d2-4009-b786-ac4166822f0b-0f63997e-5577-46ae-9f21-00d7deb09698-e6c21248-3365-4355-9454-17fdbd70ec1e-8b95828a-650c-41a7-9b5b-453855dce734-8dda7b22-1142-4021-8dfc-111b3ef84155-f97c6afe-ae0a-48f4-a6cb-868f7ec9020c-5c4b1d30-8e32-4a3d-9142-617df2faa33d-15d6fb8b-f278-4503-98e4-f435ca7bb65e-1cb0ec42-d374-4a1a-b923-59c59dcc4791-c04f60e7-15a7-4cfc-a977-30d02f1c83fe-9e2a0269-9b69-4caa-95c7-327b47eef86a-ffac1d68-518e-4dc2-9bf7-90a8acd0b85d-bb726c61-15c6-4b11-b190-55d7c217c1a3"; 
-
-type Props = {
+export default async function PropertyDetailPage(props: {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
-};
-
-export async function generateMetadata(
-  props: Props,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
+}) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const slug = params.slug;
-  const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-
-  const property = await prisma.property.findUnique({
-    where: { slug },
-    select: {
-        titleEn: true,
-        titleEs: true,
-        descriptionEn: true,
-        descriptionEs: true,
-        seoTitleEn: true,
-        seoTitleEs: true,
-        seoDescriptionEn: true,
-        seoDescriptionEs: true,
-        mainImage: true,
-    }
-  });
-
-  if (!property) {
-    return {
-      title: 'Propiedad no encontrada',
-    };
-  }
-
-  const title = lang === 'en' 
-    ? (property.seoTitleEn || property.titleEn)
-    : (property.seoTitleEs || property.titleEs);
-
-  const description = lang === 'en'
-    ? (property.seoDescriptionEn || property.descriptionEn)
-    : (property.seoDescriptionEs || property.descriptionEs);
-
-  const metaDescription = description.length > 160 ? description.substring(0, 157) + '...' : description;
-
-  return {
-    title: `${title} | Dueño a Dueño`,
-    description: metaDescription,
-    openGraph: {
-      title: title,
-      description: metaDescription,
-      images: [property.mainImage],
-      locale: lang === 'es' ? 'es_MX' : 'en_US',
-      type: 'website',
-    },
-  };
-}
-
-export default async function PropertyDetailPage(props: Props) {
-  const { slug } = await props.params;
-  const searchParams = await props.searchParams;
+  
+  const { slug } = params;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
-  
+
+  // 1. Obtener datos de la BD
   const property = await prisma.property.findUnique({
     where: { slug },
+    include: { images: true }
   });
 
   if (!property) {
     notFound();
   }
 
-  const price = property.price.toNumber();
-  const downPayment = property.downPayment.toNumber();
-  const interestRate = property.interestRate.toNumber();
-  const taxes = property.taxes.toNumber();
-  const insurance = property.insurance.toNumber();
-  const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
-  const phoneHref = `tel:${property.phoneNumber || '9016-604-115'}`;
+  // 2. Preparar imágenes para la galería
+  let galleryImages: string[] = [];
+  if (property.images && property.images.length > 0) {
+    const sorted = property.images.sort((a, b) => (a.isMain === b.isMain ? 0 : a.isMain ? -1 : 1));
+    galleryImages = sorted.map(img => img.url);
+  } else {
+    if (property.mainImage) galleryImages.push(property.mainImage);
+    if (property.galleryImages) galleryImages.push(...property.galleryImages);
+  }
+  if (galleryImages.length === 0) galleryImages.push('/placeholder.png');
+
+  // 3. Datos de texto
+  const title = lang === 'en' ? property.titleEn : property.titleEs;
+  const description = lang === 'en' ? property.descriptionEn : property.descriptionEs;
   
-  const bookingLink = property.calendarLink && property.calendarLink.length > 0 
-    ? property.calendarLink 
-    : DEFAULT_CALENDAR_LINK;
+  // Links de acción
+  const bookingLink = property.calendarLink || "https://calendly.com/"; 
+  const phoneHref = `tel:${property.phoneNumber || '9016604115'}`;
+
+  // Estado
+  const isComingSoon = property.status === 'COMING_SOON';
+  const statusLabel = isComingSoon ? t.comingSoon : t.available;
+  const statusColor = isComingSoon ? 'bg-blue-600' : 'bg-[#529e14]';
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
+    <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
       
-      {/* --- HEADER IMPLEMENTADO --- */}
+      {/* HEADER */}
       <Header lang={lang} activePage="properties" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
         {/* Breadcrumb */}
-        <div className="mb-8">
-        <Link href={`/properties?lang=${lang}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
-            <span className="text-lg">←</span> {t.back}
-          </Link>
-        </div>
+        <Link 
+          href={`/properties?lang=${lang}`}
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-[#f8ed1a] transition-colors mb-6 text-sm font-bold uppercase tracking-wide"
+        >
+          <span>←</span> {t.back}
+        </Link>
 
-        {/* HEADER: Título y Precio */}
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end mb-10 pb-6 border-b-4 border-[#1a1a1a] gap-6">
-            <div className="flex-1">
-                <h1 className="text-4xl md:text-5xl font-black text-[#1a1a1a] mb-3 uppercase tracking-tighter leading-none">
-                    {lang === 'en' ? property.titleEn : property.titleEs}
-                </h1>
-                <p className="text-lg md:text-xl text-gray-600 flex items-center gap-2 font-medium">
-                    📍 {property.address}, {property.city}, {property.state} {property.zipCode}
-                </p>
+        {/* CONTENIDO PRINCIPAL (GRID) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          
+          {/* COLUMNA IZQUIERDA (Galería e Info) */}
+          <div className="lg:col-span-2 space-y-10">
+            
+            {/* Galería */}
+            <PropertyGallery images={galleryImages} title={title} />
+
+            {/* Header Propiedad (Título y Dirección) */}
+            <div>
+               <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                  <h1 className="text-3xl md:text-4xl font-black text-white uppercase leading-tight">
+                    {title}
+                  </h1>
+                  <span className={`${statusColor} text-white px-4 py-2 rounded-lg font-black uppercase text-sm shadow-lg tracking-wider`}>
+                    {statusLabel}
+                  </span>
+               </div>
+               <p className="text-xl text-gray-400 flex items-center gap-2">
+                 <span className="text-[#529e14]">📍</span>
+                 {property.address}, {property.city}, {property.state} {property.zipCode}
+               </p>
             </div>
-            <div className="text-left lg:text-right">
-                <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">{formatMoney(price)}</p>
-                
-                {/* --- AQUÍ MUESTRO EL BOTÓN DE COMPARTIR Y EL ESTADO JUNTOS --- */}
-                <div className="mt-2 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
-                    
-                    {/* BOTÓN COMPARTIR (Movido aquí) */}
-                    <div className="shrink-0">
-                       <PropertyShare 
-                          title={lang === 'en' ? property.titleEn : property.titleEs} 
-                          slug={slug} 
-                          lang={lang} 
-                       />
-                    </div>
 
-                    {/* LÓGICA DE ESTADOS */}
-                    {(() => {
-                        let statusColor = "bg-gray-200 text-gray-600";
-                        let statusText = "N/A";
-
-                        switch (property.status) {
-                            case 'AVAILABLE':
-                                statusColor = "bg-[#f8ed1a] text-[#1a1a1a]";
-                                statusText = t.available;
-                                break;
-                            case 'UNDER_CONTRACT':
-                                statusColor = "bg-orange-500 text-white";
-                                statusText = t.underContract;
-                                break;
-                            case 'SOLD':
-                                statusColor = "bg-red-600 text-white";
-                                statusText = t.sold;
-                                break;
-                            case 'DRAFT':
-                                statusColor = "bg-gray-600 text-white";
-                                statusText = t.draft;
-                                break;
-                            case 'COMING_SOON':
-                                statusColor = "bg-blue-600 text-white";
-                                statusText = t.comingSoon;
-                                break;
-                            default:
-                                statusText = property.status; 
-                        }
-
-                        return (
-                            <span className={`inline-block px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
-                                {statusText}
-                            </span>
-                        );
-                    })()}
+            {/* Specs Bar */}
+            <div className="grid grid-cols-4 gap-4 border-y border-gray-700 py-6">
+                <div className="text-center border-r border-gray-700 last:border-0">
+                    <span className="block text-2xl font-black text-white">{property.bedrooms}</span>
+                    <span className="text-xs text-gray-500 uppercase font-bold">{t.beds}</span>
+                </div>
+                <div className="text-center border-r border-gray-700 last:border-0">
+                    <span className="block text-2xl font-black text-white">{property.bathrooms}</span>
+                    <span className="text-xs text-gray-500 uppercase font-bold">{t.baths}</span>
+                </div>
+                <div className="text-center border-r border-gray-700 last:border-0">
+                    <span className="block text-2xl font-black text-white">{property.sqft}</span>
+                    <span className="text-xs text-gray-500 uppercase font-bold">{t.sqft}</span>
+                </div>
+                <div className="text-center">
+                    <span className="block text-2xl font-black text-white">{property.yearBuilt || 'N/A'}</span>
+                    <span className="text-xs text-gray-500 uppercase font-bold">{t.year}</span>
                 </div>
             </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            
-            {/* COLUMNA IZQUIERDA */}
-            <div className="lg:col-span-2 space-y-12">
+            {/* Descripción */}
+            <div>
+                <h2 className="text-xl font-black text-[#f8ed1a] uppercase mb-4 border-l-4 border-[#f8ed1a] pl-3">
+                  {t.aboutTitle}
+                </h2>
+                <div className="prose prose-invert max-w-none text-gray-300 leading-relaxed whitespace-pre-line">
+                    {description}
+                </div>
+            </div>
+
+            {/* Features */}
+            {property.features && property.features.length > 0 && (
+              <div>
+                  <h2 className="text-xl font-black text-[#529e14] uppercase mb-6 border-l-4 border-[#529e14] pl-3">
+                    {t.featuresTitle}
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {property.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-center gap-3 bg-[#242424] p-3 rounded-lg border border-gray-800">
+                              <span className="text-[#529e14] text-lg">✓</span>
+                              <span className="font-medium text-gray-200">{feature}</span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+            )}
+
+            {/* Video (Si existe) */}
+            {property.videoUrl && (
+               <div>
+                  <h2 className="text-xl font-black text-white uppercase mb-6 flex items-center gap-3">
+                    <span>🎬</span> {t.videoTitle}
+                  </h2>
+                  <div className="bg-black rounded-xl overflow-hidden aspect-video relative flex items-center justify-center border border-gray-800">
+                      <VideoModal videoUrl={property.videoUrl} label={t.videoTitle} />
+                  </div>
+               </div>
+            )}
+
+          </div>
+
+          {/* COLUMNA DERECHA (Sticky Sidebar) */}
+          <div className="lg:col-span-1">
+             <div className="sticky top-24 space-y-8">
                 
-                {/* Galería */}
-                <div className="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
-                    <PropertyGallery 
-                        images={allImages} 
-                        title={lang === 'en' ? property.titleEn : property.titleEs} 
+                {/* 1. Tarjeta de Precio y Compartir */}
+                <div className="bg-[#1a1a1a] p-6 rounded-2xl shadow-xl border-2 border-[#529e14] relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-50">
+                        <PropertyShare title={title} slug={slug} lang={lang} />
+                    </div>
+                    
+                    <div className="mb-6 mt-8">
+                        <p className="text-gray-400 text-xs font-bold uppercase mb-1">{t.price}</p>
+                        <p className="text-4xl md:text-5xl font-black text-white tracking-tighter">
+                            {formatMoney(Number(property.price))}
+                        </p>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                        <span className="text-gray-300 font-bold uppercase text-sm">{t.down}</span>
+                        <span className="text-[#f8ed1a] font-black text-xl">
+                            {formatMoney(Number(property.downPayment))}
+                        </span>
+                    </div>
+                </div>
+
+                {/* 2. Calculadora (RESTAURADO EL ORDEN ANTERIOR) */}
+                <div className="border-t border-gray-800 pt-8">
+                    <h3 className="text-sm font-black text-gray-500 uppercase mb-4 tracking-widest text-center">{t.calcTitle}</h3>
+                    <MortgageCalculator 
+                        price={Number(property.price)}
+                        defaultDownPayment={Number(property.downPayment)}
+                        interestRate={Number(property.interestRate)}
+                        taxes={Number(property.taxes)}
+                        insurance={Number(property.insurance)}
+                        lang={lang}
                     />
                 </div>
 
-                {/* Specs Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg">
-                    <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
-                        <span className="block text-3xl font-black text-white">{property.bedrooms}</span>
-                        <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.beds}</span>
-                    </div>
-                    <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
-                        <span className="block text-3xl font-black text-white">{property.bathrooms}</span>
-                        <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.baths}</span>
-                    </div>
-                    <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
-                        <span className="block text-3xl font-black text-white">{property.sqft}</span>
-                        <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.sqft}</span>
-                    </div>
-                    <div className="text-center p-6 hover:bg-gray-800 transition-colors">
-                        <span className="block text-3xl font-black text-white">{property.yearBuilt || 'N/A'}</span>
-                        <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.year}</span>
-                    </div>
-        
-                </div>
-                      
-                {/* Descripción y Vendedor */}
-                <div>
-                    <h2 className="text-2xl font-black text-[#1a1a1a] uppercase tracking-tight mb-6 border-l-8 border-[#f8ed1a] pl-4">
-                        {t.aboutTitle}
-                    </h2>
-                    <div className="prose prose-lg text-gray-700 max-w-none whitespace-pre-line leading-relaxed mb-8">
-                        {lang === 'en' ? property.descriptionEn : property.descriptionEs}
-                    </div>
-                    {property.videoUrl && (
-                      <div className="relative center z-20">
-                         <VideoModal 
-                           videoUrl={property.videoUrl} 
-                           label={t.videoBtn} 
-                         />
-                      </div>
-                    )}
-                    {property.showSeller && (
-                      <div className="mt-8 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center gap-6 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-[#529e14]/10 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
-                        
-                        {/* Foto Vendedor */}
-                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
-                           <div className="w-full h-full rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-[#f8ed1a]">
-                              {property.sellerImage ? (
-                                <Image 
-                                  src={property.sellerImage} 
-                                  alt={property.sellerName || 'Seller'} 
-                                  fill 
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500">
-                                   <span className="text-2xl">👤</span>
-                                </div>
-                              )}
-                           </div>
-                        </div>
+                {/* 3. SECCIÓN CTA / INTERESADO (AL FINAL, CON EL NUEVO BOTÓN) */}
+                <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden border border-gray-800">
+                    {/* Decoración de fondo */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#f8ed1a] rounded-bl-full opacity-10 pointer-events-none"></div>
 
-                        {/* Info con ROL DINÁMICO */}
-                        <div className="z-10">
-                           <h3 className="text-sm font-bold text-[#529e14] uppercase tracking-wide mb-1">
-                              {t.meetSeller}
-                           </h3>
-                           <p className="text-xl sm:text-2xl font-black text-[#1a1a1a] uppercase leading-none mb-1">
-                              {property.sellerName}
-                           </p>
-                           <p className="text-sm text-gray-500 font-medium">
-                              {property.sellerType === 'AGENT' ? t.agentTitle : t.ownerTitle}
-                           </p>
-                        </div>
-                      </div>
-                    )}
-                </div>
-
-                {/* Características */}
-                {property.features.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">
-                        <h2 className="text-2xl font-black text-[#1a1a1a] uppercase tracking-tight mb-6 border-l-8 border-[#529e14] pl-4">
-                            {t.featuresTitle}
-                        </h2>
-                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8">
-                            {property.features.map((feature, idx) => (
-                                <li key={idx} className="flex items-center text-gray-800 font-medium">
-                                    <span className="mr-3 text-[#529e14] text-xl font-bold">✓</span> {feature}
-                                </li>
-                            ))}
-                        </ul>
+                    <div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{t.interestedTitle}</h3>
+                        <p className="text-sm text-gray-400 font-medium">{t.interestedSub}</p>
                     </div>
-                )}
-            </div>
-
-            {/* COLUMNA DERECHA */}
-            <div className="space-y-8">
-                
-                <div className="sticky top-24 space-y-8">
                     
-                    {/* --- CALCULADORA (Oculta si es COMING_SOON) --- */}
-                    {property.status !== 'COMING_SOON' && (
-                        <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100">
-                             <MortgageCalculator 
-                                price={price}
-                                defaultDownPayment={downPayment}
-                                interestRate={interestRate}
-                                taxes={taxes}
-                                insurance={insurance}
-                                lang={lang}
-                            />
-                        </div>
-                    )}
+                    <div className="space-y-3 relative z-10">
+                        {/* A. Botón Agendar */}
+                        <a 
+                            href={bookingLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-full bg-[#529e14] hover:bg-[#458510] text-white font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3"
+                        >
+                            <span>📅</span> {t.btnSchedule}
+                        </a>
 
-                    {/* Botones de Acción */}
-                    <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-[#f8ed1a] rounded-bl-full opacity-20"></div>
-
-                        <div>
-                             <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{t.interestedTitle}</h3>
-                             <p className="text-sm text-gray-400 font-medium">{t.interestedSub}</p>
-                        </div>
+                        {/* B. NUEVO BOTÓN: APLICAR */}
+                        <Link 
+                            href={`/apply?lang=${lang}`}
+                            className="w-full bg-[#f8ed1a] hover:bg-yellow-400 text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3"
+                        >
+                            <span>📝</span> {t.btnApply}
+                        </Link>
                         
-                        <div className="space-y-3">
-                            <a 
-                                href={bookingLink} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="w-full bg-[#529e14] hover:bg-[#458510] text-white font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3"
-                            >
-                                📅 {t.btnSchedule}
-                            </a>
-                            
-                            <a 
-                                href={phoneHref} 
-                                className="w-full flex items-center justify-center bg-transparent border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300"
-                            >
-                                📞 {t.btnCall}: {property.phoneNumber || '(901) 660-4115'}
-                            </a>
-                        </div>
+                        {/* C. Botón Llamar */}
+                        <a 
+                            href={phoneHref} 
+                            className="w-full flex items-center justify-center bg-transparent border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300"
+                        >
+                            {t.btnCall}: {property.phoneNumber || '901-660-4115'}
+                        </a>
                     </div>
                 </div>
-            </div>
+
+             </div>
+          </div>
+
         </div>
       </main>
 
-      <footer className="bg-[#1a1a1a] text-gray-400 py-12 mt-20 border-t border-gray-800">
-        <Script
-          src="https://widgets.leadconnectorhq.com/loader.js"
-          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-          data-widget-id="6982bc477cd1e65428cc69fe"
-          strategy="afterInteractive"
-        />
-        <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-sm font-medium">© 2026 Dueño a Dueño.</p>
-        </div>
+      {/* Footer simple para consistencia */}
+      <footer className="bg-[#1a1a1a] text-white py-12 border-t border-gray-800 text-center mt-12">
+        <p className="text-gray-500 text-sm">© 2026 Dueño a Dueño.</p>
       </footer>
     </div>
   );

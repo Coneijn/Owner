@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useState } from 'react'; 
+import { useActionState, useState, useRef } from 'react'; 
 import { updateProperty } from '@/lib/actions';
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 import dynamic from 'next/dynamic';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 // Importamos el mapa dinámicamente (sin SSR)
 const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
@@ -12,8 +13,10 @@ const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), {
   loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
 });
 
+// NUEVO: Definimos librerías fuera
+const libraries: ("places")[] = ["places"];
+
 // --- HELPER PARA FECHAS ---
-// Convierte ISO String o Date object a formato YYYY-MM-DD para el input HTML
 const formatDateForInput = (dateVal: string | Date | null | undefined) => {
     if (!dateVal) return '';
     const date = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
@@ -64,19 +67,19 @@ interface PropertyData {
   latitude?: number | string | null;
   longitude?: number | string | null;
   lockboxCode?: string | null;
-  availableDate?: Date | string | null; // <--- NUEVO
+  availableDate?: Date | string | null; 
 }
 
 // --- HELPER COMPONENT: ACCORDION ---
 const AccordionSection = ({ 
   title, 
   children, 
-  defaultOpen = false,
+  defaultOpen = false, 
   icon
 }: { 
   title: string, 
   children: React.ReactNode, 
-  defaultOpen?: boolean,
+  defaultOpen?: boolean, 
   icon?: string
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -109,7 +112,16 @@ const AccordionSection = ({
 export default function EditForm({ property }: { property: PropertyData }) {
   const [state, formAction, isPending] = useActionState(updateProperty, null);
 
-  // --- STATUS STATE (Para controlar "Coming Soon") ---
+  // --- NUEVO: Cargar Script de Google ---
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script', // Debe coincidir con el ID de LocationPicker para evitar duplicados, o ser manejado globalmente
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries
+  });
+
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  // --- STATUS STATE ---
   const [status, setStatus] = useState<string>(property.status);
 
   // --- IMAGE STATE ---
@@ -138,13 +150,12 @@ export default function EditForm({ property }: { property: PropertyData }) {
   const [sellerImageFiles, setSellerImageFiles] = useState<ImageFile[]>(property.sellerImage ? [{ url: property.sellerImage }] : []);
   const [showSeller, setShowSeller] = useState<boolean>(property.showSeller || false);
 
-  // --- LOCATION STATE (Inicializado con datos existentes) ---
+  // --- LOCATION STATE ---
   const [address, setAddress] = useState(property.address || '');
   const [city, setCity] = useState(property.city || '');
   const [stateLoc, setStateLoc] = useState(property.state || 'TN');
   const [zipCode, setZipCode] = useState(property.zipCode || '');
   
-  // Coordenadas iniciales: Si existen en DB las usa, si no, usa default Memphis
   const [coords, setCoords] = useState({ 
     lat: Number((property as any).latitude) || 35.1495, 
     lng: Number((property as any).longitude) || -90.0490 
@@ -154,8 +165,42 @@ export default function EditForm({ property }: { property: PropertyData }) {
       setCoords({ lat, lng });
   };
   
-  // Query dinámica para el mapa
   const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
+
+  // --- NUEVO: Manejador de Autocomplete ---
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+        const place = autocompleteRef.current.getPlace();
+        
+        if (place.geometry && place.geometry.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            setCoords({ lat, lng });
+
+            let streetNumber = "";
+            let route = "";
+            let newCity = "";
+            let newState = "";
+            let newZip = "";
+
+            place.address_components?.forEach(component => {
+                const types = component.types;
+                if (types.includes("street_number")) streetNumber = component.long_name;
+                if (types.includes("route")) route = component.long_name;
+                if (types.includes("locality")) newCity = component.long_name;
+                if (types.includes("administrative_area_level_1")) newState = component.short_name;
+                if (types.includes("postal_code")) newZip = component.long_name;
+            });
+
+            const fullStreet = (streetNumber && route) ? `${streetNumber} ${route}` : (place.name || address);
+            
+            setAddress(fullStreet);
+            if (newCity) setCity(newCity);
+            if (newState) setStateLoc(newState);
+            if (newZip) setZipCode(newZip);
+        }
+    }
+  };
 
   // --- SMS ALERT STATE ---
   const [smsTarget, setSmsTarget] = useState<'ZIP' | 'ALL'>('ZIP');
@@ -227,7 +272,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
                   <select 
                     name="status" 
-                    value={status} // Controlado por React State
+                    value={status} 
                     onChange={(e) => setStatus(e.target.value)}
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                   >
@@ -239,7 +284,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   </select>
               </div>
 
-              {/* INPUT DE FECHA - SOLO VISIBLE SI ES COMING SOON */}
               {status === 'COMING_SOON' && (
                 <div className="sm:col-span-2 animate-in fade-in slide-in-from-top-2">
                     <label className="block text-xs font-bold leading-6 text-blue-400 uppercase">Available Date</label>
@@ -254,24 +298,39 @@ export default function EditForm({ property }: { property: PropertyData }) {
 
               <div className="sm:col-span-2">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Phone Number</label>
-                  <input type="text" name="phoneNumber" defaultValue={property.phoneNumber || '9016-604-115'}  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  <input type="text" name="phoneNumber" defaultValue={property.phoneNumber || '901-660-4115'}  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
               <div className="sm:col-span-6">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
                   <input type="text" name="slug" defaultValue={property.slug} required className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
 
-              {/* Location - INPUTS CONTROLADOS (Value + OnChange) */}
+              {/* --- LOCATION (CON AUTOCOMPLETE) --- */}
               <div className="sm:col-span-3">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
-                  <input 
-                    type="text" 
-                    name="address" 
-                    value={address} 
-                    onChange={(e) => setAddress(e.target.value)}
-                    required 
-                    className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
-                  />
+                  {isLoaded ? (
+                    <Autocomplete
+                        onLoad={(auto) => (autocompleteRef.current = auto)}
+                        onPlaceChanged={onPlaceChanged}
+                    >
+                        <input 
+                            type="text" 
+                            name="address" 
+                            value={address} 
+                            onChange={(e) => setAddress(e.target.value)}
+                            required 
+                            placeholder="Type to search..."
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm placeholder-gray-500" 
+                        />
+                    </Autocomplete>
+                  ) : (
+                    <input 
+                        type="text" 
+                        disabled
+                        placeholder="Loading..."
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-gray-500 cursor-not-allowed sm:text-sm"
+                    />
+                  )}
               </div>
               <div className="sm:col-span-1">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
@@ -334,7 +393,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
         {/* 2. ADVANCED CONFIG & SEO */}
         <AccordionSection title="Advanced Config & SEO" icon="⚙️" defaultOpen={false}>
           <div className="grid grid-cols-1 gap-6">
-              {/* Flags & Links */}
               <div className="flex gap-8 flex-wrap p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                   <div className="flex items-start">
                       <div className="flex h-6 items-center">
@@ -362,7 +420,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   <input type="url" name="calendarLink" defaultValue={property.calendarLink || ''} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
               
-              {/* SEO Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
                   <div>
                       <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
@@ -407,19 +464,16 @@ export default function EditForm({ property }: { property: PropertyData }) {
         {/* 4. MEDIA & CONTENT */}
         <AccordionSection title="Photos, Video & Descriptions" icon="📷">
           <div className="space-y-8">
-              {/* Uploads */}
               <div className="grid grid-cols-1 gap-8">
                   <ImageUpload label="Main Image" value={mainImageFiles} onChange={setMainImageFiles} multiple={false} />
                   <ImageUpload label="Gallery Images" value={galleryImageFiles} onChange={setGalleryImageFiles} multiple={true} />
               </div>
 
-              {/* Video */}
               <div>
                   <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Video Tour URL</label>
                   <input type="url" name="videoUrl" defaultValue={property.videoUrl || ''} placeholder="https://youtube.com..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
 
-              {/* Bilingual Text */}
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-4 border-t border-gray-700">
                   <div className="space-y-4">
                       <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇺🇸 English Content</h3>
@@ -433,7 +487,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   </div>
               </div>
 
-              {/* Features */}
               <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase">Features (Comma separated)</label>
                   <textarea name="features" rows={2} defaultValue={property.features.join(', ')} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
@@ -444,7 +497,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
         {/* 4.5 LOCATION & ACCESS (Interactivo con Mapa) */}
         <AccordionSection title="Location & Access" icon="🐸🗺️">
             <div className="space-y-6">
-                {/* EL MAPA INTERACTIVO */}
                 <div className="w-full">
                     <LocationPicker 
                         lat={coords.lat} 
@@ -454,7 +506,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
                     />
                 </div>
 
-                {/* LOS INPUTS */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                     <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase">Latitude</label>
@@ -513,12 +564,13 @@ export default function EditForm({ property }: { property: PropertyData }) {
                       <div className="sm:col-span-2">
                           <input type="hidden" name="sellerImage" value={sellerImageFiles[0]?.url || ''} />
                           <ImageUpload 
-    label="Seller Photo" 
-    value={sellerImageFiles} 
-    onChange={(files) => setSellerImageFiles(files)} 
-    multiple={false}
-    disableMetadata={true} 
-/>                      </div>
+                            label="Seller Photo" 
+                            value={sellerImageFiles} 
+                            onChange={(files) => setSellerImageFiles(files)} 
+                            multiple={false}
+                            disableMetadata={true} 
+                          />
+                      </div>
                   </div>
               )}
           </div>
@@ -575,7 +627,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                               </span>
                           )}
                       </div>
-                      <button
+                      <button 
                           type="button" 
                           onClick={handlePreSendSms}
                           disabled={isSendingSms || !smsMessage}

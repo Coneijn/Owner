@@ -3,7 +3,9 @@
 import { createPost } from '@/lib/blog-actions';
 import { useState } from 'react';
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload';
-import Link from 'next/link'; // <--- 1. Importamos Link
+import Link from 'next/link';
+// 1. IMPORTAMOS EL NUEVO COMPONENTE
+import HtmlEditor from '@/app/admin/ui/html-editor';
 
 export default function NewPostPage() {
   const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
@@ -12,10 +14,9 @@ export default function NewPostPage() {
     <div className="min-h-screen bg-[#1a1a1a] py-10 font-sans text-gray-200">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* --- HEADER CON BREADCRUMBS Y BOTÓN ATRÁS --- */}
+        {/* --- HEADER --- */}
         <div className="md:flex md:items-center md:justify-between mb-10 border-b border-gray-800 pb-6">
           <div className="min-w-0 flex-1">
-            {/* Breadcrumbs Pequeños */}
             <nav className="flex text-sm text-gray-500 mb-2 font-bold uppercase tracking-wide">
                 <Link href="/admin" className="hover:text-white transition-colors">Admin</Link>
                 <span className="mx-2">/</span>
@@ -32,7 +33,6 @@ export default function NewPostPage() {
             </p>
           </div>
           
-          {/* Botón de Cancelar / Volver */}
           <div className="mt-4 flex md:ml-4 md:mt-0">
             <Link
               href="/admin/blog"
@@ -46,7 +46,6 @@ export default function NewPostPage() {
         {/* --- FORMULARIO --- */}
         <form action={createPost} className="space-y-8 bg-[#1a1a1a] p-8 rounded-2xl border border-gray-800 shadow-2xl relative">
             
-            {/* Glow decorativo */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#f8ed1a] opacity-5 rounded-full blur-3xl pointer-events-none"></div>
 
             {/* URL Slug & Estado */}
@@ -57,7 +56,7 @@ export default function NewPostPage() {
                    type="text" 
                    name="slug" 
                    className="w-full bg-gray-900 rounded p-3 text-white border border-gray-700 focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a] outline-none transition-all" 
-                   placeholder="e.g. my-new-post" 
+                   placeholder="e.g. my-new-post"
                  />
                  <p className="text-[10px] text-gray-500 mt-1">Leave empty to auto-generate from English title.</p>
                </div>
@@ -84,7 +83,7 @@ export default function NewPostPage() {
             {/* Contenido Inglés */}
             <div className="border-t border-gray-700 pt-6 relative z-10">
               <h3 className="text-sm font-black text-[#f8ed1a] uppercase mb-4 flex items-center gap-2">
-                 🇺🇸 English Content
+                  🇺🇸 English Content
               </h3>
               <div className="space-y-4">
                   <input 
@@ -94,11 +93,12 @@ export default function NewPostPage() {
                     className="w-full bg-gray-900 rounded p-3 text-white border border-gray-700 focus:border-[#f8ed1a] outline-none font-bold" 
                     required 
                   />
-                  <textarea 
+                  
+                  {/* 2. REEMPLAZO DEL TEXTAREA POR EL EDITOR */}
+                  <HtmlEditor 
+                    label="Content (EN)" 
                     name="contentEn" 
-                    rows={8} 
-                    placeholder="Write content here (Markdown or HTML supported)..." 
-                    className="w-full bg-gray-900 rounded p-3 text-white border border-gray-700 focus:border-[#f8ed1a] outline-none font-mono text-sm" 
+                    placeholder="Write your article here..." 
                     required 
                   />
               </div>
@@ -107,7 +107,7 @@ export default function NewPostPage() {
             {/* Contenido Español */}
             <div className="border-t border-gray-700 pt-6 relative z-10">
               <h3 className="text-sm font-black text-[#f8ed1a] uppercase mb-4 flex items-center gap-2">
-                 🇲🇽 Spanish Content
+                  🇲🇽 Spanish Content
               </h3>
               <div className="space-y-4">
                   <input 
@@ -117,11 +117,12 @@ export default function NewPostPage() {
                     className="w-full bg-gray-900 rounded p-3 text-white border border-gray-700 focus:border-[#f8ed1a] outline-none font-bold" 
                     required 
                   />
-                  <textarea 
+                  
+                  {/* 3. REEMPLAZO DEL TEXTAREA POR EL EDITOR */}
+                  <HtmlEditor 
+                    label="Contenido (ES)" 
                     name="contentEs" 
-                    rows={8} 
-                    placeholder="Escribe el contenido aquí..." 
-                    className="w-full bg-gray-900 rounded p-3 text-white border border-gray-700 focus:border-[#f8ed1a] outline-none font-mono text-sm" 
+                    placeholder="Escribe tu artículo aquí..." 
                     required 
                   />
               </div>

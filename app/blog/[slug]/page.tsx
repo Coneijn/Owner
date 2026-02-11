@@ -2,7 +2,9 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import Header from '@/app/components/Header'; // <--- 1. Importamos el Header
+import Header from '@/app/components/Header';
+// 1. Importamos la librería de seguridad
+import DOMPurify from 'isomorphic-dompurify';
 
 export default async function BlogPostPage(props: { 
   params: Promise<{ slug: string }>;
@@ -17,20 +19,29 @@ export default async function BlogPostPage(props: {
   if (!post || !post.isPublished) notFound();
 
   const title = currentLang === 'en' ? post.titleEn : post.titleEs;
-  const content = currentLang === 'en' ? post.contentEn : post.contentEs;
+  const rawContent = currentLang === 'en' ? post.contentEn : post.contentEs;
+
+  // 2. Configuración de Sanitización (El filtro de seguridad)
+  // Permitimos jerarquía completa (h2-h6) y elementos comunes de blog.
+  const sanitizedContent = DOMPurify.sanitize(rawContent, {
+    ALLOWED_TAGS: [
+      'b', 'i', 'em', 'strong', 'a', 'p', 
+      'h2', 'h3', 'h4', 'h5', 'h6', 
+      'ul', 'ol', 'li', 'br', 'img', 'blockquote', 'code', 'pre', 'hr'
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'className', 'class', 'width', 'height', 'rel'],
+    // Esto fuerza a que los enlaces externos se abran en nueva pestaña de forma segura
+    ADD_ATTR: ['target'], 
+  });
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
       
-      {/* 2. Insertamos el Header */}
       <Header lang={currentLang} activePage="blog" />
 
       <main className="max-w-3xl mx-auto px-4 py-16">
-        {/* Breadcrumb local "Volver al Blog" */}
-        <Link href={`/blog?lang=${currentLang}`} className="text-[#529e14] font-bold uppercase text-sm mb-6 inline-block hover:underline">
-          ← {currentLang === 'en' ? 'Back to Blog' : 'Volver al Blog'}
-        </Link>
-
+        
+        {/* H1 Principal (Título del Post) */}
         <h1 className="text-3xl md:text-5xl font-black text-white uppercase mb-8 leading-tight tracking-tight">
           {title}
         </h1>
@@ -41,16 +52,24 @@ export default async function BlogPostPage(props: {
           </div>
         )}
 
-        {/* Contenido del Artículo */}
-        <div className="prose prose-invert prose-lg max-w-none prose-headings:text-[#f8ed1a] prose-a:text-[#529e14] prose-strong:text-white">
-          {/* Si usas texto plano con saltos de línea: */}
-          <div className="whitespace-pre-wrap font-medium text-gray-300 leading-relaxed">
-            {content}
-          </div>
+        {/* 3. Contenedor de Contenido con Estilos Jerárquicos */}
+        <div className="prose prose-invert prose-lg max-w-none 
+          prose-p:text-gray-300 prose-p:leading-relaxed
+          prose-headings:font-bold prose-headings:uppercase
+          prose-h2:text-[#f8ed1a] prose-h2:mt-12 prose-h2:mb-6
+          prose-h3:text-white prose-h3:mt-8
+          prose-a:text-[#529e14] prose-a:no-underline hover:prose-a:underline
+          prose-strong:text-white
+          prose-blockquote:border-l-[#529e14] prose-blockquote:bg-gray-800/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg">
+          
+          {/* Renderizado Seguro */}
+          <div 
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }} 
+          />
         </div>
+
       </main>
 
-      {/* Footer simple para consistencia */}
       <footer className="bg-[#1a1a1a] text-white py-12 border-t border-gray-800 text-center mt-12">
         <p className="text-gray-500 text-sm">© 2026 Dueño a Dueño.</p>
       </footer>
