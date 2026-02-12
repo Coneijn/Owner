@@ -1,154 +1,158 @@
 import { prisma } from '@/lib/prisma';
 import Header from '@/app/components/Header'; 
-import { Prisma } from '@prisma/client';
-import SearchFilters from '@/app/components/SearchFilters'; 
-// Importamos el nuevo componente split
 import MapSplitView from './MapSplitView';
 
+// Desactiva el caché estático para que los filtros funcionen en tiempo real
 export const dynamic = 'force-dynamic';
 
-type Props = {
+export default async function MapPage(props: { 
   searchParams: Promise<{ 
-    lang?: string;
-    zip?: string;      
-    feature?: string; 
-  }>;
-};
-
-// ... (DICTIONARY se mantiene igual, no hace falta cambiarlo) ...
-const DICTIONARY = {
-  es: {
-    title: 'Propiedades',
-    listTitle: 'Resultados',
-    viewDetails: 'Ver Detalles',
-    beds: 'Hab',
-    baths: 'Baños',
-    sqft: 'Sqft',
-    search: {
-      zipLabel: "Zip",
-      placeholder: "Ej: 28205",
-      featureLabel: "Filtros",
-      allOption: "Todas",
-      searchBtn: "Buscar",
-      garage: "Garage",
-      pool: "Piscina",
-      garden: "Jardín",
-      fireplace: "Chimenea"
-    }
-  },
-  en: {
-    title: 'Properties',
-    listTitle: 'Results',
-    viewDetails: 'View Details',
-    beds: 'Beds',
-    baths: 'Baths',
-    sqft: 'Sqft',
-    search: {
-      zipLabel: "Zip",
-      placeholder: "Ex: 28205",
-      featureLabel: "Filters",
-      allOption: "All",
-      searchBtn: "Search",
-      garage: "Garage",
-      pool: "Pool",
-      garden: "Garden",
-      fireplace: "Fireplace"
-    }
-  }
-};
-
-export default async function MapaPage(props: Props) {
+    lang?: string; 
+    query?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    beds?: string;
+    baths?: string;
+    sqft?: string;
+  }> 
+}) {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-  const t = DICTIONARY[lang];
 
-  // --- LÓGICA DE FILTRADO (Igual) ---
-  const whereClause: Prisma.PropertyWhereInput = {
-    latitude: { not: null },
-    longitude: { not: null },
-    status: 'AVAILABLE',
+  // --- 1. DICCIONARIO BILINGÜE ---
+  const DICTIONARY = {
+    es: {
+      sidebar: {
+        results: "Resultados",
+        inventory: "Inventario • Memphis, TN",
+        viewList: "Ver Lista"
+      },
+      status: {
+        forSale: "En Venta",
+        comingSoon: "Próximamente",
+        sold: "Vendido"
+      },
+      search: {
+        placeholder: "Buscar dirección, ciudad o CP..."
+      }
+    },
+    en: {
+      sidebar: {
+        results: "Results",
+        inventory: "Memphis, TN • Inventory",
+        viewList: "View List"
+      },
+      status: {
+        forSale: "For Sale",
+        comingSoon: "Coming Soon",
+        sold: "Sold"
+      },
+      search: {
+        placeholder: "Search address, city or zip..."
+      }
+    }
   };
 
-  if (searchParams?.zip) {
-    whereClause.zipCode = { contains: searchParams.zip };
-  }
-  if (searchParams?.feature) {
-    whereClause.features = { has: searchParams.feature };
-  }
+  const t = DICTIONARY[lang];
 
-  const propertiesRaw = await prisma.property.findMany({
+  // --- 2. PARSEO DE FILTROS ---
+  const queryText = searchParams?.query || '';
+  // Convertimos strings a números seguros
+  const minPrice = searchParams?.minPrice ? Number(searchParams.minPrice) : undefined;
+  const maxPrice = searchParams?.maxPrice ? Number(searchParams.maxPrice) : undefined;
+  const minBeds = searchParams?.beds ? Number(searchParams.beds) : undefined;
+  const minBaths = searchParams?.baths ? Number(searchParams.baths) : undefined;
+  const minSqft = searchParams?.sqft ? Number(searchParams.sqft) : undefined;
+
+  // --- 3. CONSTRUCCIÓN DE CONSULTA (WHERE CLAUSE) ---
+  const whereClause: any = {
+    // A. Estado Base: Solo propiedades activas
+    OR: [
+        { status: 'AVAILABLE' },
+        { status: 'COMING_SOON' }
+    ],
+    
+    // B. Búsqueda de Texto (Search Bar)
+    // Busca coincidencias en Dirección, Ciudad o Zip Code
+    ...(queryText && {
+        AND: [{
+            OR: [
+                { address: { contains: queryText, mode: 'insensitive' } },
+                { city: { contains: queryText, mode: 'insensitive' } },
+                { zipCode: { contains: queryText } }
+            ]
+        }]
+    }),
+
+    // C. Filtro de Precio (Rango)
+    ...((minPrice !== undefined || maxPrice !== undefined) && {
+        price: {
+            ...(minPrice !== undefined && { gte: minPrice }), // Mayor o igual
+            ...(maxPrice !== undefined && { lte: maxPrice }), // Menor o igual
+        }
+    }),
+
+    // D. Filtros de Especificaciones (Mínimos)
+    ...(minBeds !== undefined && { bedrooms: { gte: minBeds } }),
+    ...(minBaths !== undefined && { bathrooms: { gte: minBaths } }),
+    ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
+  };
+
+  // --- 4. CONSULTA A LA BASE DE DATOS ---
+  const rawProperties = await prisma.property.findMany({
     where: whereClause,
+    orderBy: { createdAt: 'desc' }, // Las más nuevas primero
     select: {
-      id: true,
-      titleEn: true,
-      titleEs: true,
-      address: true,
-      city: true,
-      state: true,
-      price: true,
-      latitude: true,
-      longitude: true,
-      slug: true,
-      mainImage: true, 
-      bedrooms: true,
-      bathrooms: true,
-      sqft: true,
+        id: true,
+        titleEn: true,
+        titleEs: true,
+        address: true,
+        city: true,
+        state: true,
+        price: true,
+        latitude: true,
+        longitude: true,
+        slug: true,
+        mainImage: true,
+        bedrooms: true,
+        bathrooms: true,
+        sqft: true,
+        status: true,
     }
   });
 
-  const properties = propertiesRaw.map(p => ({
+  // --- 5. MAPEO DE DATOS PARA EL CLIENTE ---
+  const properties = rawProperties.map(p => ({
     id: p.id,
     title: lang === 'en' ? p.titleEn : p.titleEs,
     address: p.address,
     city: p.city,
     state: p.state,
     price: Number(p.price),
-    lat: p.latitude as number,
-    lng: p.longitude as number,
+    lat: Number(p.latitude),
+    lng: Number(p.longitude),
     slug: p.slug,
     image: p.mainImage,
     beds: p.bedrooms,
     baths: p.bathrooms,
-    sqft: p.sqft
+    sqft: p.sqft,
+    status: p.status
   }));
 
-  const subtitle = lang === 'en' ? `${properties.length} found` : `${properties.length} encontradas`;
-
+  // --- 6. RENDERIZADO ---
   return (
-    <div className="flex flex-col h-screen bg-[#1a1a1a] overflow-hidden font-sans text-gray-200">
-       
-       <Header lang={lang} activePage="properties" /> 
-
-       <main className="flex-1 flex flex-col relative min-h-0">
-           
-           {/* 1. BARRA SUPERIOR (Filters) */}
-           <div className="z-30 bg-[#121212] border-b border-gray-800 shadow-md flex-shrink-0">
-               <div className="max-w-7xl mx-auto px-3 py-2 pr-32">
-                   <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                       <div className="flex items-baseline justify-between sm:justify-start gap-3 border-b sm:border-b-0 border-gray-800 pb-1 sm:pb-0 mb-1 sm:mb-0">
-                           <h1 className="text-sm font-black uppercase text-white tracking-wide">
-                               {t.title}
-                           </h1>
-                           <span className="text-[10px] text-[#f8ed1a] font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded">
-                               {subtitle}
-                           </span>
-                       </div>
-                       <div className="flex-1">
-                            <SearchFilters texts={t.search} variant="compact" />
-                       </div>
-                   </div>
-               </div>
-           </div>
-           
-           {/* 2. CONTENIDO INTERACTIVO (Split View) */}
-           {/* Aquí cargamos el Client Component que maneja el estado del mapa */}
-           <MapSplitView 
-              properties={properties} 
-              lang={lang} 
-              t={t} 
-           />
-
-       </main>
+    <div className="flex flex-col h-screen bg-[#0a0f1c] overflow-hidden">
+        {/* Header Fijo */}
+        <Header lang={lang} activePage="properties" />
+        
+        {/* Contenedor Principal (Mapa + Sidebar) */}
+        <div className="flex-1 relative min-h-0">
+            <MapSplitView 
+                properties={properties} 
+                lang={lang} 
+                t={t} 
+            />
+        </div>
     </div>
   );
 }

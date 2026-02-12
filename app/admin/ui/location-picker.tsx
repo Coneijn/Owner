@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
-// --- CONFIGURACIÓN ---
 const containerStyle = {
   width: '100%',
   height: '300px',
@@ -15,9 +14,11 @@ const defaultCenter = {
   lng: -90.0490
 };
 
-// 1. DEFINIMOS LAS LIBRERÍAS FUERA (Igual que en el padre)
-// Esto es vital para que coincida exactamente con la configuración de NewPropertyPage
-const libraries: ("places")[] = ["places"];
+// --- CORRECCIÓN CRÍTICA ---
+// Debe ser IDÉNTICO al de edit-form.tsx
+// 1. Usar 'places' (no 'maps')
+// 2. Definirlo FUERA del componente para mantener la referencia
+const libraries: ("places")[] = ["places"]; 
 
 interface LocationPickerProps {
   lat: number;
@@ -27,16 +28,14 @@ interface LocationPickerProps {
 }
 
 export default function LocationPicker({ lat, lng, searchQuery, onLocationChange }: LocationPickerProps) {
-  // 2. AGREGAMOS 'libraries' AQUÍ
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: libraries // <--- ESTA LÍNEA FALTABA Y CAUSABA EL ERROR
+    libraries: libraries // Usamos la constante externa corregida
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
   
-  // Usamos coordenadas recibidas o el default
   const center = (lat && lng) ? { lat, lng } : defaultCenter;
 
   const onLoad = useCallback(function callback(map: google.maps.Map) {
@@ -58,19 +57,17 @@ export default function LocationPicker({ lat, lng, searchQuery, onLocationChange
             const newLat = location.lat();
             const newLng = location.lng();
             
-            // Actualizamos mapa y estado padre
             map.panTo({ lat: newLat, lng: newLng });
             map.setZoom(16);
             onLocationChange(Number(newLat.toFixed(6)), Number(newLng.toFixed(6)));
           }
         });
-      }, 1500); // Esperar 1.5s después de que el usuario deje de escribir
+      }, 1500);
 
       return () => clearTimeout(delayDebounceFn);
     }
   }, [isLoaded, map, searchQuery, onLocationChange]);
 
-  // --- ARRASTRAR MARCADOR ---
   const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
     if (e.latLng) {
       const newLat = e.latLng.lat();
@@ -105,17 +102,17 @@ export default function LocationPicker({ lat, lng, searchQuery, onLocationChange
             position={center}
             draggable={true}
             onDragEnd={onMarkerDragEnd}
-            icon={{
-                url: '/frog-pin.png',
-                scaledSize: new window.google.maps.Size(50, 50),
-                anchor: new window.google.maps.Point(25, 50)
-            }}
+            // Asegúrate de que esta imagen exista en /public o comenta la línea icon
+            // icon={{
+            //     url: '/frog-pin.png',
+            //     scaledSize: new window.google.maps.Size(50, 50),
+            //     anchor: new window.google.maps.Point(25, 50)
+            // }}
         />
       </GoogleMap>
       
-      {/* Overlay informativo */}
       <div className="absolute bottom-2 left-2 bg-white/90 p-2 rounded text-xs text-black font-bold z-[10] pointer-events-none shadow-lg">
-        Drag 🐸 to adjust location
+        Drag marker to adjust location
       </div>
     </div>
   );
