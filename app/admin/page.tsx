@@ -23,11 +23,18 @@ export default async function AdminDashboard() {
   // 2. TRANSFORMACIÓN: Convertimos los objetos Decimal a Number plano
   const properties = rawProperties.map((p) => ({
     ...p,
-    price: Number(p.price),
-    downPayment: Number(p.downPayment),
-    interestRate: Number(p.interestRate),
-    taxes: Number(p.taxes),
-    insurance: Number(p.insurance),
+    price: p.price ? Number(p.price) : 0,
+    downPayment: p.downPayment ? Number(p.downPayment) : 0,
+    interestRate: p.interestRate ? Number(p.interestRate) : 0,
+    taxes: p.taxes ? Number(p.taxes) : 0,
+    insurance: p.insurance ? Number(p.insurance) : 0,
+
+    monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
+    securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
+
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+    availableDate: p.availableDate ? p.availableDate.toISOString() : null,
   }));
 
   // Calculamos stats usando ya los datos convertidos

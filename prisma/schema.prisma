@@ -10,15 +10,15 @@ datasource db {
 
 // 2. Modelo de Usuario 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  password  String // Hash del password
-  role      Role     @default(ADMIN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  twoFactorSecret String? // El secreto generado por otplib
-  isTwoFactorEnabled Boolean @default(false)
+  id                 String   @id @default(cuid())
+  name               String?
+  email              String   @unique
+  password           String // Hash del password
+  role               Role     @default(ADMIN)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  twoFactorSecret    String? // El secreto generado por otplib
+  isTwoFactorEnabled Boolean  @default(false)
 }
 
 // 3. Modelo de Propiedad 
@@ -28,12 +28,11 @@ model Property {
   updatedAt DateTime @updatedAt
 
   // --- Gestión Interna y Estado ---
-  slug       String         @unique
-  status     PropertyStatus @default(AVAILABLE)
-  isFeatured Boolean        @default(false)
-
+  slug        String         @unique
+  status      PropertyStatus @default(AVAILABLE)
+  isFeatured  Boolean        @default(false)
   // Para ocultar propiedades del catálogo público
-  isOffMarket Boolean @default(false)
+  isOffMarket Boolean        @default(false)
 
   // --- Contenido Bilingüe ---
   // Títulos
@@ -43,12 +42,18 @@ model Property {
   descriptionEn String @db.Text
   descriptionEs String @db.Text
 
-  // --- Datos Financieros ---
-  price        Decimal @db.Decimal(10, 2) // Precio de venta
-  downPayment  Decimal @db.Decimal(10, 2) // Enganche mínimo
-  interestRate Decimal @db.Decimal(5, 2) // Tasa de interés anual 
-  taxes        Decimal @db.Decimal(10, 2) // Impuestos anuales
-  insurance    Decimal @db.Decimal(10, 2) // Seguro anual
+  // --- Datos Financieros (Venta) ---
+  isForSale    Boolean @default(true)
+  price        Decimal? @db.Decimal(10, 2) 
+  downPayment  Decimal? @db.Decimal(10, 2) 
+  interestRate Decimal? @db.Decimal(5, 2) 
+  taxes        Decimal? @db.Decimal(10, 2) 
+  insurance    Decimal? @db.Decimal(10, 2)
+
+  // --- Datos Financieros (Renta / Lease) [NUEVO] ---
+  isForRent       Boolean  @default(false)
+  monthlyRent     Decimal? @db.Decimal(10, 2)
+  securityDeposit Decimal? @db.Decimal(10, 2)
 
   // --- Ubicación y Contacto ---
   address      String
@@ -57,11 +62,13 @@ model Property {
   zipCode      String
   phoneNumber  String?
   calendarLink String?
-// CAMPOS DE UBICACIÓN 
-  latitude     Float?
-  longitude    Float?
-  lockboxCode  String?
+  
+  // CAMPOS DE UBICACIÓN 
+  latitude      Float?
+  longitude     Float?
+  lockboxCode   String?
   availableDate DateTime?
+
   // --- Especificaciones Técnicas ---
   bedrooms  Int
   bathrooms Float
@@ -90,29 +97,55 @@ model Property {
   sellerImage String?
   sellerType  String? @default("OWNER")
 }
+
+// 4. Modelo de Blog Post (Actualizado)
 model Post {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  slug          String   @unique
-  isPublished   Boolean  @default(false)
-  
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slug        String   @unique
+  isPublished Boolean  @default(false)
+
   // Contenido Bilingüe
-  titleEn       String
-  titleEs       String
-  contentEn     String   @db.Text // Puede ser Markdown o HTML
-  contentEs     String   @db.Text
-  
-  // Multimedia
-  mainImage     String?
-  
-  // SEO (Opcional, pero recomendado)
-  seoTitleEn    String?
-  seoDescEn     String?
-  seoTitleEs    String?
-  seoDescEs     String?
+  titleEn   String
+  titleEs   String
+  contentEn String @db.Text // Puede ser Markdown o HTML
+  contentEs String @db.Text
+
+  // Multimedia Principal
+  mainImage String?
+
+  // --- Imágenes Inline del Post [NUEVO] ---
+  postImages PostImage[]
+
+  // --- Sección de Autor / Bio por Post [NUEVO] ---
+  authorName  String?
+  authorImage String?
+  authorBioEn String? @db.Text
+  authorBioEs String? @db.Text
+
+  // --- SEO Avanzado [ACTUALIZADO] ---
+  seoTitleEn     String?
+  seoDescEn      String?
+  focusKeywordEn String? // Keyword principal EN
+
+  seoTitleEs     String?
+  seoDescEs      String?
+  focusKeywordEs String? // Keyword principal ES
 }
+
+// 5. Modelo de Imágenes para el Blog [NUEVO]
+model PostImage {
+  id      String  @id @default(cuid())
+  url     String
+  altText String?
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+// 6. Modelo de Imágenes de Propiedades (Existente)
 model PropertyImage {
   id  String @id @default(cuid())
   url String
@@ -131,7 +164,7 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
-// 4. Enums
+// 7. Enums
 enum Role {
   ADMIN
   STAFF

@@ -63,11 +63,18 @@ interface PropertyData {
   sellerType?: string | null;
   sellerName?: string | null;
   sellerImage?: string | null;
-  // Campos nuevos
+  
   latitude?: number | string | null;
   longitude?: number | string | null;
   lockboxCode?: string | null;
   availableDate?: Date | string | null; 
+
+    isForSale?: boolean;
+
+   isForRent?: boolean;
+   monthlyRent?: number | null;
+   securityDeposit?: number | null;
+
 }
 
 // --- HELPER COMPONENT: ACCORDION ---
@@ -111,8 +118,10 @@ const AccordionSection = ({
 
 export default function EditForm({ property }: { property: PropertyData }) {
   const [state, formAction, isPending] = useActionState(updateProperty, null);
-
-  // --- NUEVO: Cargar Script de Google ---
+    //seal & rental states
+    const [isForSale, setIsForSale] = useState<boolean>(property.isForSale ?? true);
+    const [isForRent, setIsForRent] = useState<boolean>(property.isForRent || false);
+  // ---  Cargar Script de Google ---
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script', // Debe coincidir con el ID de LocationPicker para evitar duplicados, o ser manejado globalmente
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -120,7 +129,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
   });
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-
+ 
   // --- STATUS STATE ---
   const [status, setStatus] = useState<string>(property.status);
 
@@ -436,28 +445,142 @@ export default function EditForm({ property }: { property: PropertyData }) {
         </AccordionSection>
 
         {/* 3. FINANCIALS */}
-        <AccordionSection title="Financial Data" icon="💰">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
-                  <input type="number" step="0.01" name="price" defaultValue={String(property.price)} required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
+        <AccordionSection title="Financial Data (Sale)" icon="💰">
+          <div className="space-y-6">
+              
+              {/* CHECKBOX VENTA */}
+              <div className="flex items-center">
+                <input
+                  id="isForSale"
+                  name="isForSale"
+                  type="checkbox"
+                  checked={isForSale} 
+                  onChange={(e) => setIsForSale(e.target.checked)} 
+                  className="h-5 w-5 rounded bg-gray-800 text-[#529e14] focus:ring-[#529e14] border-gray-600"
+                />
+                <label htmlFor="isForSale" className="ml-2 text-sm font-bold text-white uppercase">
+                  Enable Sale Option
+                </label>
               </div>
-              <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold leading-6 text-white uppercase">Down Payment ($)</label>
-                  <input type="number" step="0.01" name="downPayment" defaultValue={String(property.downPayment)} required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm" />
+
+              {isForSale && (
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
+                      <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            name="price" 
+                            defaultValue={String(property.price || 0)} 
+                            required={isForSale} 
+                            className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                          />
+                      </div>
+                      <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                Down Payment ($)
+                            </label>
+                            <select
+                                name="downPayment"
+                                defaultValue={String(property.downPayment || 0)}
+                                required={isForSale}
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                            >
+                                
+                                <option value="10000">$10,000</option>
+                                <option value="20000">$20,000</option>
+                                <option value="30000">$30,000</option>
+                                <option value="40000">$40,000</option>
+                                <option value="50000">$50,000</option>
+                            </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            name="interestRate" 
+                            defaultValue={String(property.interestRate || 10)} 
+                            required={isForSale} 
+                            className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                          />
+                      </div>
+                      <div className="sm:col-span-3">
+                          <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            name="taxes" 
+                            defaultValue={String(property.taxes || 0)} 
+                            className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                          />
+                      </div>
+                      <div className="sm:col-span-3">
+                          <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            name="insurance" 
+                            defaultValue={String(property.insurance || 0)} 
+                            className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                          />
+                      </div>
+                  </div>
+              )}
+          </div>
+        </AccordionSection>
+
+        {/* 3.5 RENTAL INFO (Solo si isForRent es true) */}
+        <AccordionSection title="Financial Data (Rent)" icon="🔑">
+          <div className="space-y-6">
+            
+            <div className="flex items-center">
+              <input
+                id="isForRent"
+                name="isForRent"
+                type="checkbox"
+                checked={isForRent} 
+                onChange={(e) => setIsForRent(e.target.checked)} 
+                className="h-5 w-5 rounded bg-gray-800 text-[#529e14] focus:ring-[#529e14] border-gray-600"
+              />
+              <label htmlFor="isForRent" className="ml-2 text-sm font-bold text-white uppercase">
+                Enable Rental / Lease Option
+              </label>
+            </div>
+
+            {isForRent && (
+              <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
+                
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-bold leading-6 text-white uppercase">
+                    Monthly Rent ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="monthlyRent"
+                    defaultValue={property.monthlyRent || ''}
+                    placeholder="0.00"
+                    className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-bold leading-6 text-white uppercase">
+                    Security Deposit ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="securityDeposit"
+                    defaultValue={property.securityDeposit || ''}
+                    placeholder="0.00"
+                    className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                  />
+                </div>
+
               </div>
-              <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
-                  <input type="number" step="0.01" name="interestRate" defaultValue={String(property.interestRate)} required className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
-              </div>
-              <div className="sm:col-span-3">
-                  <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
-                  <input type="number" step="0.01" name="taxes" defaultValue={String(property.taxes)} className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
-              </div>
-              <div className="sm:col-span-3">
-                  <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
-                  <input type="number" step="0.01" name="insurance" defaultValue={String(property.insurance)} className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" />
-              </div>
+            )}
           </div>
         </AccordionSection>
 

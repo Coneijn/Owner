@@ -20,14 +20,22 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
 
   const plainProperty = {
     ...property,
+
     price: property.price ? property.price.toNumber() : 0,
     downPayment: property.downPayment ? property.downPayment.toNumber() : 0,
     interestRate: property.interestRate ? property.interestRate.toNumber() : 0,
     taxes: property.taxes ? property.taxes.toNumber() : 0,
     insurance: property.insurance ? property.insurance.toNumber() : 0,
+
+    monthlyRent: property.monthlyRent ? property.monthlyRent.toNumber() : null,
+    securityDeposit: property.securityDeposit ? property.securityDeposit.toNumber() : null,
+
     createdAt: property.createdAt.toISOString(),
     updatedAt: property.updatedAt.toISOString(),
+    availableDate: property.availableDate ? property.availableDate.toISOString() : null,
+    
   };
+
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] py-10 font-sans text-gray-200">

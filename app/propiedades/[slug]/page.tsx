@@ -5,10 +5,11 @@ import Image from 'next/image';
 import { Metadata, ResolvingMetadata } from 'next';
 import Header from '@/app/components/Header'; 
 import PropertyGallery from '@/app/components/PropertyGallery';
-import MortgageCalculator from '@/app/components/MortgageCalculator';
 import VideoModal from '@/app/components/video-modal';
 import Script from 'next/script';
 import PropertyShare from '@/app/components/PropertyShare';
+// 1. IMPORTACIÓN NUEVA
+import PropertyFinancials from '@/app/components/PropertyFinancials';
 
 // --- COLORES CORPORATIVOS ---
 // Yellow: #f8ed1a | Green: #529e14 | Dark: #1a1a1a
@@ -41,14 +42,15 @@ const DICTIONARY = {
     interestedTitle: "¿TE INTERESA ESTA CASA?",
     interestedSub: "Agenda una visita hoy mismo o habla con nuestro asistente virtual.",
     btnSchedule: "AGENDAR RECORRIDO",
-    btnApply: "APLICAR AHORA", // <--- NUEVO
+    btnApply: "APLICAR AHORA",
     btnCall: "LLAMAR AHORA",
     location: "Ubicación",
     meetSeller: "CONOCE AL DUEÑO",
     sellerRole: "Vendedor",
     videoBtn: "VER VIDEO TOUR", 
     ownerTitle: "Dueño de la Propiedad", 
-    agentTitle: "Asesor de Ventas",    
+    agentTitle: "Asesor de Ventas",
+    perMonth: "/mes", // 2. NUEVO TEXTO
   },
   en: {
     back: "Back to catalog",
@@ -67,14 +69,15 @@ const DICTIONARY = {
     interestedTitle: "INTERESTED IN THIS HOME?",
     interestedSub: "Schedule a visit today or talk to our AI assistant.",
     btnSchedule: "SCHEDULE HOME TOUR",
-    btnApply: "APPLY NOW", // <--- NUEVO
+    btnApply: "APPLY NOW",
     btnCall: "CALL NOW",
     location: "Location",
     meetSeller: "MEET YOUR OWNER",
     sellerRole: "Seller",
     videoBtn: "WATCH VIDEO TOUR", 
     ownerTitle: "Property Owner", 
-    agentTitle: "Sales Agent",    
+    agentTitle: "Sales Agent", 
+    perMonth: "/mo", // 2. NUEVO TEXTO
   }
 };
 
@@ -123,14 +126,14 @@ export async function generateMetadata(
     ? (property.seoDescriptionEn || property.descriptionEn)
     : (property.seoDescriptionEs || property.descriptionEs);
 
-  const metaDescription = description.length > 160 ? description.substring(0, 157) + '...' : description;
+  const metaDescription = description?.length && description.length > 160 ? description.substring(0, 157) + '...' : description;
 
   return {
     title: `${title} | Dueño a Dueño`,
-    description: metaDescription,
+    description: metaDescription || '',
     openGraph: {
-      title: title,
-      description: metaDescription,
+      title: title || '',
+      description: metaDescription || '',
       images: [property.mainImage],
       locale: lang === 'es' ? 'es_MX' : 'en_US',
       type: 'website',
@@ -152,11 +155,39 @@ export default async function PropertyDetailPage(props: Props) {
     notFound();
   }
 
-  const price = property.price.toNumber();
-  const downPayment = property.downPayment.toNumber();
-  const interestRate = property.interestRate.toNumber();
-  const taxes = property.taxes.toNumber();
-  const insurance = property.insurance.toNumber();
+  // 3. CONVERSIÓN DE DATOS SEGURA
+  // Usamos el operador ?. y ?? para evitar errores si el campo es null
+  const price = property.price?.toNumber() ?? 0;
+  const downPayment = property.downPayment?.toNumber() ?? 0;
+  const interestRate = property.interestRate?.toNumber() ?? 0;
+  const taxes = property.taxes?.toNumber() ?? 0;
+  const insurance = property.insurance?.toNumber() ?? 0;
+  
+  // Datos de Renta
+  const monthlyRent = property.monthlyRent?.toNumber() ?? 0;
+  const securityDeposit = property.securityDeposit?.toNumber() ?? 0;
+
+  // Objeto preparado para el componente
+  const financialProps = {
+      price,
+      downPayment,
+      interestRate,
+      taxes,
+      insurance,
+      isForSale: property.isForSale ?? true, 
+      isForRent: property.isForRent ?? false,
+      monthlyRent,
+      securityDeposit,
+  };
+
+  // 4. LÓGICA DE PRECIO PRINCIPAL (HEADER)
+  // Si es Solo Renta, mostramos la renta mensual. Si es Venta o Ambos, mostramos precio total.
+  const displayPrice = (property.isForRent && !property.isForSale) 
+      ? monthlyRent 
+      : price;
+  
+  const priceSuffix = (property.isForRent && !property.isForSale) ? t.perMonth : '';
+
   const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
   const phoneHref = `tel:${property.phoneNumber || '9016-604-115'}`;
   
@@ -190,17 +221,20 @@ export default async function PropertyDetailPage(props: Props) {
                 </p>
             </div>
             <div className="text-left lg:text-right">
-                <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">{formatMoney(price)}</p>
+                {/* PRECIO ACTUALIZADO CON LÓGICA RENTA/VENTA */}
+                <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">
+                    {formatMoney(displayPrice)}{priceSuffix}
+                </p>
                 
                 {/* --- BOTÓN DE COMPARTIR Y ESTADO --- */}
                 <div className="mt-2 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
                     
                     <div className="shrink-0">
-                       <PropertyShare 
+                        <PropertyShare 
                           title={lang === 'en' ? property.titleEn : property.titleEs} 
                           slug={slug} 
                           lang={lang} 
-                       />
+                        />
                     </div>
 
                     {(() => {
@@ -252,7 +286,6 @@ export default async function PropertyDetailPage(props: Props) {
                     <PropertyGallery 
                         images={allImages} 
                         title={lang === 'en' ? property.titleEn : property.titleEs} 
-                        // AGREGADO: Pasamos la dirección completa para el Street View
                         address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
                     />
                 </div>
@@ -288,10 +321,10 @@ export default async function PropertyDetailPage(props: Props) {
                     </div>
                     {property.videoUrl && (
                       <div className="relative center z-20">
-                         <VideoModal 
+                          <VideoModal 
                            videoUrl={property.videoUrl} 
                            label={t.videoBtn} 
-                         />
+                          />
                       </div>
                     )}
                     {property.showSeller && (
@@ -354,17 +387,10 @@ export default async function PropertyDetailPage(props: Props) {
                 
                 <div className="sticky top-24 space-y-8">
                     
-                    {/* --- CALCULADORA --- */}
+                    {/* 5. CALCULADORA DINÁMICA (SALE/RENT/BOTH) */}
                     {property.status !== 'COMING_SOON' && (
-                        <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100">
-                             <MortgageCalculator 
-                                price={price}
-                                defaultDownPayment={downPayment}
-                                interestRate={interestRate}
-                                taxes={taxes}
-                                insurance={insurance}
-                                lang={lang}
-                            />
+                        <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100 bg-[#1a1a1a]">
+                             <PropertyFinancials property={financialProps} lang={lang} />
                         </div>
                     )}
 
@@ -388,7 +414,7 @@ export default async function PropertyDetailPage(props: Props) {
                                 📅 {t.btnSchedule}
                             </a>
 
-                            {/* 2. APLICAR AHORA (NUEVO BOTÓN) */}
+                            {/* 2. APLICAR AHORA */}
                             <Link 
                                 href={`/apply?lang=${lang}`}
                                 className="w-full bg-[#f8ed1a] hover:bg-[#e6db15] text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3"

@@ -73,7 +73,6 @@ function parseImageData(jsonString: unknown) {
   }
 }
 
-
 // Helper para procesar fechas vacías o inválidas
 function parseDate(dateString: unknown): Date | null {
   if (typeof dateString !== 'string' || !dateString) return null;
@@ -88,6 +87,13 @@ function parseFloatSafe(value: unknown): number | null {
   return isNaN(parsed) ? null : parsed;
 }
 
+// NUEVO HELPER: Para manejar Decimals opcionales (Precio, Renta, etc)
+// Si viene vacío "", devuelve null. Si trae valor, devuelve el string para Prisma.
+function parseDecimalOrNull(value: unknown): string | null {
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    return value;
+}
+
 // --- CREATE ---
 export async function createProperty(prevState: any, formData: FormData) {
   const rawFormData = Object.fromEntries(formData.entries());
@@ -97,7 +103,7 @@ export async function createProperty(prevState: any, formData: FormData) {
   const slugInput = rawFormData.slug as string;
   const sanitizedSlug = slugInput.trim().toLowerCase().replace(/\s+/g, '-');
 
-  // Procesamiento de imágenes (Igual que antes)
+  // Procesamiento de imágenes
   if (mainImageObj && mainImageObj.url) {
     imagesToCreate.push({
       url: mainImageObj.url,
@@ -133,9 +139,12 @@ export async function createProperty(prevState: any, formData: FormData) {
         status: rawFormData.status as PropertyStatus, 
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
-        calendarLink: rawFormData.calendarLink as string,
         
-        // --- NUEVO: Fecha disponible ---
+        // --- NUEVOS FLAGS ---
+        isForSale: rawFormData.isForSale === 'on', // Checkbox de venta
+        isForRent: rawFormData.isForRent === 'on', // Checkbox de renta
+
+        calendarLink: rawFormData.calendarLink as string,
         availableDate: parseDate(rawFormData.availableDate),
 
         // SEO Fields
@@ -150,12 +159,16 @@ export async function createProperty(prevState: any, formData: FormData) {
         descriptionEn: rawFormData.descriptionEn as string,
         descriptionEs: rawFormData.descriptionEs as string,
         
-        // Financiero 
-        price: rawFormData.price as string, 
-        downPayment: rawFormData.downPayment as string,
-        interestRate: rawFormData.interestRate as string,
-        taxes: rawFormData.taxes as string,
-        insurance: rawFormData.insurance as string,
+        // --- Financiero VENTA (Ahora opcionales con parseDecimalOrNull) ---
+        price: parseDecimalOrNull(rawFormData.price), 
+        downPayment: parseDecimalOrNull(rawFormData.downPayment),
+        interestRate: parseDecimalOrNull(rawFormData.interestRate),
+        taxes: parseDecimalOrNull(rawFormData.taxes),
+        insurance: parseDecimalOrNull(rawFormData.insurance),
+
+        // --- Financiero RENTA (Nuevos) ---
+        monthlyRent: parseDecimalOrNull(rawFormData.monthlyRent),
+        securityDeposit: parseDecimalOrNull(rawFormData.securityDeposit),
         
         // Ubicación y Contacto
         address: rawFormData.address as string,
@@ -164,7 +177,7 @@ export async function createProperty(prevState: any, formData: FormData) {
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
         
-        // --- NUEVO: Coordenadas y Acceso ---
+        // Coordenadas y Acceso
         latitude: parseFloatSafe(rawFormData.latitude),
         longitude: parseFloatSafe(rawFormData.longitude),
         lockboxCode: rawFormData.lockboxCode as string,
@@ -214,7 +227,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   const imagesToCreate = [];
 
-  // Procesamiento de imágenes (Igual que antes)
+  // Procesamiento de imágenes
   if (mainImageObj && mainImageObj.url) {
     imagesToCreate.push({
       url: mainImageObj.url,
@@ -251,9 +264,12 @@ export async function updateProperty(prevState: any, formData: FormData) {
         status: rawFormData.status as PropertyStatus,
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
-        calendarLink: rawFormData.calendarLink as string,
         
-        // --- NUEVO: Fecha disponible ---
+        // --- NUEVOS FLAGS ---
+        isForSale: rawFormData.isForSale === 'on',
+        isForRent: rawFormData.isForRent === 'on',
+
+        calendarLink: rawFormData.calendarLink as string,
         availableDate: parseDate(rawFormData.availableDate),
         
         // SEO Fields
@@ -268,12 +284,16 @@ export async function updateProperty(prevState: any, formData: FormData) {
         descriptionEn: rawFormData.descriptionEn as string,
         descriptionEs: rawFormData.descriptionEs as string,
         
-        // Financiero
-        price: rawFormData.price as string,
-        downPayment: rawFormData.downPayment as string,
-        interestRate: rawFormData.interestRate as string,
-        taxes: rawFormData.taxes as string,
-        insurance: rawFormData.insurance as string,
+        // --- Financiero VENTA ---
+        price: parseDecimalOrNull(rawFormData.price),
+        downPayment: parseDecimalOrNull(rawFormData.downPayment),
+        interestRate: parseDecimalOrNull(rawFormData.interestRate),
+        taxes: parseDecimalOrNull(rawFormData.taxes),
+        insurance: parseDecimalOrNull(rawFormData.insurance),
+
+        // --- Financiero RENTA ---
+        monthlyRent: parseDecimalOrNull(rawFormData.monthlyRent),
+        securityDeposit: parseDecimalOrNull(rawFormData.securityDeposit),
         
         // Ubicación
         address: rawFormData.address as string,
@@ -282,7 +302,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
         
-        // --- NUEVO: Coordenadas y Acceso ---
+        // Coordenadas y Acceso
         latitude: parseFloatSafe(rawFormData.latitude),
         longitude: parseFloatSafe(rawFormData.longitude),
         lockboxCode: rawFormData.lockboxCode as string,

@@ -74,6 +74,10 @@ export default function NewPropertyPage() {
     const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
     const [sellerImage, setSellerImage] = useState<ImageFile[]>([]);
     const [showSeller, setShowSeller] = useState<boolean>(false);
+    
+    // rent or sale
+    const[isForRent, setIsForRent] = useState<boolean>(false);
+    const[isForSale, setIsForSale] = useState<boolean>(true);
 
     // 1) Estado para controlar el STATUS
     const [status, setStatus] = useState<string>('AVAILABLE');
@@ -149,6 +153,13 @@ export default function NewPropertyPage() {
     }, [price]);
 
     const handleFormSubmit = (formData: FormData) => {
+        if (!isForSale) {
+             formData.set('price', '0');
+             formData.set('downPayment', '0');
+             formData.set('interestRate', '0');
+             formData.set('taxes', '0');
+             formData.set('insurance', '0');
+        }
         if (!isStrict) {
             const financialFields = ['price', 'downPayment', 'interestRate', 'taxes'];
             financialFields.forEach((field) => {
@@ -373,81 +384,155 @@ export default function NewPropertyPage() {
           </AccordionSection>
 
           {/* 3. FINANCIAL DATA */}
-          <AccordionSection title="Financial Data" icon="💰">
-            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+          <AccordionSection title="Financial Data (Sale)" icon="💰">
+            <div className="space-y-6">
                 
-                <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold leading-6 text-white uppercase">
-                        Total Price ($) {isStrict && <span className="text-red-500">*</span>}
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.01" 
-                        name="price" 
-                        onChange={(e) => setPrice(e.target.value)}
-                        required={isStrict}
-                        min={isStrict ? "1" : "0"} 
-                        placeholder={!isStrict ? "0.00" : ""}
-                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                {/* CHECKBOX PARA HABILITAR VENTA */}
+                <div className="flex items-center">
+                    <input
+                      id="isForSale"
+                      name="isForSale"
+                      type="checkbox"
+                      checked={isForSale}
+                      onChange={(e) => setIsForSale(e.target.checked)}
+                      className="h-5 w-5 rounded bg-gray-800 text-[#529e14] focus:ring-[#529e14] border-gray-600"
                     />
+                    <label htmlFor="isForSale" className="ml-2 text-sm font-bold text-white uppercase">
+                      Enable Sale Option
+                    </label>
                 </div>
 
-                <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold leading-6 text-white uppercase">
-                        Down Payment {isStrict && <span className="text-red-500">*</span>}
-                    </label>
-                    <select 
-                        name="downPayment" 
-                        required={isStrict}
-                        defaultValue={isStrict ? "10000" : "0"}
-                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm"
-                    >
-                        <option value="10000">$10,000</option>
-                        <option value="20000">$20,000</option>
-                        <option value="30000">$30,000</option>
-                        <option value="40000">$40,000</option>
-                        <option value="50000">$50,000</option>
-                    </select>
-                </div>
+                {/* Mostramos los inputs SOLO si isForSale es true */}
+                {isForSale && (
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
+                        
+                        <div className="sm:col-span-2">
+                            <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                Total Price ($) {isStrict && <span className="text-red-500">*</span>}
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                name="price" 
+                                onChange={(e) => setPrice(e.target.value)}
+                                // IMPORTANTE: Solo es required si Strict Mode está activo Y la venta está habilitada
+                                required={isStrict && isForSale}
+                                min={isStrict ? "1" : "0"} 
+                                placeholder={!isStrict ? "0.00" : ""}
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                            />
+                        </div>
 
-                <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold leading-6 text-white uppercase">
-                        Interest Rate (%) {isStrict && <span className="text-red-500">*</span>}
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.01" 
-                        name="interestRate" 
-                        defaultValue="10.0" 
-                        required={isStrict} 
-                        min={isStrict ? "0.01" : "0"}
-                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
-                    />
-                </div>
-                
-                <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
-                        Annual Taxes ($) {isStrict && <span className="text-red-500">*</span>}
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.01" 
-                        name="taxes" 
-                        required={isStrict}
-                        min={isStrict ? "1" : "0"}
-                        placeholder={!isStrict ? "0.00" : ""}
-                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
-                    />
-                </div>
-                
-                <input type="hidden" name="insurance" value={calculatedInsurance} />
-                <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold leading-6 text-gray-500 uppercase">Estimated Annual Insurance</label>
-                    <div className="mt-2 block w-full py-2 px-3 rounded bg-gray-800/50 border border-gray-700 text-gray-400 sm:text-sm cursor-not-allowed">
-                        ${calculatedInsurance.toLocaleString()} (Auto-calculated)
+                        <div className="sm:col-span-2">
+                            <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                Down Payment {isStrict && <span className="text-red-500">*</span>}
+                            </label>
+                            <select 
+                                name="downPayment" 
+                                required={isStrict && isForSale}
+                                defaultValue={isStrict ? "10000" : "0"}
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#f8ed1a] sm:text-sm"
+                            >
+                                
+                                <option value="10000">$10,000</option>
+                                <option value="20000">$20,000</option>
+                                <option value="30000">$30,000</option>
+                                <option value="40000">$40,000</option>
+                                <option value="50000">$50,000</option>
+                            </select>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                            <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                Interest Rate (%) {isStrict && <span className="text-red-500">*</span>}
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                name="interestRate" 
+                                defaultValue="10.0" 
+                                required={isStrict && isForSale} 
+                                min={isStrict ? "0.01" : "0"}
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                            />
+                        </div>
+                        
+                        <div className="sm:col-span-3">
+                            <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
+                                Annual Taxes ($) {isStrict && <span className="text-red-500">*</span>}
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                name="taxes" 
+                                required={isStrict && isForSale}
+                                min={isStrict ? "1" : "0"}
+                                placeholder={!isStrict ? "0.00" : ""}
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                            />
+                        </div>
+                        
+                        <input type="hidden" name="insurance" value={calculatedInsurance} />
+                        <div className="sm:col-span-3">
+                            <label className="block text-xs font-bold leading-6 text-gray-500 uppercase">Estimated Annual Insurance</label>
+                            <div className="mt-2 block w-full py-2 px-3 rounded bg-gray-800/50 border border-gray-700 text-gray-400 sm:text-sm cursor-not-allowed">
+                                ${calculatedInsurance.toLocaleString()} (Auto-calculated)
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
+            </div>
+          </AccordionSection>
 
+          {/* 3.5 RENTAL DATA (Solo si es para renta) */}
+                    <AccordionSection title="Financial Data (Rent)" icon="🔑">
+            <div className="space-y-6">
+              
+              <div className="flex items-center">
+                <input
+                  id="isForRent"
+                  name="isForRent"
+                  type="checkbox"
+                  checked={isForRent}
+                  onChange={(e) => setIsForRent(e.target.checked)}
+                  className="h-5 w-5 rounded bg-gray-800 text-[#529e14] focus:ring-[#529e14] border-gray-600"
+                />
+                <label htmlFor="isForRent" className="ml-2 text-sm font-bold text-white uppercase">
+                  Enable Rental / Lease Option
+                </label>
+              </div>
+
+              {isForRent && (
+                <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
+                  
+                  <div className="sm:col-span-3">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">
+                      Monthly Rent ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="monthlyRent"
+                      placeholder="0.00"
+                      className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-xs font-bold leading-6 text-white uppercase">
+                      Security Deposit ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="securityDeposit"
+                      placeholder="0.00"
+                      className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                    />
+                  </div>
+
+                </div>
+              )}
             </div>
           </AccordionSection>
 
