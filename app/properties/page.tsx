@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import Header from '@/app/components/Header'; // <--- Importamos el Header
+import Header from '@/app/components/Header'; 
 
 // --- CONSTANTES DE FINANCIAMIENTO ---
 const DEFAULT_TERM_YEARS = 30;
@@ -73,6 +73,9 @@ const calculateEstimatedPayment = (
   interestRate: number
 ) => {
   const loanAmount = price - downPayment;
+  // Safety check por si los valores son 0
+  if (loanAmount <= 0) return SERVICE_FEE + (annualTaxes/12) + (annualInsurance/12);
+
   const safeInterest = interestRate || 0;
   const monthlyRate = safeInterest / 100 / 12;
   const numberOfPayments = DEFAULT_TERM_YEARS * 12;
@@ -103,8 +106,6 @@ export default async function CatalogPage(props: {
   }>;
 }) {
   const searchParams = await props.searchParams;
-  // const session = await auth(); // No se usa en el renderizado público actual
-
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
 
@@ -139,18 +140,20 @@ export default async function CatalogPage(props: {
     include: { images: true } 
   });
 
-  // --- 3. CONVERSIÓN DE DATOS ---
+  // --- 3. CONVERSIÓN DE DATOS (CORREGIDA) ---
   const properties = rawProperties.map(p => {
     const mainImg = p.images.find(img => img.isMain)?.url || p.images[0]?.url || p.mainImage || '/placeholder.png';
 
     return {
         ...p,
         mainImageDisplay: mainImg,
-        price: p.price.toNumber(),
-        downPayment: p.downPayment.toNumber(),
-        interestRate: p.interestRate.toNumber(),
-        taxes: p.taxes ? p.taxes.toNumber() : 0,
-        insurance: p.insurance ? p.insurance.toNumber() : 0,
+        
+        // --- AQUÍ ESTÁ EL ARREGLO DE SEGURIDAD ---
+        price: p.price?.toNumber() ?? 0,
+        downPayment: p.downPayment?.toNumber() ?? 0,
+        interestRate: p.interestRate?.toNumber() ?? 0,
+        taxes: p.taxes?.toNumber() ?? 0,
+        insurance: p.insurance?.toNumber() ?? 0,
     };
   });
 
@@ -166,7 +169,7 @@ export default async function CatalogPage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
       
-      {/* --- HEADER IMPLEMENTADO --- */}
+      {/* --- HEADER --- */}
       <Header lang={lang} activePage="properties" />
 
       {/* --- LAYOUT PRINCIPAL --- */}
@@ -262,7 +265,6 @@ export default async function CatalogPage(props: {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {properties.map((property) => {
-                        // --- CÁLCULO DE PAGO UNIFICADO ---
                         const estimatedPayment = calculateEstimatedPayment(
                             property.price,
                             property.downPayment,
@@ -271,7 +273,6 @@ export default async function CatalogPage(props: {
                             property.interestRate
                         );
 
-                        // Lógica de Estado para la etiqueta
                         const isComingSoon = property.status === 'COMING_SOON';
                         const statusLabel = isComingSoon ? t.status.comingSoon : t.status.available;
                         const statusColor = isComingSoon ? 'bg-blue-600 text-white' : 'bg-[#529e14] text-white';
@@ -288,7 +289,7 @@ export default async function CatalogPage(props: {
                                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                                     />
                                     
-                                    {/* ETIQUETA DE ESTADO DINÁMICA */}
+                                    {/* Etiqueta */}
                                     <div className={`absolute top-4 left-4 text-xs font-black px-3 py-1 rounded uppercase shadow-md ${statusColor}`}>
                                         {statusLabel}
                                     </div>
@@ -311,17 +312,17 @@ export default async function CatalogPage(props: {
                                         {/* Specs */}
                                         <div className="flex justify-between items-center border-b border-gray-700 pb-4 mb-4">
                                             <div className="flex items-center gap-2 text-gray-300">
-                                                <span className="text-[#f8ed1a]">🛏</span>
+                                                <span className="text-[#f8ed1a]">�</span>
                                                 <span className="font-bold">{property.bedrooms}</span> <span className="text-xs uppercase">Beds</span>
                                             </div>
                                             <div className="h-4 w-px bg-gray-700"></div>
                                             <div className="flex items-center gap-2 text-gray-300">
-                                                <span className="text-[#f8ed1a]">🚿</span>
+                                                <span className="text-[#f8ed1a]">�</span>
                                                 <span className="font-bold">{property.bathrooms}</span> <span className="text-xs uppercase">Baths</span>
                                             </div>
                                             <div className="h-4 w-px bg-gray-700"></div>
                                             <div className="flex items-center gap-2 text-gray-300">
-                                                <span className="text-[#f8ed1a]">📐</span>
+                                                <span className="text-[#f8ed1a]">�</span>
                                                 <span className="font-bold">{property.sqft}</span> <span className="text-xs uppercase">Sqft</span>
                                             </div>
                                         </div>
@@ -342,7 +343,7 @@ export default async function CatalogPage(props: {
                                         </div>
                                     </div>
 
-                                    {/* Link Corregido */}
+                                    {/* Link */}
                                     <Link 
                                         href={`/propiedades/${property.slug}?lang=${lang}`} 
                                         className="block w-full text-center bg-white text-black font-black uppercase py-3 rounded hover:bg-[#f8ed1a] transition-colors"

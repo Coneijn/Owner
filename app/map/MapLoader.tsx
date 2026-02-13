@@ -2,17 +2,16 @@
 
 import dynamic from 'next/dynamic';
 
-// Import dinámico del cliente
 const MapClient = dynamic(() => import('./MapClient'), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full flex items-center justify-center bg-[#0a0f1c]">
-      <p className="text-[#f8ed1a] font-bold animate-pulse uppercase tracking-widest text-xs">Loading Map...</p>
+    <div className="h-full w-full flex items-center justify-center bg-white">
+      <p className="text-gray-400 font-bold animate-pulse uppercase tracking-widest text-xs">Loading Map...</p>
     </div>
   )
 });
 
-// 1. Definimos la interfaz de la Propiedad
+// 1. EXTENDEMOS LA INTERFAZ CON DATOS FINANCIEROS
 interface PropertyProps {
   id: string;
   title: string;
@@ -25,29 +24,37 @@ interface PropertyProps {
   beds: number;
   baths: number;
   sqft: number;
+  // Nuevos campos necesarios para el cálculo
+  downPayment: number;
+  interestRate: number;
+  taxes: number;
+  insurance: number;
+  monthlyRent: number;
+  securityDeposit: number;
 }
 
-// 2. Actualizamos las props del Loader para incluir onMarkerClick
 interface MapLoaderProps {
   properties: PropertyProps[];
   lang: string;
-  highlightedProperty?: PropertyProps | null;
-  // AGREGADO: La función para manejar el click
-  onMarkerClick?: (property: PropertyProps) => void; 
+  highlightedProperty?: any | null; // Usamos any temporalmente o PropertyProps para flexibilidad
+  onMarkerClick?: (property: any) => void; 
+  searchType: string; // 2. NUEVA PROP
 }
 
 export default function MapLoader({ 
   properties, 
   lang, 
   highlightedProperty, 
-  onMarkerClick // Recibimos la función
+  onMarkerClick,
+  searchType // Recibimos el tipo
 }: MapLoaderProps) {
   return (
     <MapClient 
       properties={properties} 
       lang={lang} 
       highlightedProperty={highlightedProperty} 
-      onMarkerClick={onMarkerClick} // Pasamos la función al cliente real
+      onMarkerClick={onMarkerClick} 
+      searchType={searchType} // Lo pasamos al cliente
     />
   );
 }

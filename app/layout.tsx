@@ -16,14 +16,13 @@ const geistMono = Geist_Mono({
 const baseUrl = "https://ownertodueno.com";
 
 export const metadata: Metadata = {
+  // ... (tu metadata existente se mantiene igual)
   metadataBase: new URL(baseUrl), 
-  
   title: {
     default: "Dueño a Dueño | Compra y Venta Directa en Memphis",
     template: "%s | Dueño a Dueño", 
   },
   description: "Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.",
-  
   robots: {
     index: true, 
     follow: true,
@@ -35,7 +34,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-
   alternates: {
     canonical: '/', 
     languages: {
@@ -55,7 +53,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* --- 1. META PIXEL SCRIPT (Javascript) --- */}
+        {/* --- 1. META PIXEL SCRIPT --- */}
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s)
@@ -71,7 +69,7 @@ export default function RootLayout({
           `}
         </Script>
 
-        {/* --- 2. GOOGLE ADS TAG (Ya existente) --- */}
+        {/* --- 2. GOOGLE ADS TAG --- */}
         <Script 
           src="https://www.googletagmanager.com/gtag/js?id=AW-17843139208"
           strategy="afterInteractive"
@@ -86,7 +84,7 @@ export default function RootLayout({
           `}
         </Script>
 
-        {/* --- 3. META PIXEL NOSCRIPT (Imagen Fallback) --- */}
+        {/* --- 3. META PIXEL NOSCRIPT --- */}
         <noscript>
           <img 
             height="1" 
@@ -98,6 +96,15 @@ export default function RootLayout({
         </noscript>
 
         {children}
+
+        {/* --- 4. NUEVO: LEADCONNECTOR CHAT WIDGET (GLOBAL) --- */}
+        <Script
+          src="https://widgets.leadconnectorhq.com/loader.js"
+          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+          data-widget-id="6982bc477cd1e65428cc69fe"
+          strategy="afterInteractive"
+        />
+
       </body>
     </html>
   );

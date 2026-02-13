@@ -437,12 +437,6 @@ export default async function PropertyDetailPage(props: Props) {
       </main>
 
       <footer className="bg-[#1a1a1a] text-gray-400 py-12 mt-20 border-t border-gray-800">
-        <Script
-          src="https://widgets.leadconnectorhq.com/loader.js"
-          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-          data-widget-id="6982bc477cd1e65428cc69fe"
-          strategy="afterInteractive"
-        />
         <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-sm font-medium">© 2026 Dueño a Dueño.</p>
         </div>

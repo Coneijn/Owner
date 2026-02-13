@@ -8,18 +8,33 @@ import { redirect } from 'next/navigation';
 export async function createPost(formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
   
-  // Generar slug simple si no viene uno
   const slug = (rawData.slug as string) || (rawData.titleEn as string).toLowerCase().replace(/\s+/g, '-');
 
   await prisma.post.create({
     data: {
       slug,
       isPublished: rawData.isPublished === 'on',
+      
+      // Main Content
       titleEn: rawData.titleEn as string,
       titleEs: rawData.titleEs as string,
       contentEn: rawData.contentEn as string,
       contentEs: rawData.contentEs as string,
       mainImage: rawData.mainImage as string,
+
+      // SEO & Metadata (New Fields)
+      seoTitleEn: rawData.seoTitleEn as string,
+      seoDescEn: rawData.seoDescEn as string,
+      focusKeywordEn: rawData.focusKeywordEn as string,
+      seoTitleEs: rawData.seoTitleEs as string,
+      seoDescEs: rawData.seoDescEs as string,
+      focusKeywordEs: rawData.focusKeywordEs as string,
+
+      // Author (New Fields)
+      authorName: rawData.authorName as string,
+      authorImage: rawData.authorImage as string,
+      authorBioEn: rawData.authorBioEn as string,
+      authorBioEs: rawData.authorBioEs as string,
     },
   });
 
@@ -37,18 +52,35 @@ export async function updatePost(formData: FormData) {
     data: {
       slug: rawData.slug as string,
       isPublished: rawData.isPublished === 'on',
+      
+      // Main Content
       titleEn: rawData.titleEn as string,
       titleEs: rawData.titleEs as string,
       contentEn: rawData.contentEn as string,
       contentEs: rawData.contentEs as string,
       mainImage: rawData.mainImage as string,
+
+      // SEO & Metadata
+      seoTitleEn: rawData.seoTitleEn as string,
+      seoDescEn: rawData.seoDescEn as string,
+      focusKeywordEn: rawData.focusKeywordEn as string,
+      seoTitleEs: rawData.seoTitleEs as string,
+      seoDescEs: rawData.seoDescEs as string,
+      focusKeywordEs: rawData.focusKeywordEs as string,
+
+      // Author
+      authorName: rawData.authorName as string,
+      authorImage: rawData.authorImage as string,
+      authorBioEn: rawData.authorBioEn as string,
+      authorBioEs: rawData.authorBioEs as string,
     },
   });
 
   revalidatePath('/admin/blog');
-  revalidatePath(`/blog/${rawData.slug}`);
+  revalidatePath(`/blog/${rawData.slug}`); // Importante para revalidar la página del post individual
   redirect('/admin/blog');
 }
+
 
 export async function deletePost(formData: FormData) {
   const id = formData.get('id') as string;
