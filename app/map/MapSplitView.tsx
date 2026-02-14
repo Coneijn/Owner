@@ -8,6 +8,8 @@ import FloatingSearch from './ui/FloatingSearch';
 import FilterModal from './ui/FilterModal';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils'; 
 
+import MapFloatingButtons from './ui/MapFloatingButtons';
+
 // 1. CORRECCIÓN: Usamos 'texts.available' en lugar de 'texts.forSale'
 const getStatusBadge = (status: string, texts: any) => {
     switch (status) {
@@ -203,6 +205,9 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
       </div>
 
       <FilterModal isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
+
+        <MapFloatingButtons lang={lang} />
+
     </div>
   );
 }

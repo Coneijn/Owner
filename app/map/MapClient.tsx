@@ -226,8 +226,13 @@ export default function MapClient({
             }} 
             options={{
                 disableDefaultUI: false,
-                zoomControl: false,
-                streetViewControl: false,
+                // Controles personalizados zoom
+                zoomControl: true,
+                zoomControlOptions: {position:6},
+                //streetViewControl,
+                streetViewControl: true,
+                streetViewControlOptions: { position: 6 },
+                
                 mapTypeControl: false,
                 fullscreenControl: false,
                 // APPLY WHITE STYLE

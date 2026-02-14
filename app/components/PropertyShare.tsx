@@ -11,11 +11,11 @@ type Props = {
 export default function PropertyShare({ title, slug, lang }: Props) {
   const [copied, setCopied] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Eliminamos el estado 'isExpanded' porque ya no lo necesitamos
 
   // Textos
   const t = {
-    shareBtn: lang === 'en' ? 'Share' : 'Compartir',
     copiedLabel: lang === 'en' ? 'Copied!' : '¡Copiado!',
     instaHelper: lang === 'en' ? 'Link copied. Paste it on Instagram!' : 'Enlace copiado. ¡Pégalo en Instagram!',
   };
@@ -46,48 +46,10 @@ export default function PropertyShare({ title, slug, lang }: Props) {
 
   if (!currentUrl) return null;
 
-  // --- ESTADO 1: BOTÓN "COMPARTIR" (ESTILO NEGRO -> AMARILLO) ---
-  if (!isExpanded) {
-    return (
-      <button
-        onClick={() => setIsExpanded(true)}
-        className="
-            flex items-center gap-2 
-            px-6 py-2 
-            rounded-full 
-            font-black uppercase tracking-wide text-sm
-            transition-all shadow-sm
-            border-2 border-[#529e14]
-            
-            /* ESTADO INICIAL: Negro con letras blancas */
-            bg-[#1a1a1a] 
-            text-white
-            
-            /* HOVER: Amarillo con letras negras */
-            hover:bg-[#f8ed1a] 
-            hover:text-[#1a1a1a]
-        "
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-        </svg>
-        {t.shareBtn}
-      </button>
-    );
-  }
-
-  // --- ESTADO 2: BARRA DE ICONOS (REVELADO) ---
+  // Renderizamos DIRECTAMENTE la barra de iconos
   return (
-    <div className="flex items-center gap-3 bg-white/5 p-1 pr-3 rounded-full border border-gray-200/20 backdrop-blur-sm animate-in fade-in slide-in-from-left-4 duration-300">
+    <div className="flex items-center gap-3">
       
-      {/* Botón X para cerrar */}
-      <button 
-        onClick={() => setIsExpanded(false)}
-        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
-      >
-        ✕
-      </button>
-
       {/* 1. Facebook */}
       <a
         href={shareLinks.facebook}
