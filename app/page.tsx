@@ -28,7 +28,7 @@ export default async function MapPage(props: {
         viewList: "Ver Lista"
       },
       status: {
-        available: "DISPONIBLE", // 1. CAMBIO: Texto actualizado
+        available: "DISPONIBLE",
         comingSoon: "PRÓXIMAMENTE",
         sold: "VENDIDO"
       },
@@ -43,7 +43,6 @@ export default async function MapPage(props: {
         buy: "COMPRAR",
         rent: "RENTAR"
       },
-      // 2. NUEVO: Etiquetas de especificaciones
       specs: {
         beds: "Hab",
         baths: "Baños",
@@ -57,7 +56,7 @@ export default async function MapPage(props: {
         viewList: "View List"
       },
       status: {
-        available: "AVAILABLE", // 1. CAMBIO
+        available: "AVAILABLE",
         comingSoon: "COMING SOON",
         sold: "SOLD"
       },
@@ -72,7 +71,6 @@ export default async function MapPage(props: {
         buy: "BUY",
         rent: "RENT"
       },
-      // 2. NUEVO
       specs: {
         beds: "Beds",
         baths: "Baths",
@@ -83,7 +81,7 @@ export default async function MapPage(props: {
 
   const t = DICTIONARY[lang];
 
-  // ... (El resto de la lógica de filtros y consulta a la DB se mantiene IGUAL)
+  // --- LÓGICA DE FILTROS ---
   const queryText = searchParams?.query || '';
   const minPrice = searchParams?.minPrice ? Number(searchParams.minPrice) : undefined;
   const maxPrice = searchParams?.maxPrice ? Number(searchParams.maxPrice) : undefined;
@@ -96,7 +94,9 @@ export default async function MapPage(props: {
         { status: 'AVAILABLE' },
         { status: 'COMING_SOON' }
     ],
+    // Filtro dinámico según tab (Renta o Venta)
     ...(searchType === 'rent' ? { isForRent: true } : { isForSale: true }),
+    
     ...(queryText && {
         AND: [{
             OR: [
@@ -107,16 +107,24 @@ export default async function MapPage(props: {
         }]
     }),
     ...((minPrice !== undefined || maxPrice !== undefined) && {
-        price: {
-            ...(minPrice !== undefined && { gte: minPrice }), 
-            ...(maxPrice !== undefined && { lte: maxPrice }),
-        }
+        // Ajustamos para filtrar sobre el precio correcto (Renta vs Venta)
+        ...(searchType === 'rent' 
+            ? { monthlyRent: {
+                  ...(minPrice !== undefined && { gte: minPrice }), 
+                  ...(maxPrice !== undefined && { lte: maxPrice }),
+              }}
+            : { price: {
+                  ...(minPrice !== undefined && { gte: minPrice }), 
+                  ...(maxPrice !== undefined && { lte: maxPrice }),
+              }}
+        )
     }),
     ...(minBeds !== undefined && { bedrooms: { gte: minBeds } }),
     ...(minBaths !== undefined && { bathrooms: { gte: minBaths } }),
     ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
   };
 
+  // --- CONSULTA A BASE DE DATOS ---
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
@@ -141,11 +149,23 @@ export default async function MapPage(props: {
         bathrooms: true,
         sqft: true,
         status: true,
+        
+        // Campos de Renta
+        isForRent: true,
         monthlyRent: true,
         securityDeposit: true, 
+
+        // --- CAMPOS AGREGADOS (Fix: Fotos Seller y Badges) ---
+        features: true,    // Necesario para el badge amarillo
+        sellerName: true,  // Necesario para info del seller
+        sellerImage: true, // Necesario para la FOTO
+        sellerType: true,
+        showSeller: true,
+        // ----------------------------------------------------
     }
   });
 
+  // --- MAPEO DE DATOS ---
   const properties = rawProperties.map(p => ({
     id: p.id,
     title: lang === 'en' ? p.titleEn : p.titleEs,
@@ -167,7 +187,15 @@ export default async function MapPage(props: {
     beds: p.bedrooms,
     baths: p.bathrooms,
     sqft: p.sqft,
-    status: p.status
+    status: p.status,
+
+    // --- CAMPOS NUEVOS ---
+    isForRent: p.isForRent, // Importante para lógica de UI
+    features: p.features,
+    sellerName: p.sellerName,
+    sellerImage: p.sellerImage,
+    sellerType: p.sellerType,
+    showSeller: p.showSeller,
   }));
 
   return (

@@ -69,15 +69,14 @@ interface PropertyData {
   lockboxCode?: string | null;
   availableDate?: Date | string | null; 
 
-    isForSale?: boolean;
+   isForSale?: boolean;
 
    isForRent?: boolean;
    monthlyRent?: number | null;
    securityDeposit?: number | null;
-
 }
 
-// --- HELPER COMPONENT: ACCORDION ---
+// --- HELPER COMPONENT: ACCORDION (CORREGIDO) ---
 const AccordionSection = ({ 
   title, 
   children, 
@@ -107,23 +106,28 @@ const AccordionSection = ({
         </span>
       </button>
       
-      {isOpen && (
-        <div className="p-6 border-t border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
-          {children}
-        </div>
-      )}
+      {/* CORRECCIÓN AQUI: 
+         Usamos una clase CSS condicional ('block' vs 'hidden') en lugar de 
+         renderizado condicional ({isOpen && ...}). 
+         Esto mantiene los inputs en el DOM para que FormData los capture.
+      */}
+      <div className={isOpen ? 'block p-6 border-t border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200' : 'hidden'}>
+        {children}
+      </div>
     </div>
   );
 };
 
 export default function EditForm({ property }: { property: PropertyData }) {
   const [state, formAction, isPending] = useActionState(updateProperty, null);
+    
     //seal & rental states
     const [isForSale, setIsForSale] = useState<boolean>(property.isForSale ?? true);
     const [isForRent, setIsForRent] = useState<boolean>(property.isForRent || false);
+
   // ---  Cargar Script de Google ---
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script', // Debe coincidir con el ID de LocationPicker para evitar duplicados, o ser manejado globalmente
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries: libraries
   });
@@ -293,6 +297,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
                   </select>
               </div>
 
+              {/* Status Conditional: Este input sí queremos que desaparezca si no es COMING_SOON, o podemos dejarlo oculto */}
               {status === 'COMING_SOON' && (
                 <div className="sm:col-span-2 animate-in fade-in slide-in-from-top-2">
                     <label className="block text-xs font-bold leading-6 text-blue-400 uppercase">Available Date</label>
@@ -463,6 +468,11 @@ export default function EditForm({ property }: { property: PropertyData }) {
                 </label>
               </div>
 
+              {/* NOTA: Aquí 'isForSale' es una decisión lógica de negocio. 
+                 Si el usuario desmarca 'isForSale', es correcto que los inputs 
+                 desaparezcan y no se envíen (o se envíen vacíos).
+                 Mantenemos esto condicional porque es funcional, no solo visual.
+              */}
               {isForSale && (
                   <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
                       <div className="sm:col-span-2">

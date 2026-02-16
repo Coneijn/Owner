@@ -14,7 +14,7 @@ const formatMoney = (amount: number | unknown) => {
 };
 
 // Componente para cada Sección Colapsable
-const PropertySection = ({ title, items, icon, colorClass, badgeColor }: any) => {
+const PropertySection = ({ title, items, icon, colorClass }: any) => {
   const [isOpen, setIsOpen] = useState(true); // Por defecto abierto
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -34,7 +34,7 @@ const PropertySection = ({ title, items, icon, colorClass, badgeColor }: any) =>
 
   return (
     <div className="mb-6 bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-      {/* HEADER DE LA SECCIÓN (Click para colapsar) */}
+      {/* HEADER DE LA SECCIÓN */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-4 bg-gray-900 hover:bg-gray-800 transition-colors border-b border-gray-800"
@@ -58,8 +58,7 @@ const PropertySection = ({ title, items, icon, colorClass, badgeColor }: any) =>
               <thead className="bg-[#111]">
                 <tr>
                   <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property</th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</th>
-                  {/* NUEVAS COLUMNAS */}
+                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Type & Price</th>
                   <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Seller</th>
                   <th className="px-6 py-3 text-left text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Lockbox</th>
                   <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Specs</th>
@@ -67,72 +66,112 @@ const PropertySection = ({ title, items, icon, colorClass, badgeColor }: any) =>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
-                {currentItems.map((property: any) => (
-                  <tr key={property.id} className="hover:bg-white/5 transition-colors group">
+                {currentItems.map((property: any) => {
+                    // Lógica para determinar si es Renta/Venta
+                    const isRent = property.isForRent;
+                    const isSale = property.isForSale;
                     
-                    {/* Property Info */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 bg-gray-800 rounded overflow-hidden border border-gray-700">
-                           {property.mainImage ? (
-                             <img src={property.mainImage} alt="" className="h-full w-full object-cover" />
-                           ) : (
-                             <div className="h-full w-full flex items-center justify-center text-gray-600 text-[10px]">N/A</div>
-                           )}
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-bold text-white truncate max-w-[180px]" title={property.titleEn || property.titleEs}>
-                            {property.titleEn || property.titleEs}
+                    return (
+                      <tr key={property.id} className="hover:bg-white/5 transition-colors group">
+                        
+                        {/* Property Info */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0 bg-gray-800 rounded overflow-hidden border border-gray-700 relative">
+                               {property.mainImage ? (
+                                 <img src={property.mainImage} alt="" className="h-full w-full object-cover" />
+                               ) : (
+                                 <div className="h-full w-full flex items-center justify-center text-gray-600 text-[10px]">N/A</div>
+                               )}
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-bold text-white truncate max-w-[180px]" title={property.titleEn || property.titleEs}>
+                                {property.titleEn || property.titleEs}
+                              </div>
+                              <div className="text-xs text-gray-500">{property.address}</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">{property.address}</div>
-                        </div>
-                      </div>
-                    </td>
+                        </td>
 
-                    {/* Price */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-[#f8ed1a] font-bold">{formatMoney(property.price)}</div>
-                      <div className="text-[10px] text-gray-500">Down: {formatMoney(property.downPayment)}</div>
-                    </td>
+                        {/* --- COLUMNA DE PRECIOS HÍBRIDA (RENTA / VENTA) --- */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            {/* OPCIÓN VENTA */}
+                            {isSale && (
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-[#f8ed1a] text-black text-[9px] font-black px-1.5 py-0.5 rounded uppercase">SALE</span>
+                                        <span className="text-sm text-[#f8ed1a] font-bold">{formatMoney(property.price)}</span>
+                                    </div>
+                                    {/* Mostrar DownPayment solo si es venta */}
+                                    <div className="text-[9px] text-gray-500 ml-1">Down: {formatMoney(property.downPayment)}</div>
+                                </div>
+                            )}
 
-                    {/* NUEVO: Seller Name */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white font-medium">
-                        {property.sellerName || <span className="text-gray-600 italic">Not set</span>}
-                      </div>
-                      <div className="text-[10px] text-gray-500">{property.sellerType}</div>
-                    </td>
+                            {/* OPCIÓN RENTA */}
+                            {isRent && (
+                                <div className={`${isSale ? 'mt-1 border-t border-gray-700 pt-1' : ''}`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">RENT</span>
+                                        <span className="text-sm text-blue-400 font-bold">{formatMoney(property.monthlyRent)}/mo</span>
+                                    </div>
+                                    <div className="text-[9px] text-gray-500 ml-1">Dep: {formatMoney(property.securityDeposit)}</div>
+                                </div>
+                            )}
 
-                    {/* NUEVO: Lockbox Code */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                        {property.lockboxCode ? (
-                            <span className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-[#f8ed1a] font-mono font-bold text-xs tracking-wider">
-                                {property.lockboxCode}
-                            </span>
-                        ) : (
-                            <span className="text-gray-600 text-xs">-</span>
-                        )}
-                    </td>
+                            {/* Fallback si no está definido (Drafts antiguos) */}
+                            {!isSale && !isRent && (
+                                <span className="text-gray-600 text-xs italic">Not configured</span>
+                            )}
+                          </div>
+                        </td>
 
-                    {/* Specs */}
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-medium">
-                      {property.bedrooms} bd • {property.bathrooms} ba • {property.sqft} sqft
-                    </td>
+                        {/* Seller Name */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                             {property.sellerImage && (
+                                 <img src={property.sellerImage} className="w-5 h-5 rounded-full object-cover border border-gray-600" alt="Seller" />
+                             )}
+                             <div>
+                                 <div className="text-sm text-white font-medium">
+                                   {property.sellerName || <span className="text-gray-600 italic text-xs">Dueño a Dueño Team</span>}
+                                 </div>
+                                 <div className="text-[9px] text-gray-500 uppercase">{property.sellerType}</div>
+                             </div>
+                          </div>
+                        </td>
 
-                    {/* Actions */}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end items-center gap-3">
-                          <Link href={`/propiedades/${property.slug}`} target="_blank" className="text-gray-500 hover:text-white transition-colors" title="View">
-                              👁️
-                          </Link>
-                          <Link href={`/admin/properties/${property.id}/edit`} className="text-blue-400 hover:text-blue-300 font-bold uppercase text-[10px] tracking-wide">
-                              EDIT
-                          </Link>
-                         <DeletePropertyButton id={property.id} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        {/* Lockbox Code */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            {property.lockboxCode ? (
+                                <span className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-[#f8ed1a] font-mono font-bold text-xs tracking-wider">
+                                    {property.lockboxCode}
+                                </span>
+                            ) : (
+                                <span className="text-gray-600 text-xs">-</span>
+                            )}
+                        </td>
+
+                        {/* Specs */}
+                        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-medium">
+                          {property.bedrooms} bd • {property.bathrooms} ba • {property.sqft} sqft
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end items-center gap-3">
+                              <Link href={`/propiedades/${property.slug}`} target="_blank" className="text-gray-500 hover:text-white transition-colors" title="View">
+                                  👁️
+                              </Link>
+                              <Link href={`/admin/properties/${property.id}/edit`} className="text-blue-400 hover:text-blue-300 font-bold uppercase text-[10px] tracking-wide">
+                                  EDIT
+                              </Link>
+                              <DeletePropertyButton id={property.id} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                })}
               </tbody>
             </table>
           </div>
@@ -195,7 +234,7 @@ export default function DashboardClient({ properties }: { properties: any[] }) {
       <PropertySection 
         title="Coming Soon" 
         items={comingSoonProps} 
-        icon="🚀" 
+        icon="⏳" 
         colorClass="text-blue-400" 
       />
 
@@ -209,7 +248,7 @@ export default function DashboardClient({ properties }: { properties: any[] }) {
       <PropertySection 
         title="Sold History" 
         items={soldProps} 
-        icon="🤝" 
+        icon="💰" 
         colorClass="text-red-500" 
       />
 

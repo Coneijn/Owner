@@ -20,30 +20,34 @@ export default async function AdminDashboard() {
     orderBy: { createdAt: 'desc' },
   });
 
-  // 2. TRANSFORMACIÓN: Convertimos los objetos Decimal a Number plano
+  // 2. TRANSFORMACIÓN: Aseguramos que los tipos numéricos sean JS Numbers planos
   const properties = rawProperties.map((p) => ({
     ...p,
+    // Venta
     price: p.price ? Number(p.price) : 0,
     downPayment: p.downPayment ? Number(p.downPayment) : 0,
     interestRate: p.interestRate ? Number(p.interestRate) : 0,
     taxes: p.taxes ? Number(p.taxes) : 0,
     insurance: p.insurance ? Number(p.insurance) : 0,
-
+    
+    // Renta
     monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
     securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
-
+    
+    // Fechas
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     availableDate: p.availableDate ? p.availableDate.toISOString() : null,
   }));
 
-  // Calculamos stats usando ya los datos convertidos
+  // Calculamos stats
   const totalProperties = properties.length;
   const availableProperties = properties.filter((p) => p.status === 'AVAILABLE').length;
   const soldProperties = properties.filter((p) => p.status === 'SOLD' || p.status === 'UNDER_CONTRACT').length;
   
+  // CORRECCIÓN: Inventory Value solo debe sumar propiedades de VENTA para no inflar números con rentas
   const totalInventoryValue = properties
-    .filter(p => p.status === 'AVAILABLE')
+    .filter(p => p.status === 'AVAILABLE' && p.isForSale)
     .reduce((acc, curr) => acc + (curr.price), 0);
 
   return (
@@ -63,13 +67,13 @@ export default async function AdminDashboard() {
                   <span className="text-white text-lg font-black uppercase tracking-tight leading-none">
                     Admin <span className="text-[#f8ed1a]">Panel</span>
                   </span>
-                  <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">v1.0 Dashboard</span>
+                  <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">v1.1 Dashboard</span>
               </div>
             </div>
             
             <div className="flex items-center gap-6">
               
-              {/* --- NUEVO BOTÓN: BLOG ADMIN --- */}
+              {/* BOTÓN: BLOG ADMIN */}
               <Link 
                 href="/admin/blog" 
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
@@ -80,7 +84,7 @@ export default async function AdminDashboard() {
 
               {/* BOTÓN API/JSON */}
               <Link 
-                href="/api/agent/inventory" 
+                href="/api/properties" 
                 target="_blank"
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
               >
@@ -90,7 +94,6 @@ export default async function AdminDashboard() {
 
               <div className="text-right hidden sm:block border-l border-gray-800 pl-6">
                 <p className="text-sm text-white font-bold">{session?.user?.name || 'Administrator'}</p>
-                
                 <Link 
                   href="/admin/user_settings" 
                   className="text-xs text-gray-500 hover:text-[#f8ed1a] transition-colors hover:underline underline-offset-2"
@@ -135,7 +138,7 @@ export default async function AdminDashboard() {
           <StatCard title="Total Properties" value={totalProperties} icon="🏠" />
           <StatCard title="Available" value={availableProperties} icon="✅" color="text-[#529e14]" />
           <StatCard title="Sold / Contract" value={soldProperties} icon="🤝" color="text-[#f8ed1a]" />
-          <StatCard title="Inventory Value" value={formatMoney(totalInventoryValue)} icon="💰" />
+          <StatCard title="Sale Inventory Value" value={formatMoney(totalInventoryValue)} icon="💰" />
         </div>
 
         {/* --- CLIENT DASHBOARD (Listas Colapsables y Paginación) --- */}
