@@ -10,89 +10,50 @@ const TEXTS = {
   en: { call: "Call Now", apply: "Apply", tour: "Schedule" }
 };
 
-// Componente para el contenido que gira (Flip)
 const FlipButtonContent = ({ imgSrc, text, bgColor }: { imgSrc: string, text: string, bgColor: string }) => {
-  // Clases base: Sin bordes, sombra suave tipo widget, redondeado perfecto
   const faceCommonClasses = `absolute inset-0 w-full h-full flex items-center justify-center rounded-full [backface-visibility:hidden] shadow-xl`;
 
   return (
     <div className="relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-      
-      {/* --- FRENTE (Imagen de la Rana) --- */}
       <div className={`${faceCommonClasses} bg-transparent overflow-hidden`}>
          <Image 
            src={imgSrc} 
            alt={text} 
            fill 
            sizes="(max-width: 70px) 100vw"
-           className="object-cover" // Asegura que la imagen llene todo el círculo
+           className="object-cover"
            priority
          />
       </div>
-
-      {/* --- REVERSO (Texto) --- */}
       <div className={`${faceCommonClasses} ${bgColor} [transform:rotateY(180deg)]`}>
         <span className="text-[10px] font-black uppercase text-center leading-tight px-1 tracking-wider">
           {text}
         </span>
       </div>
-      
     </div>
   );
 };
 
 export default function MapFloatingButtons({ lang }: { lang: 'es' | 'en' }) {
   const t = TEXTS[lang];
-
-  // 1. Aumentamos tamaño a w-16 h-16 (64px) para igualar widgets estándar
-  // 2. Quitamos bordes
   const btnContainerClass = "block w-17 h-17 rounded-full group perspective-[1000px] hover:scale-105 transition-all z-[1000] cursor-pointer";
 
   return (
-    // Ajustamos 'bottom' para que flote ENCIMA del widget de chat de GHL
-    // El widget de GHL suele medir unos 60-70px de alto + margen.
-    // Usamos 'bottom-28' o 'bottom-32' y aumentamos el gap.
-    <div className="fixed bottom-24 right-4 flex flex-col gap-4 items-end sm:right-4">
-      
-      {/* 1. AGENDAR RECORRIDO (Top) */}
-      <a
-        href={CALENDAR_LINK}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={btnContainerClass}
-        title={t.tour}
-      >
-        <FlipButtonContent 
-            imgSrc="/frog-show.png" 
-            text={t.tour} 
-            bgColor="bg-[#529e14] text-white" 
-        />
+  
+  <div className="fixed top-[76px] right-4 lg:top-22 lg:right-auto lg:left-[1200px] flex flex-row gap-3 items-center z-[1000]">      
+      {/* 1. AGENDAR RECORRIDO */}
+      <a href={CALENDAR_LINK} target="_blank" rel="noopener noreferrer" className={btnContainerClass} title={t.tour}>
+        <FlipButtonContent imgSrc="/frog-show.png" text={t.tour} bgColor="bg-[#529e14] text-white" />
       </a>
 
-      {/* 2. APLICAR (Middle) */}
-      <Link
-        href={`/apply?lang=${lang}`}
-        className={btnContainerClass}
-        title={t.apply}
-      >
-        <FlipButtonContent 
-            imgSrc="/frog-apply.png" 
-            text={t.apply} 
-            bgColor="bg-[#f8ed1a] text-[#1a1a1a]" 
-        />
+      {/* 2. APLICAR */}
+      <Link href={`/apply?lang=${lang}`} className={btnContainerClass} title={t.apply}>
+        <FlipButtonContent imgSrc="/frog-apply.png" text={t.apply} bgColor="bg-[#f8ed1a] text-[#1a1a1a]" />
       </Link>
 
-      {/* 3. LLAMAR (Bottom - Justo arriba del chat) */}
-      <a
-        href="tel:9016604100"
-        className={btnContainerClass}
-        title={t.call}
-      >
-        <FlipButtonContent 
-            imgSrc="/frog-call.png" 
-            text={t.call} 
-            bgColor="bg-white text-[#1a1a1a]" 
-        />
+      {/* 3. LLAMAR */}
+      <a href="tel:9016604100" className={btnContainerClass} title={t.call}>
+        <FlipButtonContent imgSrc="/frog-call.png" text={t.call} bgColor="bg-white text-[#1a1a1a]" />
       </a>
 
     </div>

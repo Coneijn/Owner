@@ -34,6 +34,11 @@ const DICTIONARY = {
         status: {
             available: "DISPONIBLE",
             comingSoon: "PRÓXIMAMENTE"
+        },
+        specs: {
+            beds: "Habitaciones",
+            baths: "Baños",
+            sqft: "Sqft"
         }
     },
     en: {
@@ -60,6 +65,11 @@ const DICTIONARY = {
         status: {
             available: "AVAILABLE",
             comingSoon: "COMING SOON"
+        },
+        specs: {
+            beds: "Beds",
+            baths: "Baths",
+            sqft: "Sqft"
         }
     }
 };
@@ -141,13 +151,13 @@ export default async function CatalogPage(props: {
   });
 
   // --- 3. CONVERSIÓN DE DATOS (CORREGIDA) ---
-  const properties = rawProperties.map(p => {
+    const properties = rawProperties.map(p => {
     const mainImg = p.images.find(img => img.isMain)?.url || p.images[0]?.url || p.mainImage || '/placeholder.png';
 
     return {
         ...p,
         mainImageDisplay: mainImg,
-        
+        features: (p.features as string[]) || [],
         // --- AQUÍ ESTÁ EL ARREGLO DE SEGURIDAD ---
         price: p.price?.toNumber() ?? 0,
         downPayment: p.downPayment?.toNumber() ?? 0,
@@ -276,7 +286,7 @@ export default async function CatalogPage(props: {
                         const isComingSoon = property.status === 'COMING_SOON';
                         const statusLabel = isComingSoon ? t.status.comingSoon : t.status.available;
                         const statusColor = isComingSoon ? 'bg-blue-600 text-white' : 'bg-[#529e14] text-white';
-
+                        const firstFeature = property.features && property.features.length > 0 ? property.features[0] : null;
                         return (
                             <div key={property.id} className="group bg-[#242424] rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-[#f8ed1a] transition-all duration-300 hover:shadow-[0_0_20px_rgba(248,237,26,0.15)] flex flex-col">
                                 
@@ -293,6 +303,12 @@ export default async function CatalogPage(props: {
                                     <div className={`absolute top-4 left-4 text-xs font-black px-3 py-1 rounded uppercase shadow-md ${statusColor}`}>
                                         {statusLabel}
                                     </div>
+
+                                    {firstFeature && (
+                                        <div className="absolute top-4 right-4 bg-[#f8ed1a] text-black text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider transform rotate-1 group-hover:rotate-0 transition-transform z-10">
+                                            {firstFeature}
+                                        </div>
+                                    )}
 
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pt-12">
                                         <h3 className="text-white font-bold text-lg leading-tight truncate">
@@ -312,18 +328,18 @@ export default async function CatalogPage(props: {
                                         {/* Specs */}
                                         <div className="flex justify-between items-center border-b border-gray-700 pb-4 mb-4">
                                             <div className="flex items-center gap-2 text-gray-300">
-                                                <span className="text-[#f8ed1a]">�</span>
-                                                <span className="font-bold">{property.bedrooms}</span> <span className="text-xs uppercase">Beds</span>
+                                                <span className="text-[#f8ed1a]">🛏</span>
+                                                <span className="font-bold">{property.bedrooms}</span> <span className="text-xs uppercase">{t.specs.beds}</span>
                                             </div>
                                             <div className="h-4 w-px bg-gray-700"></div>
                                             <div className="flex items-center gap-2 text-gray-300">
-                                                <span className="text-[#f8ed1a]">�</span>
-                                                <span className="font-bold">{property.bathrooms}</span> <span className="text-xs uppercase">Baths</span>
+                                                <span className="text-[#f8ed1a]">🛁</span>
+                                                <span className="font-bold">{property.bathrooms}</span> <span className="text-xs uppercase">{t.specs.baths}</span>
                                             </div>
                                             <div className="h-4 w-px bg-gray-700"></div>
                                             <div className="flex items-center gap-2 text-gray-300">
-                                                <span className="text-[#f8ed1a]">�</span>
-                                                <span className="font-bold">{property.sqft}</span> <span className="text-xs uppercase">Sqft</span>
+                                                <span className="text-[#f8ed1a]">📏</span>
+                                                <span className="font-bold">{property.sqft}</span> <span className="text-xs uppercase">{t.specs.sqft}</span>
                                             </div>
                                         </div>
                                         

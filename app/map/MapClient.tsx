@@ -224,7 +224,9 @@ useEffect(() => {
             
             // Decidimos qué precio mostrar en el cartel (Renta o Venta)
             const priceForLabel = isRent ? property.monthlyRent : property.price;
-            const labelText = formatShortPrice(priceForLabel);
+            const labelText = isRent 
+                ? `$${new Intl.NumberFormat('en-US').format(priceForLabel)}`
+                : formatShortPrice(priceForLabel);
 
             // Configuración del Icono
             let iconUrl = '/frog-pin.png'; // Por defecto: Ranita sola
