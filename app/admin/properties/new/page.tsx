@@ -5,10 +5,8 @@ import { createProperty } from '@/lib/actions';
 import { useActionState, useState, useMemo, useRef } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 import dynamic from 'next/dynamic'; 
-// NUEVO: Importamos herramientas de Google Maps
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
-// Importamos el mapa dinámicamente
 const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
   ssr: false,
   loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>

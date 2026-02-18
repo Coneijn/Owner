@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView } from '@react-google-maps/api';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
 
@@ -51,6 +51,10 @@ interface PropertyProps {
   insurance: number;
   monthlyRent: number;
   securityDeposit: number;
+  
+  // [NUEVO] Campos de fecha para lógica de Pin
+  createdAt: string; 
+  lastPriceChangeAt?: string | null;
 }
 
 interface MapClientProps {
@@ -79,12 +83,14 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
   
   // Estado para controlar el Zoom
   const [currentZoom, setCurrentZoom] = useState(11);
-// RECARGA DE IMÁGENES PARA EVITAR PARPADEO ---
-useEffect(() => {
+
+  // RECARGA DE IMÁGENES PARA EVITAR PARPADEO ---
+  useEffect(() => {
     const preloadImages = [
         '/frog-pin.png',
         '/frog-pin2.png',
-        '/frog-sign.png'
+        '/frog-sign.png',
+        '/pinNewEdited.png' // [NUEVO] Agregamos el nuevo pin
     ];
 
     preloadImages.forEach((src) => {
@@ -92,6 +98,7 @@ useEffect(() => {
         img.src = src;
     });
   }, []); 
+
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
@@ -151,9 +158,6 @@ useEffect(() => {
       setSelectedProperty(highlightedProperty);
     } else if (!highlightedProperty && map) {
       setSelectedProperty(null);
-      // Opcional: Resetear vista si se limpia la selección
-      // map.panTo(defaultCenter); 
-      // map.setZoom(11);
     }
   }, [highlightedProperty, map]);
 
@@ -162,6 +166,26 @@ useEffect(() => {
     if (onMarkerClick) {
       onMarkerClick(property);
     }
+  };
+
+  // [NUEVO] Lógica para determinar si es Nuevo o Editado
+  const checkSpecialStatus = (property: PropertyProps) => {
+    const now = new Date();
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+    // 1. Verificar si es Nuevo (<= 7 días)
+    const createdDate = new Date(property.createdAt);
+    const diffNew = (now.getTime() - createdDate.getTime()) / MS_PER_DAY;
+    if (diffNew <= 7) return true;
+
+    // 2. Verificar si cambió precio (<= 10 días)
+    if (property.lastPriceChangeAt) {
+      const updatedDate = new Date(property.lastPriceChangeAt);
+      const diffEdit = (now.getTime() - updatedDate.getTime()) / MS_PER_DAY;
+      if (diffEdit <= 10) return true;
+    }
+
+    return false;
   };
 
   if (!isLoaded) {
@@ -198,7 +222,7 @@ useEffect(() => {
         zoom={11}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        onZoomChanged={handleZoomChanged} // <--- Detectamos cambio de zoom
+        onZoomChanged={handleZoomChanged}
         onClick={() => {
             setSelectedProperty(null);
             if (onMarkerClick) onMarkerClick(null as any);
@@ -218,32 +242,46 @@ useEffect(() => {
         {properties.map((property) => {
             if (!property.lat || !property.lng) return null;
 
-            // --- LÓGICA DE LA RANITA ---
+            // --- LÓGICA DE ICONOS Y PRIORIDAD ---
             const isSelected = selectedProperty?.id === property.id;
-            const showSign = currentZoom >= 12; // Mostrar cartel si zoom es 12 o más
+            const isSpecial = checkSpecialStatus(property); // [NUEVO] Checkeo de fecha
+            const showSign = currentZoom >= 12; 
             
-            // Decidimos qué precio mostrar en el cartel (Renta o Venta)
+            const markerAnimation = (isSpecial && !isSelected) 
+            ? google.maps.Animation.BOUNCE 
+            : null;
+            // Decidimos qué precio mostrar en el cartel
             const priceForLabel = isRent ? property.monthlyRent : property.price;
             const labelText = isRent 
                 ? `$${new Intl.NumberFormat('en-US').format(priceForLabel)}`
                 : formatShortPrice(priceForLabel);
 
-            // Configuración del Icono
-            let iconUrl = '/frog-pin.png'; // Por defecto: Ranita sola
+            // Selección de URL del Icono y Configuración de Label
+            let iconUrl = '/frog-pin.png'; // Base
             let labelConfig = null;
+            let iconSize = new window.google.maps.Size(50, 50);
+            let labelOrigin = new window.google.maps.Point(25, 25); // Ajuste default
 
             if (isSelected) {
-                // Si está seleccionado, usamos el pin destacado (sin precio, o diferente)
-                iconUrl = '/frog-pin2.png'; 
+                // PRIORIDAD 1: Seleccionado
+                iconUrl = '/frog-pin2.png';
+                iconSize = new window.google.maps.Size(80, 80); 
+            } else if (isSpecial) {
+                // PRIORIDAD 2: Nuevo o Editado (Sobrescribe al sign y al normal)
+                iconUrl = '/pinNewEdited.png';
+                // Ajusta el tamaño si tu pin nuevo tiene dimensiones diferentes
+                iconSize = new window.google.maps.Size(80, 80); 
             } else if (showSign) {
-                // Si hay zoom, usamos la ranita con cartel
+                // PRIORIDAD 3: Zoom alto (Muestra precio)
                 iconUrl = '/frog-sign.png';
+                iconSize = new window.google.maps.Size(70, 70);
+                labelOrigin = new window.google.maps.Point(35, 48);
                 labelConfig = {
                     text: labelText,
-                    color: "#000000", // Color del texto (negro sobre cartel blanco/madera)
+                    color: "#000000",
                     fontWeight: "900",
                     fontSize: "11px",
-                    className: "map-marker-label", // Clase CSS opcional
+                    className: "map-marker-label",
                 };
             }
 
@@ -252,17 +290,11 @@ useEffect(() => {
                     key={property.id}
                     position={{ lat: property.lat, lng: property.lng }}
                     onClick={() => handleMarkerClick(property)}
-                    zIndex={isSelected ? 999 : 1} // La seleccionada siempre arriba
+                    zIndex={isSelected ? 999 : (isSpecial ? 800 : 1)} // New/Edited encima de los normales
                     icon={{
                         url: iconUrl,
-                        // Ajustamos tamaño según si es cartel o pin simple
-                        scaledSize: showSign 
-                            ? new window.google.maps.Size(70, 70)  // Cartel más grande
-                            : new window.google.maps.Size(50, 50), // Pin normal
-                        
-                        // IMPORTANTE: labelOrigin define dónde empieza el texto relativo a la imagen (x, y)
-                        // Ajusta estos valores (35, 25) según el diseño exacto de tu imagen frog-sign.png
-                        labelOrigin: new window.google.maps.Point(35, 48) 
+                        scaledSize: iconSize,
+                        labelOrigin: labelOrigin
                     }}
                     label={labelConfig as any} 
                 />
@@ -280,7 +312,6 @@ useEffect(() => {
             options={{ pixelOffset: new window.google.maps.Size(0, -50) }}
           >
             <div className="relative flex flex-col font-sans min-w-[260px] group">
-               {/* Usamos una IIFE para calcular data limpiamente */}
                {(() => {
                  const data = getPopupData(selectedProperty);
                  return (
@@ -296,7 +327,6 @@ useEffect(() => {
                         ) : (
                             <div className="w-full h-full bg-white/5 flex items-center justify-center text-4xl">🏠</div>
                         )}
-                        {/* Gradiente y Precio */}
                         <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#0a0f1c] to-transparent p-3 pt-10">
                             <div className="flex items-baseline gap-1">
                                 <p className="text-[#f8ed1a] font-black text-2xl leading-none drop-shadow-md">
@@ -307,7 +337,6 @@ useEffect(() => {
                         </div>
                      </div>
 
-                     {/* Info Body */}
                      <div className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-gray-400 text-[10px] font-bold uppercase">{data.subLabel}</span>

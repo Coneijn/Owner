@@ -8,17 +8,17 @@ export const metadata: Metadata = {
 };
 
 const FORM_URLS = {
-  en: "https://api.leadconnectorhq.com/widget/form/fscUXJGwgYYp24WLNybT", 
-  es: "https://api.leadconnectorhq.com/widget/form/N2fzye0vWAVtmsRMq057" 
+  en: "https://api.leadconnectorhq.com/widget/form/UWo0iunefBi9DCl8ChSf", 
+  es: "https://api.leadconnectorhq.com/widget/form/TrEhQJm57BTHYeBsUPEy" 
 };
 
 const DICTIONARY = {
   es: {
-    title: "INICIA TU PROCESO",
+    title: "INICIA TU PROCESO PARA UNIRTE A NUESTRA COMUNIDAD DE VENDEDORES",
     subtitle: "La mayor parte del proceso es automático. Llena el formulario abajo para que nuestro sistema evalúe tus opciones.",
   },
   en: {
-    title: "START YOUR PROCESS",
+    title: "START YOUR PROCESS TO JOIN OUR SELLER COMMUNITY",
     subtitle: "Most of the process is automated. Fill out the form below so our system can evaluate your options.",
   }
 };

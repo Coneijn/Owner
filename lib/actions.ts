@@ -216,18 +216,19 @@ export async function createProperty(prevState: any, formData: FormData) {
   redirect('/admin');
 }
 
-// --- UPDATE ---
+// --- UPDATE MODIFICADO ---
 export async function updateProperty(prevState: any, formData: FormData) {
   const id = formData.get('id') as string; 
   const rawFormData = Object.fromEntries(formData.entries());
   const slugInput = rawFormData.slug as string;
   const sanitizedSlug = slugInput.trim().toLowerCase().replace(/\s+/g, '-');
+  
+  // Procesamiento de imágenes (Tu código existente se mantiene igual)
   const mainImageObj = parseImageData(rawFormData.mainImageData);
   const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
 
   const imagesToCreate = [];
 
-  // Procesamiento de imágenes
   if (mainImageObj && mainImageObj.url) {
     imagesToCreate.push({
       url: mainImageObj.url,
@@ -256,7 +257,42 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   const legacyGalleryUrls = Array.isArray(galleryImagesArray) ? galleryImagesArray.map((img:any) => img.url) : [];
 
+  // ============================================================
+  // [NUEVO] LÓGICA DE DETECCIÓN DE CAMBIO DE PRECIO
+  // ============================================================
+  
+  // 1. Preparamos el nuevo precio para usarlo en la lógica y en el update
+  const newPriceValue = parseDecimalOrNull(rawFormData.price);
+  
+  // Objeto donde guardaremos los campos de historial si hubo cambio
+  let priceHistoryData = {};
+
   try {
+    // 2. Obtenemos el precio actual de la BD antes de sobreescribirlo
+    const currentProperty = await prisma.property.findUnique({
+      where: { id },
+      select: { price: true }
+    });
+
+    // 3. Comparamos los valores numéricamente
+    // Convertimos a Number para evitar problemas comparando objetos Decimal vs Strings
+    const currentPriceNum = currentProperty?.price ? Number(currentProperty.price) : null;
+    const newPriceNum = newPriceValue ? Number(newPriceValue) : null;
+
+    // Si ambos existen (o uno es null y el otro no) y son diferentes:
+    if (newPriceNum !== currentPriceNum) {
+       console.log(`Detectado cambio de precio: De ${currentPriceNum} a ${newPriceNum}`);
+       
+       priceHistoryData = {
+         previousPrice: currentProperty?.price, // Guardamos el valor Decimal original
+         lastPriceChangeAt: new Date()          // Marcamos la fecha de hoy
+       };
+    }
+
+    // ============================================================
+    // FIN LÓGICA DE PRECIOS -> EJECUTAMOS EL UPDATE
+    // ============================================================
+
     await prisma.property.update({
       where: { id },
       data: {
@@ -285,7 +321,11 @@ export async function updateProperty(prevState: any, formData: FormData) {
         descriptionEs: rawFormData.descriptionEs as string,
         
         // --- Financiero VENTA ---
-        price: parseDecimalOrNull(rawFormData.price),
+        price: newPriceValue, // Usamos la variable que ya procesamos arriba
+        
+        // [NUEVO] Aquí inyectamos los datos del historial si existen
+        ...priceHistoryData,
+
         downPayment: parseDecimalOrNull(rawFormData.downPayment),
         interestRate: parseDecimalOrNull(rawFormData.interestRate),
         taxes: parseDecimalOrNull(rawFormData.taxes),
@@ -332,12 +372,13 @@ export async function updateProperty(prevState: any, formData: FormData) {
         sellerType: rawFormData.sellerType as string,
       },
     });
+
   } catch (error) {
     console.error('Error updating property:', error);
     return { message: 'Error al actualizar la propiedad.' };
   }
 
   revalidatePath('/admin');
-  revalidatePath(`/propiedades/${rawFormData.slug}`); 
+  revalidatePath(`/propiedades/${sanitizedSlug}`); // Ojo: usa el slug sanitizado, no el raw
   redirect('/admin');
 }

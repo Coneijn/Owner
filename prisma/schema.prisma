@@ -45,6 +45,10 @@ model Property {
   // --- Datos Financieros (Venta) ---
   isForSale    Boolean @default(true)
   price        Decimal? @db.Decimal(10, 2) 
+
+  previousPrice Decimal? @db.Decimal(10, 2)
+  lastPriceChangeAt DateTime?
+
   downPayment  Decimal? @db.Decimal(10, 2) 
   interestRate Decimal? @db.Decimal(5, 2) 
   taxes        Decimal? @db.Decimal(10, 2) 

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Header from '@/app/components/Header'; 
 import MapSplitView from './map/MapSplitView';
+import { create } from 'domain';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,6 +125,8 @@ export default async function MapPage(props: {
     ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
   };
 
+
+  
   // --- CONSULTA A BASE DE DATOS ---
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
@@ -136,7 +139,10 @@ export default async function MapPage(props: {
         city: true,
         state: true,
         zipCode: true,
+        createdAt: true,
         price: true,
+        previousPrice: true,
+        lastPriceChangeAt : true,
         downPayment: true,
         interestRate: true,
         taxes: true,
@@ -162,9 +168,12 @@ export default async function MapPage(props: {
         sellerType: true,
         showSeller: true,
         // ----------------------------------------------------
+
     }
   });
 
+
+  
   // --- MAPEO DE DATOS ---
   const properties = rawProperties.map(p => ({
     id: p.id,
@@ -196,6 +205,11 @@ export default async function MapPage(props: {
     sellerImage: p.sellerImage,
     sellerType: p.sellerType,
     showSeller: p.showSeller,
+
+    createdAt: p.createdAt.toISOString(),
+    previousprice: p.previousPrice ? Number(p.previousPrice) : null,
+    lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null,
+
   }));
 
   return (
