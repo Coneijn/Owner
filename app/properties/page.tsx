@@ -2,11 +2,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import Header from '@/app/components/Header'; 
-
-// --- CONSTANTES DE FINANCIAMIENTO ---
-const DEFAULT_TERM_YEARS = 30;
-const SERVICE_FEE = 39;
+import Header from '@/app/components/Header';
+// Importamos las utilidades extraídas
+import { calculateEstimatedPayment, formatMoney, normalizeProperty } from '@/lib/utils';
 
 // --- DICCIONARIO ---
 const DICTIONARY = { 
@@ -33,7 +31,8 @@ const DICTIONARY = {
         },
         status: {
             available: "DISPONIBLE",
-            comingSoon: "PRÓXIMAMENTE"
+            comingSoon: "PRÓXIMAMENTE",
+            underContract: "PENDIENTE" // Nuevo texto en español
         },
         specs: {
             beds: "Habitaciones",
@@ -64,7 +63,8 @@ const DICTIONARY = {
         },
         status: {
             available: "AVAILABLE",
-            comingSoon: "COMING SOON"
+            comingSoon: "COMING SOON",
+            underContract: "PENDING" // Nuevo texto en inglés
         },
         specs: {
             beds: "Beds",
@@ -72,37 +72,6 @@ const DICTIONARY = {
             sqft: "Sqft"
         }
     }
-};
-
-// --- HELPER DE CÁLCULO ---
-const calculateEstimatedPayment = (
-  price: number,
-  downPayment: number,
-  annualTaxes: number,
-  annualInsurance: number,
-  interestRate: number
-) => {
-  const loanAmount = price - downPayment;
-  // Safety check por si los valores son 0
-  if (loanAmount <= 0) return SERVICE_FEE + (annualTaxes/12) + (annualInsurance/12);
-
-  const safeInterest = interestRate || 0;
-  const monthlyRate = safeInterest / 100 / 12;
-  const numberOfPayments = DEFAULT_TERM_YEARS * 12;
-
-  let principalAndInterest = 0;
-  if (monthlyRate > 0) {
-    principalAndInterest =
-      (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
-      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-  } else {
-    principalAndInterest = loanAmount / numberOfPayments;
-  }
-
-  const monthlyTaxes = (annualTaxes || 0) / 12;
-  const monthlyInsurance = (annualInsurance || 0) / 12;
-
-  return principalAndInterest + monthlyTaxes + monthlyInsurance + SERVICE_FEE;
 };
 
 export default async function CatalogPage(props: {
@@ -122,7 +91,7 @@ export default async function CatalogPage(props: {
   // --- 1. LÓGICA DE FILTRADO ---
   const whereClause: Prisma.PropertyWhereInput = {
     status: {
-      in: ['AVAILABLE', 'COMING_SOON']
+      in: ['AVAILABLE', 'COMING_SOON', 'UNDER_CONTRACT']
     },
   };
 
@@ -150,31 +119,20 @@ export default async function CatalogPage(props: {
     include: { images: true } 
   });
 
-  // --- 3. CONVERSIÓN DE DATOS (CORREGIDA) ---
-    const properties = rawProperties.map(p => {
+  // --- 3. CONVERSIÓN DE DATOS USANDO UTILS ---
+  const properties = rawProperties.map(p => {
+    // Usamos el helper importado para limpiar los Decimales y Fechas
+    const normalizedProperty = normalizeProperty(p);
+    
+    // Mantenemos la lógica visual específica del componente
     const mainImg = p.images.find(img => img.isMain)?.url || p.images[0]?.url || p.mainImage || '/placeholder.png';
 
     return {
-        ...p,
+        ...normalizedProperty,
         mainImageDisplay: mainImg,
         features: (p.features as string[]) || [],
-        // --- AQUÍ ESTÁ EL ARREGLO DE SEGURIDAD ---
-        price: p.price?.toNumber() ?? 0,
-        downPayment: p.downPayment?.toNumber() ?? 0,
-        interestRate: p.interestRate?.toNumber() ?? 0,
-        taxes: p.taxes?.toNumber() ?? 0,
-        insurance: p.insurance?.toNumber() ?? 0,
     };
   });
-
-  // Helper para formato de moneda
-  const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat(lang === 'es' ? 'es-MX' : 'en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
@@ -275,6 +233,7 @@ export default async function CatalogPage(props: {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {properties.map((property) => {
+                        // Cálculo usando la función importada de utils
                         const estimatedPayment = calculateEstimatedPayment(
                             property.price,
                             property.downPayment,
@@ -283,10 +242,20 @@ export default async function CatalogPage(props: {
                             property.interestRate
                         );
 
-                        const isComingSoon = property.status === 'COMING_SOON';
-                        const statusLabel = isComingSoon ? t.status.comingSoon : t.status.available;
-                        const statusColor = isComingSoon ? 'bg-blue-600 text-white' : 'bg-[#529e14] text-white';
+                        // Lógica de Etiquetas de Estado
+                        let statusLabel = t.status.available;
+                        let statusColor = 'bg-[#529e14] text-white'; // Verde por defecto (AVAILABLE)
+
+                        if (property.status === 'COMING_SOON') {
+                            statusLabel = t.status.comingSoon;
+                            statusColor = 'bg-blue-600 text-white';
+                        } else if (property.status === 'UNDER_CONTRACT') {
+                            statusLabel = t.status.underContract;
+                            statusColor = 'bg-orange-500 text-white'; // Naranja para PENDIENTE
+                        }
+
                         const firstFeature = property.features && property.features.length > 0 ? property.features[0] : null;
+
                         return (
                             <div key={property.id} className="group bg-[#242424] rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-[#f8ed1a] transition-all duration-300 hover:shadow-[0_0_20px_rgba(248,237,26,0.15)] flex flex-col">
                                 
@@ -299,7 +268,7 @@ export default async function CatalogPage(props: {
                                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                                     />
                                     
-                                    {/* Etiqueta */}
+                                    {/* Etiqueta Dinámica */}
                                     <div className={`absolute top-4 left-4 text-xs font-black px-3 py-1 rounded uppercase shadow-md ${statusColor}`}>
                                         {statusLabel}
                                     </div>
@@ -343,7 +312,7 @@ export default async function CatalogPage(props: {
                                             </div>
                                         </div>
                                         
-                                        {/* Precios */}
+                                        {/* Precios (usando formatMoney de utils) */}
                                         <div className="space-y-1 mb-4">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-400 font-bold uppercase">{t.catalog.price}</span>

@@ -25,6 +25,7 @@ export default async function AdminDashboard() {
     ...p,
     // Venta
     price: p.price ? Number(p.price) : 0,
+    previousPrice: p.previousPrice ? Number(p.previousPrice) : null, // <-- SOLUCIÓN AÑADIDA
     downPayment: p.downPayment ? Number(p.downPayment) : 0,
     interestRate: p.interestRate ? Number(p.interestRate) : 0,
     taxes: p.taxes ? Number(p.taxes) : 0,
@@ -33,11 +34,17 @@ export default async function AdminDashboard() {
     // Renta
     monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
     securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
+
+    // Otros posibles campos Decimales en tu base de datos (descomenta si aplican)
+    // latitude: p.latitude ? Number(p.latitude) : null,
+    // longitude: p.longitude ? Number(p.longitude) : null,
+    // lotSize: p.lotSize ? Number(p.lotSize) : null,
     
     // Fechas
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     availableDate: p.availableDate ? p.availableDate.toISOString() : null,
+    lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null, // <-- Asegura las fechas extra también
   }));
 
   // Calculamos stats

@@ -215,7 +215,7 @@ export default function NewPropertyPage() {
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                     >
                         <option value="AVAILABLE">Available</option>
-                        <option value="UNDER_CONTRACT">Under Contract</option>
+                        <option value="UNDER_CONTRACT">Under Contract | Pending</option>
                         <option value="SOLD">Sold</option>
                         <option value="DRAFT">Draft</option>
                         <option value="COMING_SOON">Coming Soon</option>

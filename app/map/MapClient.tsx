@@ -13,7 +13,7 @@ const containerStyle = {
 
 const defaultCenter = {
   lat: 35.1495,
-  lng: -90.0490
+  lng: -89.9890
 };
 
 // Estilos oscuros limpios para el mapa
@@ -82,7 +82,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
   const [map, setMap] = useState<google.maps.Map | null>(null);
   
   // Estado para controlar el Zoom
-  const [currentZoom, setCurrentZoom] = useState(11);
+  const [currentZoom, setCurrentZoom] = useState(12);
 
   // RECARGA DE IMÁGENES PARA EVITAR PARPADEO ---
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
         '/frog-pin.png',
         '/frog-pin2.png',
         '/frog-sign.png',
-        '/pinNewEdited.png' // [NUEVO] Agregamos el nuevo pin
+        '/pinNewEdited.png' 
     ];
 
     preloadImages.forEach((src) => {
@@ -154,7 +154,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
   useEffect(() => {
     if (highlightedProperty && map) {
       map.panTo({ lat: highlightedProperty.lat, lng: highlightedProperty.lng });
-      map.setZoom(15);
+      map.setZoom(16);
       setSelectedProperty(highlightedProperty);
     } else if (!highlightedProperty && map) {
       setSelectedProperty(null);
@@ -219,7 +219,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={defaultCenter}
-        zoom={11}
+        zoom={12}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onZoomChanged={handleZoomChanged}
@@ -245,7 +245,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
             // --- LÓGICA DE ICONOS Y PRIORIDAD ---
             const isSelected = selectedProperty?.id === property.id;
             const isSpecial = checkSpecialStatus(property); // [NUEVO] Checkeo de fecha
-            const showSign = currentZoom >= 12; 
+            const showSign = currentZoom >= 14; 
             
             const markerAnimation = (isSpecial && !isSelected) 
             ? google.maps.Animation.BOUNCE 
@@ -265,14 +265,9 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
             if (isSelected) {
                 // PRIORIDAD 1: Seleccionado
                 iconUrl = '/frog-pin2.png';
-                iconSize = new window.google.maps.Size(80, 80); 
-            } else if (isSpecial) {
-                // PRIORIDAD 2: Nuevo o Editado (Sobrescribe al sign y al normal)
-                iconUrl = '/pinNewEdited.png';
-                // Ajusta el tamaño si tu pin nuevo tiene dimensiones diferentes
-                iconSize = new window.google.maps.Size(80, 80); 
-            } else if (showSign) {
-                // PRIORIDAD 3: Zoom alto (Muestra precio)
+                iconSize = new window.google.maps.Size(90, 90); 
+            }  else if (showSign) {
+                // PRIORIDAD 2: Zoom alto (Muestra precio)
                 iconUrl = '/frog-sign.png';
                 iconSize = new window.google.maps.Size(70, 70);
                 labelOrigin = new window.google.maps.Point(35, 48);
@@ -283,6 +278,11 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
                     fontSize: "11px",
                     className: "map-marker-label",
                 };
+            }else if (isSpecial) {
+                // PRIORIDAD 3: Nuevo o Editado 
+                iconUrl = '/pinNewEdited.png';
+                // Ajusta el tamaño si tu pin nuevo tiene dimensiones diferentes
+                iconSize = new window.google.maps.Size(70, 70); 
             }
 
             return (

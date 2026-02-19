@@ -3,24 +3,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
+import MapLoader from './MapLoader'; // <-- Usamos tu nuevo componente centralizado
 import FloatingSearch from './ui/FloatingSearch';
 import FilterModal from './ui/FilterModal';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils'; 
 import MapFloatingButtons from './ui/MapFloatingButtons';
 
-// --- MAP LOADER ---
-const MapClient = dynamic(() => import('./MapClient'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full flex items-center justify-center bg-[#0a0f1c]">
-      <p className="text-[#f8ed1a] font-bold animate-pulse uppercase tracking-widest text-xs">Loading Map...</p>
-    </div>
-  )
-});
-
-// 1. INTERFAZ ACTUALIZADA SEGÚN TU SCHEMA PRISMA
-interface PropertyProps {
+// INTERFAZ DE PROPIEDADES (Actualizada con los campos de fechas y Prisma)
+export interface PropertyProps {
   id: string;
   title: string;
   address: string;
@@ -48,44 +38,17 @@ interface PropertyProps {
   // Features
   features?: string[];
 
-  // --- CORRECCIÓN: CAMPOS PLANOS (Match Prisma Schema) ---
+  // Vendedor (Match Prisma Schema)
   sellerName?: string | null;
   sellerImage?: string | null;
   sellerType?: string | null;
   showSeller?: boolean;
 
-  // (Opcional) Soporte retroactivo por si viene de la API anidada
-  seller?: {
-      name: string;
-      image?: string | null;
-      type?: string;
-  };
-}
-
-interface MapLoaderProps {
-  properties: PropertyProps[];
-  lang: string;
-  highlightedProperty?: any | null;
-  onMarkerClick?: (property: any) => void; 
-  searchType: string;
-}
-
-function MapLoader({ 
-  properties, 
-  lang, 
-  highlightedProperty, 
-  onMarkerClick,
-  searchType 
-}: MapLoaderProps) {
-  return (
-    <MapClient 
-      properties={properties} 
-      lang={lang} 
-      highlightedProperty={highlightedProperty} 
-      onMarkerClick={onMarkerClick} 
-      searchType={searchType} 
-    />
-  );
+  // Fechas y lógica de UI
+  createdAt: string; 
+  lastPriceChangeAt?: string | null;
+  isForRent?: boolean;
+  previousprice?: number | null;
 }
 
 // --- UTILIDADES ---
@@ -210,6 +173,7 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
 
      {/* MAP CONTAINER */}
      <div className="absolute inset-0 w-full h-full lg:relative lg:flex-1 z-0 bg-[#0a0f1c] relative">
+         {/* Aquí mandamos llamar al nuevo Loader centralizado */}
          <MapLoader 
             properties={properties} 
             lang={lang} 
@@ -219,53 +183,39 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
          />
          
          <div className="hidden lg:flex flex-col gap-2 absolute top-6 left-4 right-4 z-[50] justify-center transition-all duration-300 ease-out pointer-events-none">
-  
-  {/* 1. Contenedor de Tabs (Buy/Rent) */}
-  {/* Usamos 'pointer-events-auto' y 'self-start' para que los tabs sean clicables y no se estiren a todo el ancho */}
-  <div className="pointer-events-auto self-start ml-2"> 
-      <MapTabs currentType={searchType} texts={t.tabs} />
-  </div>
-
-  {/* 2. Barra de Búsqueda */}
-  {/* 'w-full' para llenar el espacio y 'max-w-7xl' para que no sea infinita en pantallas gigantes */}
-  <div className="w-full pointer-events-auto max-w-7xl mx-auto">
-      <FloatingSearch placeholder={t.search.placeholder} onOpenFilters={() => setIsFilterOpen(true)} />
-  </div>
-
-</div>
+            <div className="pointer-events-auto self-start ml-2"> 
+                <MapTabs currentType={searchType} texts={t.tabs} />
+            </div>
+            <div className="w-full pointer-events-auto max-w-7xl mx-auto">
+                <FloatingSearch placeholder={t.search.placeholder} onOpenFilters={() => setIsFilterOpen(true)} />
+            </div>
+         </div>
       </div>
 
       {/* MOBILE UI */}
       <div className="lg:hidden pointer-events-none absolute inset-0 z-30 flex flex-col justify-end">
           
-          {/* BARRA SUPERIOR MÓVIL: Toggle + Buscador */}
-          {/* CAMBIO: 'items-start' para mover el toggle a la izquierda */}
+          {/* BARRA SUPERIOR MÓVIL */}
           <div className="absolute top-0 left-0 w-full pointer-events-auto p-4 pt-4 flex flex-col items-start gap-4">             
-             
-             {/* El Toggle ahora estará a la izquierda */}
              <MapTabs currentType={searchType} texts={t.tabs} />
-             
-             {/* El buscador ocupa todo el ancho debajo */}
              <div className="w-full">
                 <FloatingSearch placeholder={t.search.placeholder} onOpenFilters={() => setIsFilterOpen(true)} />
              </div>
           </div>
 
-          {/* BOTÓN FLOTANTE "VER LISTA" (Toggle Abrir/Cerrar) */}
-          {/* CAMBIO: Este botón ahora siempre se ve y alterna el estado */}
+          {/* BOTÓN FLOTANTE "VER LISTA" */}
           <div className="flex justify-center mb-4 pointer-events-auto relative z-50">
               <button 
-                onClick={() => setIsMobileExpanded(!isMobileExpanded)} // <--- ESTO HACE EL TOGGLE
+                onClick={() => setIsMobileExpanded(!isMobileExpanded)} 
                 className={`
                   border border-gray-700 text-white font-bold text-xs px-6 py-3 rounded-full shadow-xl flex items-center gap-2 backdrop-blur-md transition-all
                   ${isMobileExpanded 
-                      ? 'bg-red-900/90 border-red-500 hover:bg-red-800' // Rojo cuando está abierta
-                      : 'bg-[#121826]/90 hover:bg-[#1a2336]'            // Oscuro cuando está cerrada
+                      ? 'bg-red-900/90 border-red-500 hover:bg-red-800' 
+                      : 'bg-[#121826]/90 hover:bg-[#1a2336]'            
                   }
                 `}
               >
                   <span>{isMobileExpanded ? '▼' : '☰'}</span> 
-                  {/* Texto dinámico */}
                   {isMobileExpanded 
                     ? (lang === 'en' ? 'Close List' : 'Ocultar Lista') 
                     : `${t.sidebar.viewList} (${properties.length})`
@@ -273,14 +223,12 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
               </button>
           </div>
 
-          {/* CONTENEDOR DE LA LISTA (Nace colapsado h-0) */}
+          {/* CONTENEDOR DE LA LISTA */}
           <div className={`pointer-events-auto bg-[#0a0f1c] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.6)] border-t border-white/10 transition-all duration-500 ease-in-out flex flex-col ${isMobileExpanded ? 'h-[75vh]' : 'h-0 overflow-hidden'} `}>
-              {/* Barra gris pequeña para indicar arrastre/cierre */}
               <div className="w-full flex justify-center pt-3 pb-1 cursor-pointer" onClick={() => setIsMobileExpanded(false)}>
                   <div className="w-12 h-1.5 bg-gray-700 rounded-full"></div>
               </div>
 
-              {/* Lista de propiedades */}
               <div id="mobile-list-container" className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-4 scrollbar-hide">
                  {orderedProperties.length > 0 ? (
                       orderedProperties.map((property: any) => (
@@ -317,15 +265,9 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
 // --- CARD ACTUALIZADA ---
 function DesktopCard({ property, isHighlighted, onClick, statusTexts, labelTexts, specsTexts, isMobile = false, searchType = 'buy' }: any) {
     const badge = getStatusBadge(property.status, statusTexts);
-    
-    // Obtener la primera Feature
     const firstFeature = property.features && property.features.length > 0 ? property.features[0] : null;
-
-    // --- CORRECCIÓN: Obtener imagen del vendedor desde campos planos ---
-    // Intentamos leer 'sellerImage' (Schema Prisma) y si no, 'seller.image' (API)
     const sellerImgUrl = property.sellerImage || property.seller?.image;
 
-    // Cálculo de precio según tipo
     const isRentMode = searchType === 'rent';
     const displayMonthly = isRentMode 
         ? (property.monthlyRent || 0)
@@ -352,7 +294,6 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, labelTexts
                     : 'bg-[#121826] border-white/5 hover:border-white/20 hover:shadow-xl'}
             `}
         >
-            {/* Image Section */}
             <div className={`relative w-full ${isMobile ? 'h-40' : 'h-48'}`}>
                 {property.image ? (
                     <Image 
@@ -365,12 +306,10 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, labelTexts
                     <div className="w-full h-full bg-gray-800 flex items-center justify-center text-4xl">🏠</div>
                 )}
                 
-                {/* 1. Status Badge (Izquierda) */}
                 <div className={`absolute top-3 left-3 backdrop-blur-md px-3 py-1 rounded-md text-white text-[10px] font-bold uppercase tracking-wider border ${badge.color}`}>
                     {badge.text}
                 </div>
 
-                {/* 2. Feature Badge (Derecha) */}
                 {firstFeature && (
                     <div className="absolute top-3 right-3 bg-[#f8ed1a] text-black text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider transform rotate-1 group-hover:rotate-0 transition-transform">
                         {firstFeature}
@@ -378,12 +317,8 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, labelTexts
                 )}
             </div>
 
-            {/* Info Section */}
             <div className="p-4 flex flex-col gap-3">
-                
-                {/* Precios y Vendedor */}
                 <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                    {/* Bloque Precios */}
                     <div className="flex flex-col">
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black text-[#f8ed1a]">
@@ -398,7 +333,6 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, labelTexts
                         </h3>
                     </div>
 
-                    {/* 3. Foto del Vendedor (CORREGIDO) */}
                     {sellerImgUrl && (
                         <div className="relative group/seller">
                             <div className="w-10 h-10 rounded-full p-[2px] border border-white/10 bg-white/5 overflow-hidden">
@@ -414,7 +348,6 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, labelTexts
                     )}
                 </div>
 
-                {/* Specs y Dirección */}
                 <div>
                     <p className="text-white text-sm font-bold uppercase tracking-wide truncate mb-2" title={fullAddress}>
                         📍 {fullAddress}
