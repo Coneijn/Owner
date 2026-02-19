@@ -1,7 +1,9 @@
+// app/about-us/page.tsx
 import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import Header from '@/app/components/Header';
+import VideoSection from './VideoSection'; // <-- Importamos nuestro nuevo componente
 
 // --- METADATA (SEO) ---
 export const metadata: Metadata = {
@@ -156,8 +158,7 @@ export default async function HomePage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
-      {/* --- HEADER IMPLEMENTADO --- */}
-      {/* CAMBIO: activePage="about" para reflejar que el contenido es "Sobre Nosotros" */}
+      {/* --- HEADER --- */}
       <Header lang={lang} activePage="about" />
 
       {/* --- HERO SECTION --- */}
@@ -264,8 +265,11 @@ export default async function HomePage(props: {
         </div>
       </section>
 
+      {/* --- NUEVA SECCIÓN DE VIDEOS IMPLEMENTADA AQUÍ --- */}
+      <VideoSection lang={lang} />
+
       {/* --- BLOG CALL TO ACTION --- */}
-      <section className="py-16 px-4 bg-[#1a1a1a] text-center">
+      <section className="py-16 px-4 bg-[#1a1a1a] text-center border-t border-gray-800">
         <div className="max-w-4xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 p-10 rounded-2xl border border-gray-700 shadow-2xl relative overflow-hidden group hover:border-[#f8ed1a] transition-colors">
             {/* Decoración Superior */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#529e14] to-[#f8ed1a]"></div>

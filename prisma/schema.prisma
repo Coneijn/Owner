@@ -19,6 +19,26 @@ model User {
   updatedAt          DateTime @updatedAt
   twoFactorSecret    String? // El secreto generado por otplib
   isTwoFactorEnabled Boolean  @default(false)
+  sellerProfile      SellerProfile?
+}
+
+model SellerProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Datos públicos del vendedor
+  sellerName  String?  // Nombre a mostrar públicamente
+  sellerImage String?  // Avatar público
+  sellerType  String   @default("OWNER")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relación 1-a-Muchos con las propiedades
+  properties  Property[]
 }
 
 // 3. Modelo de Propiedad 
@@ -97,9 +117,8 @@ model Property {
 
   // --- Sección "Conoce a tu Vendedor" ---
   showSeller  Boolean @default(false)
-  sellerName  String?
-  sellerImage String?
-  sellerType  String? @default("OWNER")
+  sellerProfileId String?
+  sellerProfile   SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: SetNull)
 }
 
 // 4. Modelo de Blog Post (Actualizado)
@@ -172,6 +191,7 @@ model PropertyImage {
 enum Role {
   ADMIN
   STAFF
+  USER
 }
 
 enum PropertyStatus {
