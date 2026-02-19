@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import LanguageSwitch from './LanguageSwitch';
+import MapFloatingButtons from '@/app/map/ui/MapFloatingButtons';
 
 const HEADER_TEXTS = {
   es: { home: "Inicio", properties: "Propiedades", about: "Nosotros", blog: "Blog", contact: "Contacto", login: "Login" },
@@ -88,6 +89,7 @@ export default function Header({ lang, activePage }: HeaderProps) {
                 &times;
             </button>
             
+      <MapFloatingButtons lang={lang} />
             <nav className="flex flex-col items-center gap-6 text-xl">
                 <Link href={`/?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('home')}>{t.home}</Link>
                 <Link href={`/properties?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('properties')}>{t.properties}</Link>
