@@ -49,11 +49,18 @@ export async function GET() {
         phoneNumber: true,
         mainImage: true,
         
-        // --- CORRECCIÓN: Campos directos del modelo Property ---
-        sellerName: true,
-        sellerImage: true,
-        sellerType: true,
-        showSeller: true
+        // --- CAMBIO 1: Agregamos el lockboxCode a la consulta ---
+        lockboxCode: true,
+        
+        // --- CAMBIO 2: Reemplazamos los campos sueltos por la relación sellerProfile ---
+        showSeller: true,
+        sellerProfile: {
+          select: {
+            sellerName: true,
+            sellerImage: true,
+            sellerType: true,
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -110,11 +117,14 @@ export async function GET() {
             calendar: p.calendarLink
         },
         
-        // --- CORRECCIÓN: Estructuramos el objeto Seller manualmente ---
+        // --- CAMBIO 3: Añadimos el lockboxCode a la respuesta JSON ---
+        lockboxCode: p.lockboxCode,
+        
+        // --- CAMBIO 4: Leemos los datos desde p.sellerProfile ---
         seller: {
-            name: p.sellerName || "Dueno a Dueno Team", // Fallback por seguridad
-            image: p.sellerImage || null,
-            type: p.sellerType || "OWNER",
+            name: p.sellerProfile?.sellerName || "Dueño a Dueño Team", // Fallback por seguridad
+            image: p.sellerProfile?.sellerImage || null,
+            type: p.sellerProfile?.sellerType || "OWNER",
             phone: p.phoneNumber, // Usamos el teléfono de la propiedad como contacto
             isVisible: p.showSeller
         },

@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Header from '@/app/components/Header'; 
 import MapSplitView from './map/MapSplitView';
-import { create } from 'domain';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +94,6 @@ export default async function MapPage(props: {
         { status: 'AVAILABLE' },
         { status: 'COMING_SOON' }
     ],
-    // Filtro dinámico según tab (Renta o Venta)
     ...(searchType === 'rent' ? { isForRent: true } : { isForSale: true }),
     
     ...(queryText && {
@@ -108,7 +106,6 @@ export default async function MapPage(props: {
         }]
     }),
     ...((minPrice !== undefined || maxPrice !== undefined) && {
-        // Ajustamos para filtrar sobre el precio correcto (Renta vs Venta)
         ...(searchType === 'rent' 
             ? { monthlyRent: {
                   ...(minPrice !== undefined && { gte: minPrice }), 
@@ -124,7 +121,6 @@ export default async function MapPage(props: {
     ...(minBaths !== undefined && { bathrooms: { gte: minBaths } }),
     ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
   };
-
 
   
   // --- CONSULTA A BASE DE DATOS ---
@@ -161,14 +157,17 @@ export default async function MapPage(props: {
         monthlyRent: true,
         securityDeposit: true, 
 
-        // --- CAMPOS AGREGADOS (Fix: Fotos Seller y Badges) ---
-        features: true,    // Necesario para el badge amarillo
-        sellerName: true,  // Necesario para info del seller
-        sellerImage: true, // Necesario para la FOTO
-        sellerType: true,
+        features: true,    
         showSeller: true,
-        // ----------------------------------------------------
-
+        
+        // --- CAMBIO APLICADO: Hacemos select de la relación sellerProfile ---
+        sellerProfile: {
+          select: {
+            sellerName: true,
+            sellerImage: true,
+            sellerType: true,
+          }
+        }
     }
   });
 
@@ -197,14 +196,14 @@ export default async function MapPage(props: {
     baths: p.bathrooms,
     sqft: p.sqft,
     status: p.status,
-
-    // --- CAMPOS NUEVOS ---
-    isForRent: p.isForRent, // Importante para lógica de UI
+    isForRent: p.isForRent, 
     features: p.features,
-    sellerName: p.sellerName,
-    sellerImage: p.sellerImage,
-    sellerType: p.sellerType,
     showSeller: p.showSeller,
+
+    // --- CAMBIO APLICADO: Extraemos la info desde p.sellerProfile ---
+    sellerName: p.sellerProfile?.sellerName || null,
+    sellerImage: p.sellerProfile?.sellerImage || null,
+    sellerType: p.sellerProfile?.sellerType || null,
 
     createdAt: p.createdAt.toISOString(),
     previousprice: p.previousPrice ? Number(p.previousPrice) : null,

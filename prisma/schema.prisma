@@ -26,8 +26,8 @@ model SellerProfile {
   id          String   @id @default(cuid())
   
   // Relación con el usuario (Autenticación)
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Datos públicos del vendedor
   sellerName  String?  // Nombre a mostrar públicamente

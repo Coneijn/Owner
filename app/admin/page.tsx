@@ -15,44 +15,58 @@ const formatMoney = (amount: number | unknown) => {
 export default async function AdminDashboard() {
   const session = await auth();
 
-  // 1. Obtenemos los datos crudos de Prisma
+  // 1. Obtenemos los datos crudos de Prisma incluyendo el perfil del vendedor
   const rawProperties = await prisma.property.findMany({
     orderBy: { createdAt: 'desc' },
+    include: {
+      sellerProfile: true, 
+    }
   });
 
-  // 2. TRANSFORMACIÓN: Aseguramos que los tipos numéricos sean JS Numbers planos
-  const properties = rawProperties.map((p) => ({
-    ...p,
-    // Venta
-    price: p.price ? Number(p.price) : 0,
-    previousPrice: p.previousPrice ? Number(p.previousPrice) : null, // <-- SOLUCIÓN AÑADIDA
-    downPayment: p.downPayment ? Number(p.downPayment) : 0,
-    interestRate: p.interestRate ? Number(p.interestRate) : 0,
-    taxes: p.taxes ? Number(p.taxes) : 0,
-    insurance: p.insurance ? Number(p.insurance) : 0,
-    
-    // Renta
-    monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
-    securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
+  // 2. TRANSFORMACIÓN: Aseguramos que los tipos numéricos sean JS Numbers planos y las fechas Strings
+  const properties = rawProperties.map((p) => {
+    // Separamos el sellerProfile del resto para manejar sus fechas internamente
+    const { sellerProfile, ...rest } = p;
 
-    // Otros posibles campos Decimales en tu base de datos (descomenta si aplican)
-    // latitude: p.latitude ? Number(p.latitude) : null,
-    // longitude: p.longitude ? Number(p.longitude) : null,
-    // lotSize: p.lotSize ? Number(p.lotSize) : null,
-    
-    // Fechas
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-    availableDate: p.availableDate ? p.availableDate.toISOString() : null,
-    lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null, // <-- Asegura las fechas extra también
-  }));
+    return {
+      ...rest,
+      // Venta
+      price: p.price ? Number(p.price) : 0,
+      previousPrice: p.previousPrice ? Number(p.previousPrice) : null, 
+      downPayment: p.downPayment ? Number(p.downPayment) : 0,
+      interestRate: p.interestRate ? Number(p.interestRate) : 0,
+      taxes: p.taxes ? Number(p.taxes) : 0,
+      insurance: p.insurance ? Number(p.insurance) : 0,
+      
+      // Renta
+      monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
+      securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
+      
+      // Fechas de la Propiedad
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      availableDate: p.availableDate ? p.availableDate.toISOString() : null,
+      lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null,
+
+      // --- COMPATIBILIDAD Y VENDEDOR ---
+      sellerName: sellerProfile?.sellerName || null,
+      sellerType: sellerProfile?.sellerType || null,
+      sellerImage: sellerProfile?.sellerImage || null,
+
+      sellerProfile: sellerProfile ? {
+        ...sellerProfile,
+        createdAt: sellerProfile.createdAt.toISOString(),
+        updatedAt: sellerProfile.updatedAt.toISOString(),
+      } : null,
+    };
+  });
 
   // Calculamos stats
   const totalProperties = properties.length;
   const availableProperties = properties.filter((p) => p.status === 'AVAILABLE').length;
   const soldProperties = properties.filter((p) => p.status === 'SOLD' || p.status === 'UNDER_CONTRACT').length;
   
-  // CORRECCIÓN: Inventory Value solo debe sumar propiedades de VENTA para no inflar números con rentas
+  // Inventory Value solo debe sumar propiedades de VENTA
   const totalInventoryValue = properties
     .filter(p => p.status === 'AVAILABLE' && p.isForSale)
     .reduce((acc, curr) => acc + (curr.price), 0);
@@ -80,6 +94,15 @@ export default async function AdminDashboard() {
             
             <div className="flex items-center gap-6">
               
+              {/* --- BOTÓN NUEVO: SELLERS ADMIN --- */}
+              <Link 
+                href="/admin/sellers" 
+                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
+              >
+                  <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">👥</span> 
+                  <span>Sellers</span>
+              </Link>
+
               {/* BOTÓN: BLOG ADMIN */}
               <Link 
                 href="/admin/blog" 
@@ -91,7 +114,7 @@ export default async function AdminDashboard() {
 
               {/* BOTÓN API/JSON */}
               <Link 
-                href="/api/properties" 
+                href="../api/agent/inventory" 
                 target="_blank"
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
               >

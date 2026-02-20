@@ -149,6 +149,10 @@ export default async function PropertyDetailPage(props: Props) {
   
   const property = await prisma.property.findUnique({
     where: { slug },
+    // --- CAMBIO 1: Incluir la relación del perfil del vendedor ---
+    include: {
+      sellerProfile: true
+    }
   });
 
   if (!property) {
@@ -327,17 +331,19 @@ export default async function PropertyDetailPage(props: Props) {
                           />
                       </div>
                     )}
-                    {property.showSeller && (
+                    
+                    {/* --- CAMBIO 2: Actualización en la UI del Vendedor --- */}
+                    {property.showSeller && property.sellerProfile && (
                       <div className="mt-8 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center gap-6 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-[#529e14]/10 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
                         
                         {/* Foto Vendedor */}
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
                            <div className="w-full h-full rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-[#f8ed1a]">
-                              {property.sellerImage ? (
+                              {property.sellerProfile.sellerImage ? (
                                 <Image 
-                                  src={property.sellerImage} 
-                                  alt={property.sellerName || 'Seller'} 
+                                  src={property.sellerProfile.sellerImage} 
+                                  alt={property.sellerProfile.sellerName || 'Seller'} 
                                   fill 
                                   className="object-cover"
                                 />
@@ -355,10 +361,10 @@ export default async function PropertyDetailPage(props: Props) {
                               {t.meetSeller}
                            </h3>
                            <p className="text-xl sm:text-2xl font-black text-[#1a1a1a] uppercase leading-none mb-1">
-                              {property.sellerName}
+                              {property.sellerProfile.sellerName || 'N/A'}
                            </p>
                            <p className="text-sm text-gray-500 font-medium">
-                              {property.sellerType === 'AGENT' ? t.agentTitle : t.ownerTitle}
+                              {property.sellerProfile.sellerType === 'AGENT' ? t.agentTitle : t.ownerTitle}
                            </p>
                         </div>
                       </div>

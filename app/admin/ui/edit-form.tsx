@@ -59,10 +59,10 @@ interface PropertyData {
   images?: any[]; 
   videoUrl?: string | null;
   features: string[];
+  
+  // --- CAMBIOS: Vendedor ---
   showSeller: boolean;
-  sellerType?: string | null;
-  sellerName?: string | null;
-  sellerImage?: string | null;
+  sellerProfileId?: string | null; // El ID del perfil relacional
   
   latitude?: number | string | null;
   longitude?: number | string | null;
@@ -74,6 +74,13 @@ interface PropertyData {
    isForRent?: boolean;
    monthlyRent?: number | null;
    securityDeposit?: number | null;
+}
+
+// Tipo para la lista de vendedores que recibiremos como prop
+interface SellerProfileOption {
+  id: string;
+  sellerName: string | null;
+  sellerType: string;
 }
 
 // --- HELPER COMPONENT: ACCORDION (CORREGIDO) ---
@@ -118,7 +125,14 @@ const AccordionSection = ({
   );
 };
 
-export default function EditForm({ property }: { property: PropertyData }) {
+// --- AÑADIMOS sellers A LAS PROPS ---
+export default function EditForm({ 
+  property, 
+  sellers = [] // Lista de perfiles para el dropdown
+}: { 
+  property: PropertyData;
+  sellers?: SellerProfileOption[]; 
+}) {
   const [state, formAction, isPending] = useActionState(updateProperty, null);
     
     //seal & rental states
@@ -160,7 +174,8 @@ export default function EditForm({ property }: { property: PropertyData }) {
 
   const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>(initialMain);
   const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>(initialGallery);
-  const [sellerImageFiles, setSellerImageFiles] = useState<ImageFile[]>(property.sellerImage ? [{ url: property.sellerImage }] : []);
+  
+  // --- STATE DEL VENDEDOR ---
   const [showSeller, setShowSeller] = useState<boolean>(property.showSeller || false);
 
   // --- LOCATION STATE ---
@@ -468,11 +483,6 @@ export default function EditForm({ property }: { property: PropertyData }) {
                 </label>
               </div>
 
-              {/* NOTA: Aquí 'isForSale' es una decisión lógica de negocio. 
-                 Si el usuario desmarca 'isForSale', es correcto que los inputs 
-                 desaparezcan y no se envíen (o se envíen vacíos).
-                 Mantenemos esto condicional porque es funcional, no solo visual.
-              */}
               {isForSale && (
                   <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
                       <div className="sm:col-span-2">
@@ -628,7 +638,7 @@ export default function EditForm({ property }: { property: PropertyData }) {
         </AccordionSection>
 
         {/* 4.5 LOCATION & ACCESS (Interactivo con Mapa) */}
-        <AccordionSection title="Location & Access" icon="🐸🗺️">
+        <AccordionSection title="Location & Access" icon="🗺️">
             <div className="space-y-6">
                 <div className="w-full">
                     <LocationPicker 
@@ -674,36 +684,41 @@ export default function EditForm({ property }: { property: PropertyData }) {
             </div>
         </AccordionSection>
 
-        {/* 5. SELLER INFO */}
+        {/* 5. SELLER INFO (ACTUALIZADO) */}
         <AccordionSection title="Seller Profile" icon="👤">
           <div className="space-y-6">
               <div className="flex items-center">
-                  <input id="showSeller" name="showSeller" type="checkbox" checked={showSeller} onChange={(e) => setShowSeller(e.target.checked)} className="h-5 w-5 rounded bg-gray-800 text-[#529e14]" />
-                  <label htmlFor="showSeller" className="ml-2 text-sm font-bold text-white">Show "Meet Seller" Section</label>
+                  <input 
+                    id="showSeller" 
+                    name="showSeller" 
+                    type="checkbox" 
+                    checked={showSeller} 
+                    onChange={(e) => setShowSeller(e.target.checked)} 
+                    className="h-5 w-5 rounded bg-gray-800 text-[#529e14]" 
+                  />
+                  <label htmlFor="showSeller" className="ml-2 text-sm font-bold text-white">
+                    Show "Meet Seller" Section
+                  </label>
               </div>
+              
               {showSeller && (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 animate-in fade-in">
-                      <div>
-                          <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Role</label>
-                          <select name="sellerType" defaultValue={property.sellerType || 'OWNER'} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 sm:text-sm">
-                              <option value="OWNER">Owner (Dueño)</option>
-                              <option value="AGENT">Agent (Vendedor)</option>
-                          </select>
-                      </div>
-                      <div>
-                          <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Name</label>
-                          <input type="text" name="sellerName" defaultValue={property.sellerName || ''} className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
-                      </div>
-                      <div className="sm:col-span-2">
-                          <input type="hidden" name="sellerImage" value={sellerImageFiles[0]?.url || ''} />
-                          <ImageUpload 
-                            label="Seller Photo" 
-                            value={sellerImageFiles} 
-                            onChange={(files) => setSellerImageFiles(files)} 
-                            multiple={false}
-                            disableMetadata={true} 
-                          />
-                      </div>
+                  <div className="animate-in fade-in">
+                      <label className="block text-xs font-bold text-[#f8ed1a] uppercase mb-2">Select a Seller Profile</label>
+                      <select 
+                        name="sellerProfileId" 
+                        defaultValue={property.sellerProfileId || ''} 
+                        className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm p-3"
+                      >
+                          <option value="">-- No seller selected --</option>
+                          {sellers.map((seller) => (
+                              <option key={seller.id} value={seller.id}>
+                                  {seller.sellerName || 'Unnamed Profile'} ({seller.sellerType})
+                              </option>
+                          ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-2">
+                        You can create new profiles in the <Link href="/admin/sellers/new" className="text-[#529e14] hover:underline">Seller Profiles Manager</Link>.
+                      </p>
                   </div>
               )}
           </div>

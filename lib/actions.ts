@@ -62,7 +62,6 @@ function processFeatures(input: unknown): string[] {
   return input.split(',').map(item => item.trim());
 }
 
-// Helper para parsear los JSON de imágenes
 function parseImageData(jsonString: unknown) {
   if (typeof jsonString !== 'string' || !jsonString) return null;
   try {
@@ -73,28 +72,53 @@ function parseImageData(jsonString: unknown) {
   }
 }
 
-// Helper para procesar fechas vacías o inválidas
 function parseDate(dateString: unknown): Date | null {
   if (typeof dateString !== 'string' || !dateString) return null;
   const date = new Date(dateString);
   return isNaN(date.getTime()) ? null : date;
 }
 
-// Helper para procesar coordenadas (evita NaN)
 function parseFloatSafe(value: unknown): number | null {
   if (!value) return null;
   const parsed = parseFloat(value as string);
   return isNaN(parsed) ? null : parsed;
 }
 
-// NUEVO HELPER: Para manejar Decimals opcionales (Precio, Renta, etc)
-// Si viene vacío "", devuelve null. Si trae valor, devuelve el string para Prisma.
 function parseDecimalOrNull(value: unknown): string | null {
     if (typeof value !== 'string' || value.trim() === '') return null;
     return value;
 }
 
-// --- CREATE ---
+// NUEVO HELPER: Para manejar IDs opcionales (como el del vendedor)
+function parseStringOrNull(value: unknown): string | null {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  return value;
+}
+
+// --- CREATE SELLER PROFILE (NUEVO) ---
+export async function createSellerProfile(prevState: any, formData: FormData) {
+  const rawFormData = Object.fromEntries(formData.entries());
+  
+  try {
+    await prisma.sellerProfile.create({
+      data: {
+        sellerName: rawFormData.sellerName as string,
+        sellerType: rawFormData.sellerType as string,
+        sellerImage: parseStringOrNull(rawFormData.sellerImage),
+        // No pasamos userId, se quedará como null automáticamente
+      },
+    });
+  } catch (error) {
+    console.error('Error creating seller profile:', error);
+    return { message: 'Error al crear el perfil del vendedor.' };
+  }
+
+  revalidatePath('/admin/sellers');
+  redirect('/admin/sellers');
+}
+
+
+// --- CREATE PROPERTY ---
 export async function createProperty(prevState: any, formData: FormData) {
   const rawFormData = Object.fromEntries(formData.entries());
   const mainImageObj = parseImageData(rawFormData.mainImageData);
@@ -140,56 +164,47 @@ export async function createProperty(prevState: any, formData: FormData) {
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
         
-        // --- NUEVOS FLAGS ---
-        isForSale: rawFormData.isForSale === 'on', // Checkbox de venta
-        isForRent: rawFormData.isForRent === 'on', // Checkbox de renta
+        isForSale: rawFormData.isForSale === 'on', 
+        isForRent: rawFormData.isForRent === 'on', 
 
         calendarLink: rawFormData.calendarLink as string,
         availableDate: parseDate(rawFormData.availableDate),
 
-        // SEO Fields
         seoTitleEn: rawFormData.seoTitleEn as string,
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
         seoTitleEs: rawFormData.seoTitleEs as string,
         seoDescriptionEs: rawFormData.seoDescriptionEs as string,
 
-        // Bilingüe
         titleEn: rawFormData.titleEn as string,
         titleEs: rawFormData.titleEs as string,
         descriptionEn: rawFormData.descriptionEn as string,
         descriptionEs: rawFormData.descriptionEs as string,
         
-        // --- Financiero VENTA (Ahora opcionales con parseDecimalOrNull) ---
         price: parseDecimalOrNull(rawFormData.price), 
         downPayment: parseDecimalOrNull(rawFormData.downPayment),
         interestRate: parseDecimalOrNull(rawFormData.interestRate),
         taxes: parseDecimalOrNull(rawFormData.taxes),
         insurance: parseDecimalOrNull(rawFormData.insurance),
 
-        // --- Financiero RENTA (Nuevos) ---
         monthlyRent: parseDecimalOrNull(rawFormData.monthlyRent),
         securityDeposit: parseDecimalOrNull(rawFormData.securityDeposit),
         
-        // Ubicación y Contacto
         address: rawFormData.address as string,
         city: rawFormData.city as string,
         state: rawFormData.state as string,
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
         
-        // Coordenadas y Acceso
         latitude: parseFloatSafe(rawFormData.latitude),
         longitude: parseFloatSafe(rawFormData.longitude),
         lockboxCode: rawFormData.lockboxCode as string,
 
-        // Specs
         bedrooms: Number(rawFormData.bedrooms),
         bathrooms: Number(rawFormData.bathrooms),
         sqft: Number(rawFormData.sqft),
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
         
-        // Multimedia
         mainImage: mainImageObj?.url || '',
         galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
@@ -199,11 +214,9 @@ export async function createProperty(prevState: any, formData: FormData) {
           create: imagesToCreate
         },
 
-        // Vendedor 
+        // --- CAMBIO APLICADO: Vendedor ---
         showSeller: rawFormData.showSeller === 'on',
-        sellerName: rawFormData.sellerName as string,
-        sellerImage: rawFormData.sellerImage as string, 
-        sellerType: rawFormData.sellerType as string,
+        sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
       },
     });
   } catch (error) {
@@ -223,7 +236,6 @@ export async function updateProperty(prevState: any, formData: FormData) {
   const slugInput = rawFormData.slug as string;
   const sanitizedSlug = slugInput.trim().toLowerCase().replace(/\s+/g, '-');
   
-  // Procesamiento de imágenes (Tu código existente se mantiene igual)
   const mainImageObj = parseImageData(rawFormData.mainImageData);
   const galleryImagesArray = parseImageData(rawFormData.galleryImagesData) || [];
 
@@ -257,41 +269,26 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   const legacyGalleryUrls = Array.isArray(galleryImagesArray) ? galleryImagesArray.map((img:any) => img.url) : [];
 
-  // ============================================================
-  // [NUEVO] LÓGICA DE DETECCIÓN DE CAMBIO DE PRECIO
-  // ============================================================
-  
-  // 1. Preparamos el nuevo precio para usarlo en la lógica y en el update
   const newPriceValue = parseDecimalOrNull(rawFormData.price);
-  
-  // Objeto donde guardaremos los campos de historial si hubo cambio
   let priceHistoryData = {};
 
   try {
-    // 2. Obtenemos el precio actual de la BD antes de sobreescribirlo
     const currentProperty = await prisma.property.findUnique({
       where: { id },
       select: { price: true }
     });
 
-    // 3. Comparamos los valores numéricamente
-    // Convertimos a Number para evitar problemas comparando objetos Decimal vs Strings
     const currentPriceNum = currentProperty?.price ? Number(currentProperty.price) : null;
     const newPriceNum = newPriceValue ? Number(newPriceValue) : null;
 
-    // Si ambos existen (o uno es null y el otro no) y son diferentes:
     if (newPriceNum !== currentPriceNum) {
        console.log(`Detectado cambio de precio: De ${currentPriceNum} a ${newPriceNum}`);
        
        priceHistoryData = {
-         previousPrice: currentProperty?.price, // Guardamos el valor Decimal original
-         lastPriceChangeAt: new Date()          // Marcamos la fecha de hoy
+         previousPrice: currentProperty?.price, 
+         lastPriceChangeAt: new Date()          
        };
     }
-
-    // ============================================================
-    // FIN LÓGICA DE PRECIOS -> EJECUTAMOS EL UPDATE
-    // ============================================================
 
     await prisma.property.update({
       where: { id },
@@ -301,29 +298,24 @@ export async function updateProperty(prevState: any, formData: FormData) {
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
         
-        // --- NUEVOS FLAGS ---
         isForSale: rawFormData.isForSale === 'on',
         isForRent: rawFormData.isForRent === 'on',
 
         calendarLink: rawFormData.calendarLink as string,
         availableDate: parseDate(rawFormData.availableDate),
         
-        // SEO Fields
         seoTitleEn: rawFormData.seoTitleEn as string,
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
         seoTitleEs: rawFormData.seoTitleEs as string,
         seoDescriptionEs: rawFormData.seoDescriptionEs as string,
 
-        // Bilingüe
         titleEn: rawFormData.titleEn as string,
         titleEs: rawFormData.titleEs as string,
         descriptionEn: rawFormData.descriptionEn as string,
         descriptionEs: rawFormData.descriptionEs as string,
         
-        // --- Financiero VENTA ---
-        price: newPriceValue, // Usamos la variable que ya procesamos arriba
+        price: newPriceValue, 
         
-        // [NUEVO] Aquí inyectamos los datos del historial si existen
         ...priceHistoryData,
 
         downPayment: parseDecimalOrNull(rawFormData.downPayment),
@@ -331,30 +323,25 @@ export async function updateProperty(prevState: any, formData: FormData) {
         taxes: parseDecimalOrNull(rawFormData.taxes),
         insurance: parseDecimalOrNull(rawFormData.insurance),
 
-        // --- Financiero RENTA ---
         monthlyRent: parseDecimalOrNull(rawFormData.monthlyRent),
         securityDeposit: parseDecimalOrNull(rawFormData.securityDeposit),
         
-        // Ubicación
         address: rawFormData.address as string,
         city: rawFormData.city as string,
         state: rawFormData.state as string,
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
         
-        // Coordenadas y Acceso
         latitude: parseFloatSafe(rawFormData.latitude),
         longitude: parseFloatSafe(rawFormData.longitude),
         lockboxCode: rawFormData.lockboxCode as string,
         
-        // Specs
         bedrooms: Number(rawFormData.bedrooms),
         bathrooms: Number(rawFormData.bathrooms),
         sqft: Number(rawFormData.sqft),
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
         
-        // Multimedia
         mainImage: mainImageObj?.url || '',
         galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
@@ -365,11 +352,9 @@ export async function updateProperty(prevState: any, formData: FormData) {
           create: imagesToCreate 
         },
 
-        // Vendedor 
+        // --- CAMBIO APLICADO: Vendedor ---
         showSeller: rawFormData.showSeller === 'on',
-        sellerName: rawFormData.sellerName as string,
-        sellerImage: rawFormData.sellerImage as string,
-        sellerType: rawFormData.sellerType as string,
+        sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
       },
     });
 
@@ -379,6 +364,70 @@ export async function updateProperty(prevState: any, formData: FormData) {
   }
 
   revalidatePath('/admin');
-  revalidatePath(`/propiedades/${sanitizedSlug}`); // Ojo: usa el slug sanitizado, no el raw
+  revalidatePath(`/propiedades/${sanitizedSlug}`); 
   redirect('/admin');
+}
+// --- ACTIONS PARA SELLERS (Agregar al final de lib/actions.ts) ---
+
+export async function deleteSellerProfile(formData: FormData) {
+  const id = formData.get('id') as string;
+  try {
+    await prisma.sellerProfile.delete({
+      where: { id },
+    });
+    revalidatePath('/admin/sellers');
+    return { success: true, message: 'Vendedor eliminado correctamente.' };
+  } catch (error) {
+    console.error('Error deleting seller:', error);
+    return { success: false, message: 'Error al eliminar el vendedor.' };
+  }
+}
+
+export async function assignPropertiesToSeller(sellerId: string, propertyIds: string[]) {
+  try {
+    // Filtramos IDs vacíos por seguridad
+    const validPropertyIds = propertyIds.filter(id => id.trim() !== '');
+
+    if (validPropertyIds.length > 0) {
+      // Actualizamos masivamente las propiedades para asignarles este vendedor
+      await prisma.property.updateMany({
+        where: { 
+          id: { in: validPropertyIds } 
+        },
+        data: { 
+          sellerProfileId: sellerId,
+          showSeller: true // Activamos automáticamente la visibilidad de la sección
+        }
+      });
+    }
+
+    revalidatePath('/admin/sellers');
+    revalidatePath('/admin');
+    return { success: true, message: 'Propiedades asignadas correctamente.' };
+  } catch (error) {
+    console.error('Error assigning properties:', error);
+    return { success: false, message: 'Error al asignar las propiedades.' };
+  }
+}
+// --- UPDATE SELLER PROFILE ---
+export async function updateSellerProfile(id: string, prevState: any, formData: FormData) {
+  const rawFormData = Object.fromEntries(formData.entries());
+  
+  try {
+    await prisma.sellerProfile.update({
+      where: { id },
+      data: {
+        sellerName: rawFormData.sellerName as string,
+        sellerType: rawFormData.sellerType as string,
+        // Usamos el mismo helper que creamos antes
+        sellerImage: parseStringOrNull(rawFormData.sellerImage), 
+      },
+    });
+  } catch (error) {
+    console.error('Error updating seller profile:', error);
+    return { message: 'Error al actualizar el perfil del vendedor.' };
+  }
+
+  revalidatePath('/admin/sellers');
+  redirect('/admin/sellers');
 }

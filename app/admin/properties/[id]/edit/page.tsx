@@ -7,6 +7,7 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
   const params = await props.params;
   const { id } = params; 
 
+  // 1. Obtener los detalles de la propiedad
   const property = await prisma.property.findUnique({
     where: { id },
     include: {
@@ -18,22 +19,39 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
     notFound();
   }
 
+  // 2. Obtener los vendedores para el dropdown
+  const sellers = await prisma.sellerProfile.findMany({
+    select: {
+      id: true,
+      sellerName: true,
+      sellerType: true,
+    },
+    orderBy: {
+      sellerName: 'asc', // Orden alfabético
+    },
+  });
+
+  // 3. Serializar objetos complejos (fechas y decimales) para React
   const plainProperty = {
     ...property,
 
+    // Financieros de Venta
     price: property.price ? property.price.toNumber() : 0,
+    previousPrice: property.previousPrice ? property.previousPrice.toNumber() : null,
     downPayment: property.downPayment ? property.downPayment.toNumber() : 0,
     interestRate: property.interestRate ? property.interestRate.toNumber() : 0,
     taxes: property.taxes ? property.taxes.toNumber() : 0,
     insurance: property.insurance ? property.insurance.toNumber() : 0,
 
+    // Financieros de Renta
     monthlyRent: property.monthlyRent ? property.monthlyRent.toNumber() : null,
     securityDeposit: property.securityDeposit ? property.securityDeposit.toNumber() : null,
 
+    // Fechas
     createdAt: property.createdAt.toISOString(),
     updatedAt: property.updatedAt.toISOString(),
+    lastPriceChangeAt: property.lastPriceChangeAt ? property.lastPriceChangeAt.toISOString() : null,
     availableDate: property.availableDate ? property.availableDate.toISOString() : null,
-    
   };
 
 
@@ -63,7 +81,9 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
         <div className="bg-[#1a1a1a] p-8 shadow-2xl rounded-2xl border border-gray-800 relative">
             {/* Glow decorativo */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#f8ed1a] opacity-5 rounded-full blur-3xl pointer-events-none"></div>
-            <EditForm property={plainProperty} />
+            
+            {/* Se inyectan ambos props listos para usarse */}
+            <EditForm property={plainProperty} sellers={sellers} />
         </div>
 
       </div>
