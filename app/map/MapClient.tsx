@@ -1,6 +1,5 @@
 'use client';
-
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Fragment } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView } from '@react-google-maps/api';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
@@ -77,14 +76,31 @@ const formatShortPrice = (price: number) => {
   return `$${price}`;
 };
 
+const smoothZoom = (mapInstance: google.maps.Map, targetZoom: number) => {
+  let currentZoom = mapInstance.getZoom();
+  if (currentZoom === undefined || currentZoom === targetZoom) return;
+
+  const step = currentZoom > targetZoom ? -1 : 1;
+  
+  const zoomInterval = setInterval(() => {
+    currentZoom! += step;
+    mapInstance.setZoom(currentZoom!);
+
+    if (currentZoom === targetZoom) {
+      clearInterval(zoomInterval);
+    }
+  }, 100); 
+};
+
 export default function MapClient({ properties, lang, highlightedProperty, onMarkerClick, searchType }: MapClientProps) {
   const [selectedProperty, setSelectedProperty] = useState<PropertyProps | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   
   // Estado para controlar el Zoom
-  const [currentZoom, setCurrentZoom] = useState(12);
+  const [currentZoom, setCurrentZoom] = useState(1);
+  const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
 
-  // RECARGA DE IMÁGENES PARA EVITAR PARPADEO ---
+  // 1. RECARGA DE IMÁGENES PARA EVITAR PARPADEO --- (Este lo mantenemos igual)
   useEffect(() => {
     const preloadImages = [
         '/frog-pin.png',
@@ -98,6 +114,24 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
         img.src = src;
     });
   }, []); 
+
+  // 2. LÓGICA DE SELECCIÓN Y ZOOM DEL MAPA --- (AQUÍ VA TU CÓDIGO ACTUALIZADO)
+  useEffect(() => {
+    if (highlightedProperty && map) {
+      map.panTo({ lat: highlightedProperty.lat, lng: highlightedProperty.lng });
+      map.setZoom(16);
+      setSelectedProperty(highlightedProperty);
+    } else if (!highlightedProperty && map) {
+      setSelectedProperty(null);
+      
+      // [NUEVO] Lógica para regresar paulatinamente al zoom 15
+      const currentMapZoom = map.getZoom();
+      if (currentMapZoom !== undefined && currentMapZoom !== 15) {
+        smoothZoom(map, 15);
+      }
+    }
+  }, [highlightedProperty, map]);
+
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -245,9 +279,9 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
             // --- LÓGICA DE ICONOS Y PRIORIDAD ---
             const isSelected = selectedProperty?.id === property.id;
             const isSpecial = checkSpecialStatus(property); // [NUEVO] Checkeo de fecha
-            const showSign = currentZoom >= 14; 
+            const showSign = currentZoom >= 17; 
             
-            const markerAnimation = (isSpecial && !isSelected) 
+            const markerAnimation = (isSpecial && !isSelected && !showSign) 
             ? google.maps.Animation.BOUNCE 
             : null;
             // Decidimos qué precio mostrar en el cartel
@@ -286,18 +320,40 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
             }
 
             return (
-                <Marker
-                    key={property.id}
-                    position={{ lat: property.lat, lng: property.lng }}
-                    onClick={() => handleMarkerClick(property)}
-                    zIndex={isSelected ? 999 : (isSpecial ? 800 : 1)} // New/Edited encima de los normales
-                    icon={{
-                        url: iconUrl,
-                        scaledSize: iconSize,
-                        labelOrigin: labelOrigin
-                    }}
-                    label={labelConfig as any} 
-                />
+                <Fragment key={property.id}>
+                    <Marker
+                        position={{ lat: property.lat, lng: property.lng }}
+                        onClick={() => handleMarkerClick(property)}
+
+                        // Eventos del hover
+                        onMouseOver={() => setHoveredProperty(property.id)}
+                        onMouseOut={() => setHoveredProperty(null)}
+
+                        zIndex={isSelected ? 999 : (isSpecial ? 800 : 1)}
+                        animation={markerAnimation as any} 
+                        icon={{
+                            url: iconUrl,
+                            scaledSize: iconSize,
+                            labelOrigin: labelOrigin
+                        }}
+                        label={labelConfig as any} 
+                    />
+
+                    {hoveredProperty === property.id && isSpecial && (
+                        <OverlayView
+                            position={{ lat: property.lat, lng: property.lng }}
+                            mapPaneName={OverlayView.FLOAT_PANE}
+                            getPixelPositionOffset={(width, height) => ({
+                                x: -(width / 2),
+                                y: -80 // <-- Cambia este número para subir o bajar el letrero
+                            })}
+                        >
+                            <div className="w-max bg-orange-500 text-[#f8ed1a] text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded shadow-[0_0_12px_rgba(239,68,68,0.6)] border-2 border-red-600 pointer-events-none whitespace-nowrap animate-in fade-in zoom-in duration-200">
+                              {lang === 'en' ? 'Hot property' : 'Gran oportunidad'}
+                          </div>
+                        </OverlayView>
+                    )}
+                </Fragment>
             );
         })}
 
