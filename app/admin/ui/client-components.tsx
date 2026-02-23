@@ -272,10 +272,10 @@ export function CreateUserForm() {
             <input name="name" type="text" required className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
         </div>
         <div>
-            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Role</label>
+            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">User type</label>
             <select name="role" className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors">
             <option value="admin">Admin</option>
-            <option value="editor">Editor</option>
+            <option value="user">Seller</option>
             </select>
         </div>
       </div>
@@ -313,6 +313,7 @@ interface User {
     email: string | null;
     role: string;
     createdAt: Date;
+    isTwoFactorEnabled: boolean;
 }
 
 export function UserListTable({ users, currentUserEmail }: { users: User[], currentUserEmail: string | null | undefined }) {
@@ -341,6 +342,7 @@ export function UserListTable({ users, currentUserEmail }: { users: User[], curr
                     <tr>
                         <th className="px-6 py-4">User</th>
                         <th className="px-6 py-4">Role</th>
+                        <th className="px-6 py-4">Seguridad (2FA)</th>
                         <th className="px-6 py-4">Created</th>
                         <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
@@ -369,6 +371,19 @@ export function UserListTable({ users, currentUserEmail }: { users: User[], curr
                                     {user.role}
                                 </span>
                             </td>
+
+                              <td className="px-6 py-4">
+                                {user.isTwoFactorEnabled ? (
+                                    <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-green-900/30 text-green-400 border border-green-800 flex items-center gap-1 w-max">
+                                        🔒 Active
+                                    </span>
+                                ) : (
+                                    <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-800 text-gray-400 border border-gray-700 flex items-center gap-1 w-max">
+                                        🔓 Inactive
+                                    </span>
+                                )}
+                            </td>
+
                             <td className="px-6 py-4">
                                 {new Date(user.createdAt).toLocaleDateString('en-US', {
                                     year: 'numeric',
