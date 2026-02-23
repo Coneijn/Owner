@@ -40,7 +40,7 @@ export default function MapFloatingButtons({ lang }: { lang: 'es' | 'en' }) {
 
   return (
   
-  <div className="fixed top-[76px] right-4 lg:top-22 lg:right-auto lg:left-[1200px] flex flex-row gap-3 items-center z-[1000]">      
+  <div className="fixed top-[76px] right-4 lg:top-[88px] lg:right-auto lg:left-2/3 lg:-translate-x-1/2 flex gap-3 items-center z-[1000]">      
       {/* 1. AGENDAR RECORRIDO */}
       <a href={CALENDAR_LINK} target="_blank" rel="noopener noreferrer" className={btnContainerClass} title={t.tour}>
         <FlipButtonContent imgSrc="/frog-show.png" text={t.tour} bgColor="bg-[#FFEC00] text-[#1a1a1a]" />

@@ -118,7 +118,7 @@ export async function GET() {
         },
         
         // --- CAMBIO 3: Añadimos el lockboxCode a la respuesta JSON ---
-        lockboxCode: p.lockboxCode,
+        // lockboxCode: p.lockboxCode,
         
         // --- CAMBIO 4: Leemos los datos desde p.sellerProfile ---
         seller: {

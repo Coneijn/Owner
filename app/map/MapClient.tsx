@@ -51,7 +51,7 @@ interface PropertyProps {
   monthlyRent: number;
   securityDeposit: number;
   
-  // [NUEVO] Campos de fecha para lógica de Pin
+  // Campos de fecha para lógica de Pin
   createdAt: string; 
   lastPriceChangeAt?: string | null;
 }
@@ -97,10 +97,10 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
   const [map, setMap] = useState<google.maps.Map | null>(null);
   
   // Estado para controlar el Zoom
-  const [currentZoom, setCurrentZoom] = useState(1);
+  const [currentZoom, setCurrentZoom] = useState(12); // Inicializado en 12 para coincidir con el mapa
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
 
-  // 1. RECARGA DE IMÁGENES PARA EVITAR PARPADEO --- (Este lo mantenemos igual)
+  // 1. RECARGA DE IMÁGENES PARA EVITAR PARPADEO
   useEffect(() => {
     const preloadImages = [
         '/frog-pin.png',
@@ -115,23 +115,24 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
     });
   }, []); 
 
-  // 2. LÓGICA DE SELECCIÓN Y ZOOM DEL MAPA --- (AQUÍ VA TU CÓDIGO ACTUALIZADO)
+  // 2. LÓGICA UNIFICADA DE SELECCIÓN Y ZOOM DEL MAPA
   useEffect(() => {
-    if (highlightedProperty && map) {
+    if (!map) return; // Esperar a que el mapa esté listo
+
+    if (highlightedProperty) {
       map.panTo({ lat: highlightedProperty.lat, lng: highlightedProperty.lng });
-      map.setZoom(16);
+      map.setZoom(16); // Hacemos un zoom in a 16 cuando se selecciona una propiedad
       setSelectedProperty(highlightedProperty);
-    } else if (!highlightedProperty && map) {
+    } else {
       setSelectedProperty(null);
       
-      // [NUEVO] Lógica para regresar paulatinamente al zoom 15
+      // Regresar paulatinamente al zoom inicial (12)
       const currentMapZoom = map.getZoom();
-      if (currentMapZoom !== undefined && currentMapZoom !== 15) {
-        smoothZoom(map, 15);
+      if (currentMapZoom !== undefined && currentMapZoom !== 12) {
+        smoothZoom(map, 12);
       }
     }
   }, [highlightedProperty, map]);
-
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -185,16 +186,6 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
     }
   };
 
-  useEffect(() => {
-    if (highlightedProperty && map) {
-      map.panTo({ lat: highlightedProperty.lat, lng: highlightedProperty.lng });
-      map.setZoom(16);
-      setSelectedProperty(highlightedProperty);
-    } else if (!highlightedProperty && map) {
-      setSelectedProperty(null);
-    }
-  }, [highlightedProperty, map]);
-
   const handleMarkerClick = (property: PropertyProps) => {
     setSelectedProperty(property);
     if (onMarkerClick) {
@@ -202,7 +193,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
     }
   };
 
-  // [NUEVO] Lógica para determinar si es Nuevo o Editado
+  // Lógica para determinar si es Nuevo o Editado
   const checkSpecialStatus = (property: PropertyProps) => {
     const now = new Date();
     const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -278,12 +269,13 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
 
             // --- LÓGICA DE ICONOS Y PRIORIDAD ---
             const isSelected = selectedProperty?.id === property.id;
-            const isSpecial = checkSpecialStatus(property); // [NUEVO] Checkeo de fecha
+            const isSpecial = checkSpecialStatus(property);
             const showSign = currentZoom >= 17; 
             
             const markerAnimation = (isSpecial && !isSelected && !showSign) 
             ? google.maps.Animation.BOUNCE 
             : null;
+            
             // Decidimos qué precio mostrar en el cartel
             const priceForLabel = isRent ? property.monthlyRent : property.price;
             const labelText = isRent 
@@ -300,7 +292,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
                 // PRIORIDAD 1: Seleccionado
                 iconUrl = '/frog-pin2.png';
                 iconSize = new window.google.maps.Size(90, 90); 
-            }  else if (showSign) {
+            } else if (showSign) {
                 // PRIORIDAD 2: Zoom alto (Muestra precio)
                 iconUrl = '/frog-sign.png';
                 iconSize = new window.google.maps.Size(70, 70);
@@ -312,10 +304,9 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
                     fontSize: "11px",
                     className: "map-marker-label",
                 };
-            }else if (isSpecial) {
+            } else if (isSpecial) {
                 // PRIORIDAD 3: Nuevo o Editado 
                 iconUrl = '/pinNewEdited.png';
-                // Ajusta el tamaño si tu pin nuevo tiene dimensiones diferentes
                 iconSize = new window.google.maps.Size(70, 70); 
             }
 
@@ -345,7 +336,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
                             mapPaneName={OverlayView.FLOAT_PANE}
                             getPixelPositionOffset={(width, height) => ({
                                 x: -(width / 2),
-                                y: -80 // <-- Cambia este número para subir o bajar el letrero
+                                y: -80
                             })}
                         >
                             <div className="w-max bg-orange-500 text-[#f8ed1a] text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded shadow-[0_0_12px_rgba(239,68,68,0.6)] border-2 border-red-600 pointer-events-none whitespace-nowrap animate-in fade-in zoom-in duration-200">
