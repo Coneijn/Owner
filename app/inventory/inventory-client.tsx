@@ -1,21 +1,19 @@
+// app/inventory/inventory-client.tsx
 'use client';
 import { toJpeg } from 'html-to-image';
 import { useState, useMemo, useRef } from 'react';
 import InventoryCard from './ui/inventory-card';
 import { PdfTemplate } from './ui/pdf-template';
-// 1. Nuevas importaciones para descarga directa
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 export default function InventoryClient({ properties, lang, t }: { properties: any[], lang: string, t: any }) {
   const [filter, setFilter] = useState<'ALL' | 'NEW' | 'AVAILABLE' | 'SOLD'>('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // Estado para mostrar un "Cargando..." mientras se dibuja el PDF
   const [isGenerating, setIsGenerating] = useState(false);
 
   const componentRef = useRef<HTMLDivElement>(null);
 
-  // 2. FUNCIÓN DE DESCARGA DIRECTA
   const handleDownloadDirectPDF = async () => {
     const element = componentRef.current;
     if (!element) return;
@@ -29,11 +27,12 @@ export default function InventoryClient({ properties, lang, t }: { properties: a
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
         
-        // Usamos html-to-image en lugar de html2canvas
         const dataUrl = await toJpeg(page, { 
             quality: 0.95, 
-            pixelRatio: 2, // Mantiene la alta resolución para el PDF
-            cacheBust: true // Ayuda a forzar la carga de imágenes frescas
+            pixelRatio: 2, 
+            skipFonts: true, 
+            fontEmbedCSS: '',
+            imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
         });
         
         if (i > 0) pdf.addPage();
@@ -142,7 +141,6 @@ export default function InventoryClient({ properties, lang, t }: { properties: a
                 {t.clear}
             </button>
 
-            {/* BOTÓN CON ESTADO DE CARGA */}
             <button 
               onClick={handleDownloadDirectPDF}
               disabled={isGenerating}
@@ -156,7 +154,6 @@ export default function InventoryClient({ properties, lang, t }: { properties: a
         </div>
       )}
 
-      {/* PLANTILLA DE PDF OCULTA */}
       <PdfTemplate 
         ref={componentRef} 
         properties={selectedPropertiesData} 
