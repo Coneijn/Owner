@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useState, useRef } from 'react'; 
+import { useActionState, useState, useRef, useCallback } from 'react'; 
 import { updateProperty } from '@/lib/actions';
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 import dynamic from 'next/dynamic';
@@ -189,9 +189,13 @@ export default function EditForm({
     lng: Number((property as any).longitude) || -90.0490 
   });
 
-  const handleLocationChange = (lat: number, lng: number) => {
-      setCoords({ lat, lng });
-  };
+  const handleLocationChange = useCallback((lat: number, lng: number) => {
+    setCoords(prev => {
+        // Evita actualizar el estado si las coordenadas son exactamente las mismas
+        if (prev.lat === lat && prev.lng === lng) return prev;
+        return { lat, lng };
+    });
+}, []);
   
   const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { createProperty } from '@/lib/actions';
-import { useActionState, useState, useMemo, useRef } from 'react'; 
+import { useActionState, useState, useMemo, useRef, useCallback } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
 import dynamic from 'next/dynamic'; 
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
@@ -96,10 +96,13 @@ export default function NewPropertyForm({ sellers = [] }: { sellers?: SellerProf
     
     const [coords, setCoords] = useState({ lat: 35.1495, lng: -90.0490 });
     
-    const handleLocationChange = (lat: number, lng: number) => {
-        setCoords({ lat, lng });
-    };
-    
+    const handleLocationChange = useCallback((lat: number, lng: number) => {
+      setCoords(prev => {
+          // Evita actualizar el estado si las coordenadas son exactamente las mismas
+          if (prev.lat === lat && prev.lng === lng) return prev;
+          return { lat, lng };
+      });
+  }, []);
     const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
 
     const onPlaceChanged = () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 const containerStyle = {
@@ -45,11 +45,18 @@ export default function LocationPicker({ lat, lng, searchQuery, onLocationChange
   const onUnmount = useCallback(function callback(map: google.maps.Map) {
     setMap(null);
   }, []);
-
+  const lastSearchedQuery = useRef<string>('');
   // --- BUSCADOR DE DIRECCIONES (GEOCODING) ---
   useEffect(() => {
-    if (isLoaded && map && searchQuery && searchQuery.length > 10) {
+    // Si la búsqueda es idéntica a la anterior, o está vacía, no hagas nada
+    if (!searchQuery || searchQuery.length < 10 || searchQuery === lastSearchedQuery.current) {
+        return;
+    }
+
+    if (isLoaded && map) {
       const delayDebounceFn = setTimeout(() => {
+        lastSearchedQuery.current = searchQuery; // Actualiza la referencia
+
         const geocoder = new window.google.maps.Geocoder();
         geocoder.geocode({ address: searchQuery }, (results, status) => {
           if (status === 'OK' && results && results[0]) {
