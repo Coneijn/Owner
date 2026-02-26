@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import DeletePropertyButton from '@/app/admin/ui/delete-button';
 
-// Helper para formato de moneda
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -13,13 +12,11 @@ const formatMoney = (amount: number | unknown) => {
   }).format(Number(amount));
 };
 
-// Componente para cada Sección Colapsable
 const PropertySection = ({ title, items, icon, colorClass }: any) => {
-  const [isOpen, setIsOpen] = useState(true); // Por defecto abierto
+  const [isOpen, setIsOpen] = useState(true); 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Lógica de Paginación
   const totalPages = Math.ceil(items.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentItems = items.slice(startIndex, startIndex + itemsPerPage);
@@ -30,11 +27,10 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
     }
   };
 
-  if (items.length === 0) return null; // No mostrar sección si no hay items
+  if (items.length === 0) return null; 
 
   return (
     <div className="mb-6 bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-      {/* HEADER DE LA SECCIÓN */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-4 bg-gray-900 hover:bg-gray-800 transition-colors border-b border-gray-800"
@@ -50,7 +46,6 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
         </span>
       </button>
 
-      {/* CONTENIDO DE LA TABLA */}
       {isOpen && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="overflow-x-auto">
@@ -67,7 +62,6 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
               </thead>
               <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
                 {currentItems.map((property: any) => {
-                    // Lógica para determinar si es Renta/Venta
                     const isRent = property.isForRent;
                     const isSale = property.isForSale;
                     
@@ -93,22 +87,18 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
                           </div>
                         </td>
 
-                        {/* --- COLUMNA DE PRECIOS HÍBRIDA (RENTA / VENTA) --- */}
+                        {/* Prices */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
-                            {/* OPCIÓN VENTA */}
                             {isSale && (
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <span className="bg-[#f8ed1a] text-black text-[9px] font-black px-1.5 py-0.5 rounded uppercase">SALE</span>
                                         <span className="text-sm text-[#f8ed1a] font-bold">{formatMoney(property.price)}</span>
                                     </div>
-                                    {/* Mostrar DownPayment solo si es venta */}
                                     <div className="text-[9px] text-gray-500 ml-1">Down: {formatMoney(property.downPayment)}</div>
                                 </div>
                             )}
-
-                            {/* OPCIÓN RENTA */}
                             {isRent && (
                                 <div className={`${isSale ? 'mt-1 border-t border-gray-700 pt-1' : ''}`}>
                                     <div className="flex items-center gap-2">
@@ -118,8 +108,6 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
                                     <div className="text-[9px] text-gray-500 ml-1">Dep: {formatMoney(property.securityDeposit)}</div>
                                 </div>
                             )}
-
-                            {/* Fallback si no está definido (Drafts antiguos) */}
                             {!isSale && !isRent && (
                                 <span className="text-gray-600 text-xs italic">Not configured</span>
                             )}
@@ -207,19 +195,49 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
 };
 
 export default function DashboardClient({ properties }: { properties: any[] }) {
-  // Filtramos las propiedades por estado
-  const availableProps = properties.filter(p => p.status === 'AVAILABLE');
-  const underContractProps = properties.filter(p => p.status === 'UNDER_CONTRACT');
-  const soldProps = properties.filter(p => p.status === 'SOLD');
-  const draftProps = properties.filter(p => p.status === 'DRAFT');
-  const comingSoonProps = properties.filter(p => p.status === 'COMING_SOON');
+  // 1. Estado para el input de búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // 2. Filtramos la lista maestra de propiedades según la búsqueda (Título en/es, dirección, código postal)
+  const filteredProperties = properties.filter((p) => {
+    if (!searchTerm) return true;
+    
+    const query = searchTerm.toLowerCase();
+    return (
+      p.titleEn?.toLowerCase().includes(query) ||
+      p.titleEs?.toLowerCase().includes(query) ||
+      p.address?.toLowerCase().includes(query) ||
+      p.zipCode?.toLowerCase().includes(query)
+    );
+  });
+
+  // 3. Ahora las listas por estado usan las propiedades filtradas
+  const availableProps = filteredProperties.filter(p => p.status === 'AVAILABLE');
+  const underContractProps = filteredProperties.filter(p => p.status === 'UNDER_CONTRACT');
+  const soldProps = filteredProperties.filter(p => p.status === 'SOLD');
+  const draftProps = filteredProperties.filter(p => p.status === 'DRAFT');
+  const comingSoonProps = filteredProperties.filter(p => p.status === 'COMING_SOON');
 
   return (
     <div className="space-y-8">
-      {/* Si no hay propiedades en absoluto */}
-      {properties.length === 0 && (
+      
+      {/* BARRA DE BÚSQUEDA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <span className="text-gray-500 text-lg">🔍</span>
+        </div>
+        <input
+          type="text"
+          placeholder="Search properties by title, address, or zip code..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-[#1a1a1a] border border-gray-700 text-white rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a] transition-all shadow-lg"
+        />
+      </div>
+
+      {filteredProperties.length === 0 && (
           <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl">
-              <p className="text-gray-500 text-lg">Inventory is empty.</p>
+              <p className="text-gray-500 text-lg">No properties found matching "{searchTerm}".</p>
           </div>
       )}
 

@@ -1,6 +1,11 @@
 import { Metadata } from 'next';
 import Header from '@/app/components/Header';
 import GHLFormEmbed from '@/app/components/GHLFormEmbed';
+import { prisma } from '@/lib/prisma';
+import MapLoader from '@/app/map/MapLoader';
+import { calculateEstimatedPayment } from '@/lib/utils'; 
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Aplicar | Dueño a Dueño',
@@ -16,14 +21,30 @@ const DICTIONARY = {
   es: {
     title: "INICIA TU PROCESO PARA UNIRTE A NUESTRA COMUNIDAD DE VENDEDORES",
     subtitle: "La mayor parte del proceso es automático. Llena el formulario abajo para que nuestro sistema evalúe tus opciones.",
+    mapTitle: "PROPIEDADES VENDIDAS",
+    mapDesc: "Echa un vistazo a las propiedades que hemos cerrado con éxito.",
+    downPayments: "Enganches Recolectados",
+    monthlyIncome: "Ingreso Mensual Generado"
   },
   en: {
     title: "START YOUR PROCESS TO JOIN OUR SELLER COMMUNITY",
     subtitle: "Most of the process is automated. Fill out the form below so our system can evaluate your options.",
+    mapTitle: "SOLD PROPERTIES",
+    mapDesc: "Take a look at the properties we have successfully closed.",
+    downPayments: "Down Payments Collected",
+    monthlyIncome: "Monthly Income Generated"
   }
 };
 
-export default async function ApplyPage(props: {
+const formatMoney = (amount: number | unknown) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(Number(amount));
+};
+
+export default async function SellersPage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
   const searchParams = await props.searchParams;
@@ -32,12 +53,86 @@ export default async function ApplyPage(props: {
   
   const formUrl = lang === 'en' ? FORM_URLS.en : FORM_URLS.es;
 
+  // 1. Consulta a Prisma 
+  const rawSoldProperties = await prisma.property.findMany({
+    where: { status: 'SOLD' },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      titleEn: true,
+      titleEs: true,
+      address: true,
+      price: true,
+      slug: true,
+      latitude: true,
+      longitude: true,
+      mainImage: true,
+      bedrooms: true,
+      bathrooms: true,
+      sqft: true,
+      downPayment: true,
+      interestRate: true,
+      taxes: true,
+      insurance: true,
+      monthlyRent: true,
+      securityDeposit: true,
+      createdAt: true,
+      lastPriceChangeAt: true,
+      isForSale: true, 
+      isForRent: true, 
+    }
+  });
+
+  // 2. Mapeo de datos
+  const soldProperties = rawSoldProperties.map(p => ({
+    id: p.id,
+    title: lang === 'en' ? p.titleEn : p.titleEs,
+    address: p.address,
+    price: Number(p.price || 0),
+    slug: p.slug,
+    lat: Number(p.latitude || 0),
+    lng: Number(p.longitude || 0),
+    image: p.mainImage,
+    beds: p.bedrooms,
+    baths: p.bathrooms,
+    sqft: p.sqft,
+    downPayment: Number(p.downPayment || 0),
+    interestRate: Number(p.interestRate || 0),
+    taxes: Number(p.taxes || 0),
+    insurance: Number(p.insurance || 0),
+    monthlyRent: Number(p.monthlyRent || 0),
+    securityDeposit: Number(p.securityDeposit || 0),
+    createdAt: p.createdAt.toISOString(),
+    lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null,
+    isForSale: p.isForSale,
+    isForRent: p.isForRent,
+  }));
+
+  // 3. Cálculos de las métricas
+  const downPaymentsCollected = soldProperties.reduce((acc, curr) => acc + curr.downPayment, 0);
+  
+  const monthlyIncomeGenerated = soldProperties.reduce((acc, curr) => {
+    let income = 0;
+    if (curr.isForRent) {
+      income = curr.monthlyRent;
+    } else if (curr.isForSale) {
+      income = calculateEstimatedPayment(
+        curr.price,
+        curr.downPayment,
+        curr.taxes,
+        curr.insurance,
+        curr.interestRate
+      );
+    }
+    return acc + income;
+  }, 0);
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
       <Header lang={lang} />
 
-      {/* SECCIÓN SUPERIOR */}
+      {/* SECCIÓN SUPERIOR (Hero + Métricas integradas) */}
       <section className="relative bg-gradient-to-b from-gray-900 to-[#1a1a1a] pt-16 pb-32 px-4 border-b border-gray-800">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <h1 className="text-4xl md:text-6xl font-black text-[#f8ed1a] uppercase tracking-tighter">
@@ -46,12 +141,60 @@ export default async function ApplyPage(props: {
           <p className="text-lg text-white max-w-2xl mx-auto leading-relaxed">
             {t.subtitle}
           </p>
-          
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 text-left">
+            <StatCard 
+              title={t.downPayments} 
+              value={formatMoney(downPaymentsCollected)} 
+              icon="💵" 
+              color="text-[#529e14]" 
+            />
+            <StatCard 
+              title={t.monthlyIncome} 
+              value={formatMoney(monthlyIncomeGenerated)} 
+              icon="📈" 
+              color="text-[#f8ed1a]" 
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CONTENEDOR UNIFICADO: VIDEO Y MAPA */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 mb-16">
+        
+        {/* --- VIDEO EMBEBIDO (Ahora dentro del contenedor principal para subir junto con el mapa) --- */}
+        <div className="relative mb-12 w-full md:w-[71%] mx-auto aspect-video rounded-xl overflow-hidden border border-gray-700 bg-black shadow-2xl">
+          <iframe
+            src="https://drive.google.com/file/d/1qIv95lxuvRhCO-5FLfP7e92dtMOweGqg/preview"
+            className="absolute top-0 left-0 w-full h-full"
+            style={{ border: 0 }}
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            title="Dueño a Dueño"
+          />
+        </div>
+
+        {/* --- MAPA (Propiedades Vendidas) --- */}
+        <div className="bg-[#1a1a1a] p-4 sm:p-6 rounded-2xl border border-gray-800 shadow-2xl">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-black text-white uppercase tracking-wide">
+              {t.mapTitle}
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">{t.mapDesc}</p>
+          </div>
+
+          <div className="h-[450px] w-full rounded-xl overflow-hidden border border-gray-700">
+            <MapLoader 
+              properties={soldProperties} 
+              lang={lang} 
+              searchType="sold" 
+            />
+          </div>
         </div>
       </section>
 
       {/* SECCIÓN DEL FORMULARIO GHL */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 -mt-20 relative z-10">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 relative z-10">
         <GHLFormEmbed src={formUrl} height="850px" />
       </main>
 
@@ -60,4 +203,20 @@ export default async function ApplyPage(props: {
       </footer>
     </div>
   );
+}
+
+function StatCard({ title, value, icon, color = 'text-white' }: any) {
+  return (
+    <div className="bg-[#1a1a1a] overflow-hidden shadow-lg rounded-xl border border-gray-800 p-6 relative group hover:border-gray-700 transition-colors">
+        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+        
+        <div className="flex items-center">
+            <div className="flex-shrink-0 text-3xl mr-4 opacity-80">{icon}</div>
+            <div>
+                <dt className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</dt>
+                <dd className={`mt-1 text-3xl font-black ${color}`}>{value}</dd>
+            </div>
+        </div>
+    </div>
+  )
 }

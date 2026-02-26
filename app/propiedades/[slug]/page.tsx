@@ -6,15 +6,11 @@ import { Metadata, ResolvingMetadata } from 'next';
 import Header from '@/app/components/Header'; 
 import PropertyGallery from '@/app/components/PropertyGallery';
 import VideoModal from '@/app/components/video-modal';
-import Script from 'next/script';
 import PropertyShare from '@/app/components/PropertyShare';
-// 1. IMPORTACIÓN NUEVA
 import PropertyFinancials from '@/app/components/PropertyFinancials';
+import WhatsAppButton from '@/app/components/WhatsAppButton'; // <-- NUEVA IMPORTACIÓN
+import DOMPurify from 'isomorphic-dompurify';
 
-// --- COLORES CORPORATIVOS ---
-// Yellow: #f8ed1a | Green: #529e14 | Dark: #1a1a1a
-
-// Helper para dinero
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -23,7 +19,6 @@ const formatMoney = (amount: number) => {
   }).format(amount);
 };
 
-// DICCIONARIO DE TRADUCCIONES
 const DICTIONARY = {
   es: {
     back: "Volver al catálogo",
@@ -50,7 +45,7 @@ const DICTIONARY = {
     videoBtn: "VER VIDEO TOUR", 
     ownerTitle: "Dueño de la Propiedad", 
     agentTitle: "Asesor de Ventas",
-    perMonth: "/mes", // 2. NUEVO TEXTO
+    perMonth: "/mes",
   },
   en: {
     back: "Back to catalog",
@@ -77,7 +72,7 @@ const DICTIONARY = {
     videoBtn: "WATCH VIDEO TOUR", 
     ownerTitle: "Property Owner", 
     agentTitle: "Sales Agent", 
-    perMonth: "/mo", // 2. NUEVO TEXTO
+    perMonth: "/mo",
   }
 };
 
@@ -149,7 +144,6 @@ export default async function PropertyDetailPage(props: Props) {
   
   const property = await prisma.property.findUnique({
     where: { slug },
-    // --- CAMBIO 1: Incluir la relación del perfil del vendedor ---
     include: {
       sellerProfile: true
     }
@@ -159,19 +153,15 @@ export default async function PropertyDetailPage(props: Props) {
     notFound();
   }
 
-  // 3. CONVERSIÓN DE DATOS SEGURA
-  // Usamos el operador ?. y ?? para evitar errores si el campo es null
   const price = property.price?.toNumber() ?? 0;
   const downPayment = property.downPayment?.toNumber() ?? 0;
   const interestRate = property.interestRate?.toNumber() ?? 0;
   const taxes = property.taxes?.toNumber() ?? 0;
   const insurance = property.insurance?.toNumber() ?? 0;
   
-  // Datos de Renta
   const monthlyRent = property.monthlyRent?.toNumber() ?? 0;
   const securityDeposit = property.securityDeposit?.toNumber() ?? 0;
 
-  // Objeto preparado para el componente
   const financialProps = {
       price,
       downPayment,
@@ -184,8 +174,6 @@ export default async function PropertyDetailPage(props: Props) {
       securityDeposit,
   };
 
-  // 4. LÓGICA DE PRECIO PRINCIPAL (HEADER)
-  // Si es Solo Renta, mostramos la renta mensual. Si es Venta o Ambos, mostramos precio total.
   const displayPrice = (property.isForRent && !property.isForSale) 
       ? monthlyRent 
       : price;
@@ -199,43 +187,40 @@ export default async function PropertyDetailPage(props: Props) {
     ? property.calendarLink 
     : DEFAULT_CALENDAR_LINK;
 
+  const propertyTitle = lang === 'en' ? property.titleEn : property.titleEs;
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
       
-      {/* --- HEADER IMPLEMENTADO --- */}
       <Header lang={lang} activePage="properties" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
-        {/* Breadcrumb */}
         <div className="mb-8">
         <Link href={`/properties?lang=${lang}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
             <span className="text-lg">←</span> {t.back}
           </Link>
         </div>
 
-        {/* HEADER: Título y Precio */}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end mb-10 pb-6 border-b-4 border-[#1a1a1a] gap-6">
             <div className="flex-1">
                 <h1 className="text-4xl md:text-5xl font-black text-[#1a1a1a] mb-3 uppercase tracking-tighter leading-none">
-                    {lang === 'en' ? property.titleEn : property.titleEs}
+                    {propertyTitle}
                 </h1>
                 <p className="text-lg md:text-xl text-gray-600 flex items-center gap-2 font-medium">
                     📍 {property.address}, {property.city}, {property.state} {property.zipCode}
                 </p>
             </div>
             <div className="text-left lg:text-right">
-                {/* PRECIO ACTUALIZADO CON LÓGICA RENTA/VENTA */}
                 <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">
                     {formatMoney(displayPrice)}{priceSuffix}
                 </p>
                 
-                {/* --- BOTÓN DE COMPARTIR Y ESTADO --- */}
                 <div className="mt-2 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
                     
                     <div className="shrink-0">
                         <PropertyShare 
-                          title={lang === 'en' ? property.titleEn : property.titleEs} 
+                          title={propertyTitle} 
                           slug={slug} 
                           lang={lang} 
                         />
@@ -282,19 +267,16 @@ export default async function PropertyDetailPage(props: Props) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             
-            {/* COLUMNA IZQUIERDA */}
             <div className="lg:col-span-2 space-y-12">
                 
-                {/* Galería */}
                 <div className="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
                     <PropertyGallery 
                         images={allImages} 
-                        title={lang === 'en' ? property.titleEn : property.titleEs} 
+                        title={propertyTitle} 
                         address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
                     />
                 </div>
 
-                {/* Specs Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg">
                     <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
                         <span className="block text-3xl font-black text-white">{property.bedrooms}</span>
@@ -315,7 +297,6 @@ export default async function PropertyDetailPage(props: Props) {
         
                 </div>
                       
-                {/* Descripción y Vendedor */}
                 <div>
                     <h2 className="text-2xl font-black text-[#1a1a1a] uppercase tracking-tight mb-6 border-l-8 border-[#f8ed1a] pl-4">
                         {t.aboutTitle}
@@ -332,12 +313,10 @@ export default async function PropertyDetailPage(props: Props) {
                       </div>
                     )}
                     
-                    {/* --- CAMBIO 2: Actualización en la UI del Vendedor --- */}
                     {property.showSeller && property.sellerProfile && (
                       <div className="mt-8 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center gap-6 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-[#529e14]/10 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
                         
-                        {/* Foto Vendedor */}
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
                            <div className="w-full h-full rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-[#f8ed1a]">
                               {property.sellerProfile.sellerImage ? (
@@ -355,7 +334,6 @@ export default async function PropertyDetailPage(props: Props) {
                            </div>
                         </div>
 
-                        {/* Info con ROL DINÁMICO */}
                         <div className="z-10">
                            <h3 className="text-sm font-bold text-[#529e14] uppercase tracking-wide mb-1">
                               {t.meetSeller}
@@ -371,7 +349,6 @@ export default async function PropertyDetailPage(props: Props) {
                     )}
                 </div>
 
-                {/* Características */}
                 {property.features.length > 0 && (
                     <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">
                         <h2 className="text-2xl font-black text-[#1a1a1a] uppercase tracking-tight mb-6 border-l-8 border-[#529e14] pl-4">
@@ -388,19 +365,14 @@ export default async function PropertyDetailPage(props: Props) {
                 )}
             </div>
 
-            {/* COLUMNA DERECHA */}
             <div className="space-y-8">
-                
                 <div className="sticky top-24 space-y-8">
-                    
-                    {/* 5. CALCULADORA DINÁMICA (SALE/RENT/BOTH) */}
                     {property.status !== 'COMING_SOON' && (
                         <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100 bg-[#1a1a1a]">
                              <PropertyFinancials property={financialProps} lang={lang} />
                         </div>
                     )}
 
-                    {/* Botones de Acción */}
                     <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-[#f8ed1a] rounded-bl-full opacity-20"></div>
 
@@ -410,7 +382,6 @@ export default async function PropertyDetailPage(props: Props) {
                         </div>
                         
                         <div className="space-y-3">
-                            {/* 1. AGENDAR */}
                             <a 
                                 href={bookingLink} 
                                 target="_blank" 
@@ -420,7 +391,6 @@ export default async function PropertyDetailPage(props: Props) {
                                 📅 {t.btnSchedule}
                             </a>
 
-                            {/* 2. APLICAR AHORA */}
                             <Link 
                                 href={`/apply?lang=${lang}`}
                                 className="w-full bg-[#f8ed1a] hover:bg-[#e6db15] text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3"
@@ -428,7 +398,6 @@ export default async function PropertyDetailPage(props: Props) {
                                 📝 {t.btnApply}
                             </Link>
                             
-                            {/* 3. LLAMAR */}
                             <a 
                                 href={phoneHref} 
                                 className="w-full flex items-center justify-center bg-transparent border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300"
@@ -447,6 +416,10 @@ export default async function PropertyDetailPage(props: Props) {
             <p className="text-sm font-medium">© 2026 Dueño a Dueño.</p>
         </div>
       </footer>
+      
+      {/* COMPONENTE DE WHATSAPP INTEGRADO AQUÍ */}
+      <WhatsAppButton lang={lang} propertyName={propertyTitle} />
+
     </div>
   );
 }
