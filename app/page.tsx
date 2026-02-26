@@ -18,7 +18,10 @@ export default async function MapPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-  const searchType = searchParams?.type === 'rent' ? 'rent' : 'buy';
+  
+  // --- CAMBIO APLICADO: Agregamos 'sold' como opción ---
+  const typeParam = searchParams?.type;
+  const searchType = typeParam === 'rent' ? 'rent' : typeParam === 'sold' ? 'sold' : 'buy';
 
   const DICTIONARY = {
     es: {
@@ -41,7 +44,8 @@ export default async function MapPage(props: {
       },
       tabs: {
         buy: "COMPRAR",
-        rent: "RENTAR"
+        rent: "RENTAR",
+        sold: "VENDIDAS" // --- NUEVO ---
       },
       specs: {
         beds: "Hab",
@@ -69,7 +73,8 @@ export default async function MapPage(props: {
       },
       tabs: {
         buy: "BUY",
-        rent: "RENT"
+        rent: "RENT",
+        sold: "SOLD" // --- NUEVO ---
       },
       specs: {
         beds: "Beds",
@@ -89,12 +94,18 @@ export default async function MapPage(props: {
   const minBaths = searchParams?.baths ? Number(searchParams.baths) : undefined;
   const minSqft = searchParams?.sqft ? Number(searchParams.sqft) : undefined;
 
+  // --- CAMBIO APLICADO: Ajuste del WhereClause para propiedades Vendidas ---
   const whereClause: any = {
-    OR: [
-        { status: 'AVAILABLE' },
-        { status: 'COMING_SOON' }
-    ],
-    ...(searchType === 'rent' ? { isForRent: true } : { isForSale: true }),
+    ...(searchType === 'sold'
+        ? { status: 'SOLD' } // Si es sold, ignoramos si es renta/venta y solo buscamos vendidas
+        : {
+            OR: [
+                { status: 'AVAILABLE' },
+                { status: 'COMING_SOON' }
+            ],
+            ...(searchType === 'rent' ? { isForRent: true } : { isForSale: true }),
+          }
+    ),
     
     ...(queryText && {
         AND: [{
@@ -122,7 +133,6 @@ export default async function MapPage(props: {
     ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
   };
 
-  
   // --- CONSULTA A BASE DE DATOS ---
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
@@ -160,7 +170,6 @@ export default async function MapPage(props: {
         features: true,    
         showSeller: true,
         
-        // --- CAMBIO APLICADO: Hacemos select de la relación sellerProfile ---
         sellerProfile: {
           select: {
             sellerName: true,
@@ -171,8 +180,6 @@ export default async function MapPage(props: {
     }
   });
 
-
-  
   // --- MAPEO DE DATOS ---
   const properties = rawProperties.map(p => ({
     id: p.id,
@@ -200,7 +207,6 @@ export default async function MapPage(props: {
     features: p.features,
     showSeller: p.showSeller,
 
-    // --- CAMBIO APLICADO: Extraemos la info desde p.sellerProfile ---
     sellerName: p.sellerProfile?.sellerName || null,
     sellerImage: p.sellerProfile?.sellerImage || null,
     sellerType: p.sellerProfile?.sellerType || null,

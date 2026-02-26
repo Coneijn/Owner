@@ -56,6 +56,8 @@ const getStatusBadge = (status: string, texts: any) => {
     switch (status) {
         case 'COMING_SOON':
             return { text: texts.comingSoon, color: 'bg-blue-600/80 border-blue-400/30' };
+        case 'SOLD': // --- NUEVO: Estilos para propiedades vendidas ---
+            return { text: texts.sold, color: 'bg-red-600/80 border-red-400/30 text-white' };
         case 'AVAILABLE':
         default:
             return { text: texts.available, color: 'bg-black/70 border-white/10' };
@@ -94,6 +96,17 @@ function MapTabs({ currentType, texts }: { currentType: string, texts: any }) {
                 }`}
             >
                 {texts.rent}
+            </button>
+            {/* --- NUEVO: Botón de propiedades vendidas --- */}
+            <button
+                onClick={() => handleSwitch('sold')}
+                className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                    currentType === 'sold'
+                        ? 'bg-[#f8ed1a] text-black shadow-lg'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+            >
+                {texts.sold}
             </button>
         </div>
     );
