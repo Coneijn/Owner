@@ -45,7 +45,7 @@ export default async function MapPage(props: {
       tabs: {
         buy: "COMPRAR",
         rent: "RENTAR",
-        sold: "VENDIDAS" // --- NUEVO ---
+        sold: "VENDER" // --- NUEVO ---
       },
       specs: {
         beds: "Hab",
