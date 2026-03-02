@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, Fragment, useMemo } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, HeatmapLayer } from '@react-google-maps/api';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
+import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
 
 // --- CONFIGURACIÓN ---
 const containerStyle = {
@@ -127,8 +128,7 @@ const smoothZoom = (mapInstance: google.maps.Map, targetZoom: number) => {
 export default function MapClient({ properties, lang, highlightedProperty, onMarkerClick, searchType }: MapClientProps) {
   const [selectedProperty, setSelectedProperty] = useState<PropertyProps | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [hoveredZip, setHoveredZip] = useState<{zip: string, count: number, lat: number, lng: number} | null>(null);
-  // Estado para controlar el Zoom
+const [clickedZip, setClickedZip] = useState<{zip: string, count: number, lat: number, lng: number} | null>(null);  // Estado para controlar el Zoom
   const [currentZoom, setCurrentZoom] = useState(12); // Inicializado en 12 para coincidir con el mapa
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
   
@@ -150,7 +150,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
 useEffect(() => {
   // Limpiamos el tooltip para que no quede "flotando" 
   // en las coordenadas donde antes había un punto de calor
-  setHoveredZip(null);
+  setClickedZip(null);
   
   // Si tienes un estado de propiedad seleccionada, también es sano limpiarlo
   setSelectedProperty(null);
@@ -307,6 +307,7 @@ useEffect(() => {
         onZoomChanged={handleZoomChanged}
         onClick={() => {
             setSelectedProperty(null);
+            setClickedZip(null); // Limpiar el tooltip de calor al hacer clic en el mapa
             if (onMarkerClick) onMarkerClick(null as any);
         }}
         options={{
@@ -497,8 +498,13 @@ useEffect(() => {
         <Marker
           key={`heat-detect-${zip}`}
           position={coords}
-          onMouseOver={() => setHoveredZip({ zip, count, ...coords })}
-          onMouseOut={() => setHoveredZip(null)}
+          onClick={()=>{
+            if (clickedZip?.zip === zip) {
+                setClickedZip(null);
+            } else {
+                setClickedZip({ zip, count, ...coords });
+            }
+          }}
           icon={{
             path: window.google.maps.SymbolPath.CIRCLE,
             scale: 20,
@@ -510,21 +516,21 @@ useEffect(() => {
     })}
 
       {/* TOOLTIP DE FRECUENCIA */}
-{hoveredZip && (
+{clickedZip && (  // <-- CAMBIA hoveredZip por clickedZip
   <OverlayView
-    position={{ lat: hoveredZip.lat, lng: hoveredZip.lng }}
+    position={{ lat: clickedZip.lat, lng: clickedZip.lng }} 
     mapPaneName={OverlayView.FLOAT_PANE}
-    getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -20 })} // Ajustado para que flote un poco más cerca
+    getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -20 })}
   >
     <div 
       className={`
         text-white font-black text-xl uppercase tracking-tighter 
         pointer-events-none whitespace-nowrap animate-in fade-in zoom-in duration-150
-        /* Efecto de contorno negro (Text Shadow) */
         [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000,0px_4px_10px_rgba(0,0,0,0.8)]
       `}
     >
-      {hoveredZip.zip}: {hoveredZip.count} {lang === 'en' ? 'Interested Buyers' : 'Compradores Interesados'}
+      
+      {clickedZip.zip}: {clickedZip.count} {lang === 'en' ? 'Interested Buyers' : 'Compradores Interesados'}
     </div>
   </OverlayView>
 )}

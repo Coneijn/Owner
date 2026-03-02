@@ -124,7 +124,7 @@ export async function generateMetadata(
   const metaDescription = description?.length && description.length > 160 ? description.substring(0, 157) + '...' : description;
 
   return {
-    title: `${title} | Dueño a Dueño`,
+    title: title,
     description: metaDescription || '',
     openGraph: {
       title: title || '',

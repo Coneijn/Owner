@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { 
-  calculateEstimatedPayment, 
-  DEFAULT_TERM_YEARS, 
-  SERVICE_FEE 
+  calculateEstimatedPayment 
 } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-// Función auxiliar para formatear números a moneda (USD)
-const formatCurrency = (amount: number | null | undefined) => {
-  if (!amount) return '$0.00';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0 // Lo mantenemos en números cerrados para mayor claridad del bot
-  }).format(amount);
+// Función para escapar correctamente los valores del CSV (comas, comillas, saltos de línea)
+const escapeCSV = (value: any) => {
+  if (value === null || value === undefined) return '""';
+  const stringValue = String(value);
+  // Reemplazar comillas dobles por dos comillas dobles y envolver en comillas
+  return `"${stringValue.replace(/"/g, '""')}"`;
 };
 
 export async function GET() {
@@ -46,27 +42,34 @@ export async function GET() {
         bathrooms: true,
         sqft: true,
         features: true,
-        calendarLink: true,
-        phoneNumber: true,
-        mainImage: true,
-        lockboxCode: true,
-        showSeller: true,
-        sellerProfile: {
-          select: {
-            sellerName: true,
-            sellerImage: true,
-            sellerType: true,
-          }
-        }
+        // Algunos campos no se usan en el CSV final pero se mantienen en el select original
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    // Procesamos la data para generar bloques de texto amigables en español
-    const textSummaries = properties.map(p => {
-      let estimatedMonthlyPayment = 0;
+    // Definición de las cabeceras del CSV
+    const headers = [
+      'Título',
+      'Slug',
+      'Dirección',
+      'Recámaras',
+      'Baños',
+      'Pies Cuadrados (sqft)',
+      'Características Especiales',
+      'Precio de Venta (USD)',
+      'Enganche Requerido (USD)',
+      'Pago Mensual Estimado (USD)',
+      'Renta Mensual (USD)',
+      'Depósito de Renta (USD)'
+    ];
+
+    // Iniciamos el contenido CSV con el BOM (\uFEFF) para forzar UTF-8 en Excel
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+
+    properties.forEach(p => {
+      let estimatedMonthlyPayment = '';
       
       // Cálculo financiero si es venta
       if (p.isForSale && p.price) {
@@ -76,77 +79,44 @@ export async function GET() {
         const insuranceVal = Number(p.insurance) || 0;
         const interestVal = Number(p.interestRate) || 0;
 
-        estimatedMonthlyPayment = calculateEstimatedPayment(
+        const payment = calculateEstimatedPayment(
           priceVal,
           downPaymentVal,
           taxesVal,
           insuranceVal,
           interestVal
         );
+        estimatedMonthlyPayment = Math.round(payment).toString();
       }
 
-      // Título en español prioritario
       const title = p.titleEs || p.titleEn || "Propiedad sin título";
-      const sellerName = p.sellerProfile?.sellerName || "Dueño a Dueño Team";
+      // Construir la dirección completa y limpiar espacios extra
+      const address = [p.address, p.city, p.state, p.zipCode].filter(Boolean).join(', ');
 
-      // CONSTRUCCIÓN DEL RESUMEN EN TEXTO PARA EL BOT
-      // Usamos ### para que el bot entienda que aquí empieza un nuevo "nodo" de información
-      let summary = `### Propiedad: ${title}\n`;
-      summary += `- **Identificador / Slug:** ${p.slug}\n`;
-      summary += `- **Dirección:** ${p.address || 'No especificada'}, ${p.city || ''}, ${p.state || ''} ${p.zipCode || ''}\n`;
-      summary += `- **Distribución:** ${p.bedrooms || 0} recámaras, ${p.bathrooms || 0} baños, y ${p.sqft || 0} pies cuadrados (sqft).\n`;
-      
-      if (p.features) {
-        summary += `- **Características especiales:** ${p.features}\n`;
-      }
+      const row = [
+        escapeCSV(title),
+        escapeCSV(p.slug),
+        escapeCSV(address),
+        escapeCSV(p.bedrooms || 0),
+        escapeCSV(p.bathrooms || 0),
+        escapeCSV(p.sqft || 0),
+        escapeCSV(p.features || ''),
+        escapeCSV(p.isForSale && p.price ? p.price : ''),
+        escapeCSV(p.isForSale && p.downPayment ? p.downPayment : ''),
+        escapeCSV(estimatedMonthlyPayment),
+        escapeCSV(p.isForRent && p.monthlyRent ? p.monthlyRent : ''),
+        escapeCSV(p.isForRent && p.securityDeposit ? p.securityDeposit : '')
+      ];
 
-      // Usamos #### para sub-secciones dentro de la misma propiedad
-      summary += `\n#### Condiciones Financieras\n`;
-      
-      if (p.isForSale) {
-        summary += `Esta propiedad está disponible para VENTA (Dueño a Dueño).\n`;
-        summary += `- Precio total: ${formatCurrency(Number(p.price))}\n`;
-        summary += `- Enganche requerido (Down Payment): ${formatCurrency(Number(p.downPayment))}\n`;
-        summary += `- Pago mensual estimado: ${formatCurrency(Math.round(estimatedMonthlyPayment))}\n`;
-      }
-
-      if (p.isForRent) {
-        summary += `Esta propiedad está disponible para RENTA.\n`;
-        summary += `- Renta mensual: ${formatCurrency(Number(p.monthlyRent))}\n`;
-        summary += `- Depósito requerido: ${formatCurrency(Number(p.securityDeposit))}\n`;
-      }
-
-      return summary;
+      csvContent += row.join(',') + '\n';
     });
 
-    // Unir todos los bloques usando un Header 1 para el título principal
-    const finalDocument = `#  CATÁLOGO DE PROPIEDADES DISPONIBLES \n` + 
-                          `Aquí se encuentra la lista actualizada de propiedades disponibles para ofrecer a los clientes.\n\n` + 
-                          `---\n\n` +
-                          textSummaries.join('\n\n---\n\n');
-                          
-   // Envolvemos el texto en un esqueleto HTML básico para que el Crawler de GHL lo acepte
-    const htmlDocument = `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-          <meta charset="UTF-8">
-          <title>Catálogo de Propiedades - Dueño a Dueño</title>
-          <meta name="robots" content="index, follow">
-      </head>
-      <body>
-          <pre style="white-space: pre-wrap; font-family: sans-serif;">
-${finalDocument}
-          </pre>
-      </body>
-      </html>
-    `;
-
-    // Retornamos como HTML
-    return new NextResponse(htmlDocument, {
+    // Retornamos como un archivo CSV descargable
+    return new NextResponse(csvContent, {
       status: 200,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="propiedades.csv"',
       },
     });
 
