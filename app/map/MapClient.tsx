@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect, Fragment, useMemo } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, HeatmapLayer } from '@react-google-maps/api';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
-import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
 
 // --- CONFIGURACIÓN ---
 const containerStyle = {
