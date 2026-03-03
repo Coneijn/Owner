@@ -4,11 +4,12 @@ import GHLFormEmbed from '@/app/components/GHLFormEmbed';
 import { prisma } from '@/lib/prisma';
 import MapLoader from '@/app/map/MapLoader';
 import { calculateEstimatedPayment } from '@/lib/utils'; 
-import ProblemsWeSolve from '@/app/components/ProblemsWeSolve'; // Ajusta la ruta según tu proyecto
+import ProblemsWeSolve from '@/app/components/ProblemsWeSolve'; 
 import SellerCalculator from '../components/SellerCalculator';
 import ServiceExplanation from '../components/ServiceExplanation';
 import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
+import MapLegend from '../components/MapLegend';  
 
 export const dynamic = 'force-dynamic';
 
@@ -37,22 +38,30 @@ const DICTIONARY = {
   es: {
     title: "INICIA TU PROCESO PARA UNIRTE A NUESTRA COMUNIDAD DE VENDEDORES",
     subtitle: "La mayor parte del proceso es automático. Llena el formulario abajo para que nuestro sistema evalúe tus opciones.",
-    mapTitle: "PROPIEDADES VENDIDAS",
-    mapDesc: "Echa un vistazo a las propiedades que hemos cerrado con éxito.",
-    buyersLooking: "Compradores Activos", // <-- NUEVO
+    mapTitle: "PROPIEDADES VENDIDAS Y COMPRADORES INTERESADOS",
+    mapDesc: "Echa un vistazo a las propiedades que hemos cerrado con éxito y las zonas con compradores potenciales.",
+    buyersLooking: "Compradores Activos",
     downPayments: "Enganches Recolectados",
     monthlyIncome: "Ingreso Mensual Generado",
-    propertiesSold: "Propiedades Vendidas" // <-- NUEVO
+    propertiesSold: "Propiedades Vendidas",
+    marqueeItems: [
+      "🏠 Financiamiento por el Dueño", "🤖 Recorridos con IA", "💸 Flujo de Efectivo Mensual",
+      "🔒 Ofertas Fuera del Mercado", "📉 Evita Impuestos de Capital", "🤝 Mercado Ganar-Ganar", "🏡 El Sueño Americano"
+    ]
   },
   en: {
     title: "START YOUR PROCESS TO JOIN OUR SELLER COMMUNITY",
     subtitle: "Most of the process is automated. Fill out the form below so our system can evaluate your options.",
-    mapTitle: "SOLD PROPERTIES",
-    mapDesc: "Take a look at the properties we have successfully closed.",
-    buyersLooking: "Current Buyers Looking", // <-- NUEVO
+    mapTitle: "SOLD PROPERTIES AND INTERESTED BUYERS",
+    mapDesc: "Take a look at the properties we have successfully closed and the places we have potential buyers interested in.",
+    buyersLooking: "Current Buyers Looking",
     downPayments: "Down Payments Collected",
     monthlyIncome: "Monthly Income Generated",
-    propertiesSold: "Properties Sold" // <-- NUEVO
+    propertiesSold: "Properties Sold",
+    marqueeItems: [
+      "🏠 Seller Financing", "🤖 AI-Powered Showings", "💸 Monthly Cash Flow for Life",
+      "🔒 Off-Market Deals", "📉 Avoid Capital Gains Shock", "🤝 Win-Win Marketplace", "🏡 The American Dream"
+    ]
   }
 };
 
@@ -147,7 +156,6 @@ export default async function SellersPage(props: {
     return acc + income;
   }, 0);
 
-  // Total de propiedades vendidas
   const totalPropertiesSold = soldProperties.length;
 
   return (
@@ -157,50 +165,24 @@ export default async function SellersPage(props: {
 
       <ProblemsWeSolve lang={lang} /> 
 
-      <Marquee />
+      {/* Se pasa el array de items traducidos al Marquee */}
+      <Marquee items={t.marqueeItems} />
+
       {/* SECCIÓN SUPERIOR (Hero + Métricas integradas) */}
       <section className="relative bg-gradient-to-b from-gray-900 to-[#1a1a1a] pt-8 pb-8 px-4 border-b border-gray-800">
         <div className="max-w-6xl mx-auto text-center space-y-6">
-
-          {/* GRID ACTUALIZADO A 4 COLUMNAS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-8 text-left">
-            {/* Tarjeta 1: Compradores Activos */}
-            <StatCard 
-              title={t.buyersLooking} 
-              value={TOTAL_BUYERS_LOOKING} 
-              icon="👥" 
-              color="text-white" 
-            />
-            {/* Tarjeta 2: Enganches */}
-            <StatCard 
-              title={t.downPayments} 
-              value={formatMoney(downPaymentsCollected)} 
-              icon="💵" 
-              color="text-[#529e14]" 
-            />
-            {/* Tarjeta 3: Ingreso Mensual */}
-            <StatCard 
-              title={t.monthlyIncome} 
-              value={formatMoney(monthlyIncomeGenerated)} 
-              icon="📈" 
-              color="text-[#f8ed1a]" 
-            />
-            {/* Tarjeta 4: Propiedades Vendidas */}
-            <StatCard 
-              title={t.propertiesSold} 
-              value={totalPropertiesSold} 
-              icon="🏠" 
-              color="text-white" 
-            />
+            <StatCard title={t.buyersLooking} value={TOTAL_BUYERS_LOOKING} icon="👥" color="text-white" />
+            <StatCard title={t.downPayments} value={formatMoney(downPaymentsCollected)} icon="💵" color="text-[#529e14]" />
+            <StatCard title={t.monthlyIncome} value={formatMoney(monthlyIncomeGenerated)} icon="📈" color="text-[#f8ed1a]" />
+            <StatCard title={t.propertiesSold} value={totalPropertiesSold} icon="🏠" color="text-white" />
           </div>
         </div>
       </section>
 
-
       {/* CONTENEDOR UNIFICADO: VIDEO Y MAPA */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 mb-16 mt-16">
         
-        {/* --- VIDEO EMBEBIDO --- */}
         <div className="relative mb-12 w-full md:w-[71%] mx-auto aspect-video rounded-xl overflow-hidden border border-gray-700 bg-black shadow-2xl">
           <iframe
             src="https://drive.google.com/file/d/1qIv95lxuvRhCO-5FLfP7e92dtMOweGqg/preview"
@@ -213,70 +195,34 @@ export default async function SellersPage(props: {
         </div>
 
         {/* --- MAPA (Propiedades Vendidas) --- */}
-<div className="bg-[#1a1a1a] p-4 sm:p-6 rounded-2xl border border-gray-800 shadow-2xl mb-16">
-  <div className="text-center mb-6">
-    <h2 className="text-2xl font-black text-white uppercase tracking-wide">
-      {t.mapTitle}
-    </h2>
-    <p className="text-gray-400 text-sm mt-1">{t.mapDesc}</p>
-  </div>
+        <div className="bg-[#1a1a1a] p-4 sm:p-6 rounded-2xl border border-gray-800 shadow-2xl mb-16">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-black text-white uppercase tracking-wide">
+              {t.mapTitle}
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">{t.mapDesc}</p>
+          </div>
 
-  {/* Contenedor del Mapa con Relative para posicionar la leyenda */}
-  <div className="h-[450px] w-full rounded-xl overflow-hidden border border-gray-700 relative">
-    
-    {/* LEYENDA / SIMBOLOGÍA */}
-    <div className="absolute top-4 left-4 z-20 bg-[#1a1a1a]/90 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-2xl flex flex-col gap-4">
-      <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-2">
-        {lang === 'en' ? 'Map Legend' : 'Simbología'}
-      </h4>
-      
-      {/* Propiedades Vendidas */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded-lg">
-          <img src="/frog-pin.png" alt="Sold" className="w-6 h-6 object-contain" />
-        </div>
-        <div>
-          <p className="text-white text-[11px] font-bold leading-none">
-            {lang === 'en' ? 'Sold Property' : 'Propiedad Vendida'}
-          </p>
-        </div>
-      </div>
+          <div className="h-[450px] w-full rounded-xl overflow-hidden border border-gray-700 relative">
+            
+            {/* LEYENDA / SIMBOLOGÍA (Ahora colapsable e importada) */}
+            <MapLegend lang={lang} />
 
-      {/* Heatmap / Compradores */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded-lg">
-          <div 
-            className="w-4 h-4 rounded-full shadow-[0_0_10px_rgba(255,255,200,0.5)]" 
-            style={{ backgroundColor: 'rgba(255, 255, 200, 1)' }}
-          />
+            <MapLoader properties={soldProperties} lang={lang} searchType="sold" />
+          </div>
         </div>
-        <div>
-          <p className="text-white text-[11px] font-bold leading-none">
-            {lang === 'en' ? 'Interested Buyers' : 'Compradores Interesados'}
-          </p>
-        </div>
-      </div>
-    </div>
 
-    {/* Componente del Mapa */}
-    <MapLoader 
-      properties={soldProperties} 
-      lang={lang} 
-      searchType="sold" 
-    />
-  </div>
-</div>
-
-      <SellerCalculator lang={lang} />
+        <SellerCalculator lang={lang} />
       </section>
+      
       <ServiceExplanation lang={lang} />
 
-      {/* SECCIÓN DEL FORMULARIO GHL */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 relative z-10 mt-16">
         <GHLFormEmbed src={formUrl} height="850px" />
       </main>
 
       <Testimonials reviews={reviewsData} lang={lang} />
+      
       <footer className="bg-[#1a1a1a] text-white py-12 border-t border-gray-800 text-center">
         <p className="text-gray-500 text-sm">© 2026 Dueño a Dueño.</p>
       </footer>
@@ -300,12 +246,8 @@ function StatCard({ title, value, icon, color = 'text-white' }: any) {
   )
 }
 
-function Marquee() {
-  const items = [
-    "🏠 Seller Financing", "🤖 AI-Powered Showings", "💸 Monthly Cash Flow for Life",
-    "🔒 Off-Market Deals", "📉 Avoid Capital Gains Shock", "🤝 Win-Win Marketplace", "🏡 The American Dream"
-  ];
-
+// Componente actualizado: Ahora recibe las frases como propiedad `items`
+function Marquee({ items }: { items: string[] }) {
   return (
     <div className="bg-[#f8ed1a] py-3.5 overflow-hidden" aria-hidden="true">
       <div className="flex whitespace-nowrap animate-marquee">

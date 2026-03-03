@@ -51,10 +51,12 @@ export default function MapFloatingButtons({ lang }: { lang: 'es' | 'en' }) {
         <FlipButtonContent imgSrc="/frog-apply.png" text={t.apply} bgColor="bg-white text-[#1a1a1a]" />
       </Link>
 
-      {/* 3. WhatsApp */}
-      <a href="https://wa.me/19016604115" target="_blank" rel="noopener noreferrer" className={btnContainerClass} title={t.call}>
+      {/* 3. WhatsApp 
+        <a href="https://wa.me/19016604115" target="_blank" rel="noopener noreferrer" className={btnContainerClass} title={t.call}>
         <FlipButtonContent imgSrc="/frog-whatsapp.png" text={t.call} bgColor="bg-[#25d366] text-[#1a1a1a]" />
       </a>
+      */}
+      
 
     </div>
   );

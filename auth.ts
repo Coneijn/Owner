@@ -1,4 +1,3 @@
-// auth.ts (Modificado)
 import NextAuth from 'next-auth';
 import { authConfig } from './auth.config';
 import Credentials from 'next-auth/providers/credentials';
@@ -12,7 +11,7 @@ const prisma = new PrismaClient();
 const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  code: z.string().optional(), // Nuevo campo opcional para el código 2FA
+  code: z.string().optional(), // Campo opcional para el código 2FA
 });
 
 export const { auth, signIn, signOut } = NextAuth({
@@ -25,26 +24,30 @@ export const { auth, signIn, signOut } = NextAuth({
         if (parsedCredentials.success) {
           const { email, password, code } = parsedCredentials.data;
           
-          const user = await prisma.user.findUnique({ where: { email } });
+          // 1. Buscamos al usuario e INCLUIMOS sus perfiles conectados
+          const user = await prisma.user.findUnique({ 
+            where: { email },
+            include: {
+              sellerProfile: true, // Traemos el perfil de vendedor si existe
+              // buyerProfile: true, // Descomenta esto en el futuro cuando agregues compradores
+              // agentProfile: true, // Descomenta esto en el futuro cuando agregues agentes
+            }
+          });
+          
           if (!user) return null;
 
+          // Verificamos la contraseña
           const passwordsMatch = await bcrypt.compare(password, user.password);
           if (!passwordsMatch) return null;
 
-          // --- LOGICA 2FA ---
+          // --- LÓGICA 2FA ---
           if (user.isTwoFactorEnabled) {
-            // 1. Si no enviaron código, lanzamos un error específico o retornamos null
-            // para que la UI sepa que debe pedir el código.
-            // En NextAuth Credentials, manejar esto es complejo. 
-            // Una opción simple es requerir que el usuario ponga el código en el login si tiene 2FA.
-            
             if (!code) {
-              // Opción A: Retornar null (Login fallido)
-              // Opción B: Lanzar Error para capturarlo en el cliente (Recomendado si quieres UX avanzada)
+              // Si tiene 2FA pero no mandó código, lanzamos error para que la UI lo pida
               throw new Error('2FA_REQUIRED'); 
             }
 
-            // 2. Verificar el código
+            // Verificamos que el código ingresado sea válido
             const isValidOTP = authenticator.verify({
               token: code,
               secret: user.twoFactorSecret!
@@ -56,7 +59,20 @@ export const { auth, signIn, signOut } = NextAuth({
           }
           // ------------------
 
-          return user;
+          // 2. Evaluamos qué perfiles tiene este usuario y armamos el arreglo
+          const userProfiles: string[] = [];
+          
+          if (user.sellerProfile) userProfiles.push('SELLER');
+          // if (user.buyerProfile) userProfiles.push('BUYER');
+          // if (user.agentProfile) userProfiles.push('AGENT');
+
+          // 3. Retornamos la información vital, inyectando el rol y los perfiles
+          return {
+            id: user.id,
+            email: user.email,
+            role: user.role, // Puede ser 'ADMIN' o 'USER'
+            profiles: userProfiles // Arreglo como ['SELLER', 'BUYER']
+          };
         }
 
         console.log('Invalid credentials');

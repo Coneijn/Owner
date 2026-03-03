@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Header from '@/app/components/Header';
-
+import WhatsAppButton from '../components/WhatsAppButton'; 
 // --- METADATA (SEO) ---
 export const metadata: Metadata = {
   title: 'Contact Dueño A Dueño | Owner-to-owner financing in Memphis',
@@ -182,7 +182,7 @@ export default async function ContactPage(props: {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'es' ? 'es' : 'en') as 'es' | 'en';
   const t = DICTIONARY[lang];
-
+  const contactName= lang === 'es' ? 'la pagina de contacto': 'the contact page';  
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
@@ -323,6 +323,7 @@ export default async function ContactPage(props: {
       <footer className="bg-[#1a1a1a] text-white py-12 border-t border-gray-800 text-center">
         <p className="text-gray-500 text-sm">© 2026 Dueño a Dueño.</p>
       </footer>
+      <WhatsAppButton lang={lang} propertyName={contactName} />
     </div>
   );
 }

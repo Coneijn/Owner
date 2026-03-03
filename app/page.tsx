@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Header from '@/app/components/Header'; 
 import MapSplitView from './map/MapSplitView';
-
+import WhatsAppButton from './components/WhatsAppButton';
 export const dynamic = 'force-dynamic';
 
 export default async function MapPage(props: { 
@@ -18,7 +18,7 @@ export default async function MapPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-  
+  const contactName = lang === 'es' ? 'la página del mapa' : 'the map page';
   // --- CAMBIO APLICADO: Agregamos 'sold' como opción ---
   const typeParam = searchParams?.type;
   const searchType = typeParam === 'rent' ? 'rent' : typeParam === 'sold' ? 'sold' : 'buy';
@@ -228,6 +228,7 @@ export default async function MapPage(props: {
                 searchType={searchType}
             />
         </div>
+        <WhatsAppButton lang={lang} propertyName={contactName} />
     </div>
   );
 }

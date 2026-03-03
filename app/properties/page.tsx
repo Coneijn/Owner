@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import Header from '@/app/components/Header';
 // Importamos las utilidades extraídas
 import { calculateEstimatedPayment, formatMoney, normalizeProperty } from '@/lib/utils';
+import WhatsAppButton from '@/app/components/WhatsAppButton';
 
 // --- DICCIONARIO ---
 const DICTIONARY = { 
@@ -87,6 +88,8 @@ export default async function CatalogPage(props: {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
+
+  const catalogName = lang === 'es' ? 'el Catálogo General' : 'the General Catalog';
 
   // --- 1. LÓGICA DE FILTRADO ---
   const whereClause: Prisma.PropertyWhereInput = {
@@ -343,6 +346,7 @@ export default async function CatalogPage(props: {
             )}
         </main>
       </div>
+       <WhatsAppButton lang={lang} propertyName={catalogName} />
     </div>
   );
 }

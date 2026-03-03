@@ -15,7 +15,8 @@ export async function authenticate(
   try {
     await signIn('credentials', {
       ...Object.fromEntries(formData),
-      redirectTo: '/admin', 
+      //redirectTo: '/login',
+      
     });
   } catch (error) {
     if (error instanceof AuthError) {
