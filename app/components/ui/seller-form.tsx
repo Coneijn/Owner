@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
+import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload'; 
 import { createSellerProfile, updateSellerProfile } from '@/lib/actions'; 
 
 // Definimos la forma de los datos iniciales
@@ -109,7 +109,7 @@ export default function SellerForm({ initialData }: { initialData?: SellerData }
 
         <div className="pt-4 border-t border-gray-800">
            <ImageUpload 
-              label="Profile Avatar (Optional)" 
+              label="Profile Avatar *" 
               value={sellerImage} 
               onChange={setSellerImage} 
               multiple={false} 

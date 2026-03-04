@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChangePasswordForm, CreateUserForm, UserListTable, TwoFactorManager } from '../ui/client-components';
+import { ChangePasswordForm, CreateUserForm, UserListTable, TwoFactorManager } from '../../components/ui/client-components';
 
 export default async function UserSettingsPage() {
   const session = await auth();

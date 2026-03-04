@@ -275,7 +275,8 @@ export function CreateUserForm() {
             <label className="block text-xs font-bold uppercase text-gray-500 mb-1">User type</label>
             <select name="role" className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors">
             <option value="admin">Admin</option>
-            <option value="user">Seller</option>
+            <option value="seller">Seller</option>
+            <option value="agent">Agent</option>
             </select>
         </div>
       </div>

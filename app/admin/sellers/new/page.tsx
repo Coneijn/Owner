@@ -1,4 +1,4 @@
-import SellerForm from '../../ui/seller-form'; // Ajusta la ruta a donde guardes el componente
+import SellerForm from '../../../components/ui/seller-form'; // Ajusta la ruta a donde guardes el componente
 
 export default function NewSellerPage() {
   return (

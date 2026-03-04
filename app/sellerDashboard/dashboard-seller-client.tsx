@@ -1,136 +1,157 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import DeletePropertyButton from '@/app/admin/ui/delete-button';
 
-const formatMoney = (amount: number | unknown) => {
+// Utilidad para formatear moneda
+const formatMoney = (amount: number | null | undefined) => {
+  if (!amount) return '$0';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
-  }).format(Number(amount));
-};
-
-const PropertySection = ({ title, items, icon, colorClass }: any) => {
-  const [isOpen, setIsOpen] = useState(true); 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  const totalPages = Math.ceil(items.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = items.slice(startIndex, startIndex + itemsPerPage);
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
-
-  if (items.length === 0) return null; 
-
-  return (
-    <div className="mb-6 bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-gray-900/50 hover:bg-gray-800/80 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{icon}</span>
-          <h2 className="text-xl font-bold text-white">{title}</h2>
-          <span className="bg-gray-800 text-gray-300 text-xs py-1 px-3 rounded-full font-bold">
-            {items.length}
-          </span>
-        </div>
-        <span className="text-gray-500">{isOpen ? '▼' : '▶'}</span>
-      </button>
-
-      {isOpen && (
-        <div className="p-4 overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="text-gray-400 text-sm border-b border-gray-800">
-                <th className="pb-3 font-medium">Property</th>
-                <th className="pb-3 font-medium">Price</th>
-                <th className="pb-3 font-medium">Down Pmt</th>
-                <th className="pb-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.map((property: any) => (
-                <tr key={property.id} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors group">
-                  <td className="py-4">
-                    <p className={`font-bold ${colorClass}`}>{property.title}</p>
-                    <p className="text-sm text-gray-500 truncate max-w-[200px] md:max-w-sm">{property.address}</p>
-                  </td>
-                  <td className="py-4 font-medium">{formatMoney(property.price)}</td>
-                  <td className="py-4 text-gray-400">{formatMoney(property.downPayment)}</td>
-                  <td className="py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      {/* En el futuro: Cambiaremos esto a /dashboard-vendedor/properties/... */}
-                      <Link href={`/admin/properties/${property.id}/edit`} className="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-colors">
-                        Edit
-                      </Link>
-                      <DeletePropertyButton id={property.id} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          
-          {totalPages > 1 && (
-             <div className="flex justify-between items-center mt-6 text-sm text-gray-400">
-                <span>Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, items.length)} of {items.length}</span>
-                <div className="flex gap-2">
-                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-50">Prev</button>
-                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-50">Next</button>
-                </div>
-             </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  }).format(amount);
 };
 
 export default function DashboardVendedorClient({ properties }: { properties: any[] }) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('All');
 
-  const filteredProperties = properties.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.zipCode?.includes(searchTerm)
-  );
+  // --- LÓGICA DE PESTAÑAS Y FILTROS ---
+  const tabs = [
+    { id: 'All', label: `All (${properties.length})` },
+    { id: 'Renting', label: `Renting (${properties.filter(p => p.isForRent && p.status !== 'AVAILABLE').length})` },
+    { id: 'Available', label: `Available (${properties.filter(p => p.status === 'AVAILABLE').length})` },
+    { id: 'Pending', label: `Pending (${properties.filter(p => p.status === 'UNDER_CONTRACT').length})` },
+    { id: 'Sold', label: `Sold (${properties.filter(p => p.status === 'SOLD').length})` },
+  ];
 
-  const availableProps = filteredProperties.filter(p => p.status === 'AVAILABLE');
-  const comingSoonProps = filteredProperties.filter(p => p.status === 'COMING_SOON');
-  const underContractProps = filteredProperties.filter(p => p.status === 'UNDER_CONTRACT');
-  const soldProps = filteredProperties.filter(p => p.status === 'SOLD');
+  const filteredProperties = properties.filter(p => {
+    if (activeTab === 'All') return true;
+    if (activeTab === 'Renting') return p.isForRent && p.status !== 'AVAILABLE';
+    if (activeTab === 'Available') return p.status === 'AVAILABLE';
+    if (activeTab === 'Pending') return p.status === 'UNDER_CONTRACT';
+    if (activeTab === 'Sold') return p.status === 'SOLD';
+    return true;
+  });
 
   return (
-    <div className="w-full">
-      <div className="mb-8 relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl opacity-50">🔍</span>
-        <input 
-          type="text" 
-          placeholder="Search my properties by title, address, or zip code..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-gray-700 text-white rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a] transition-all shadow-lg"
-        />
+    <div>
+      {/* NAVEGACIÓN DE PESTAÑAS */}
+      <div className="flex overflow-x-auto gap-2 mb-8 pb-2 border-b border-gray-800 scrollbar-hide">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm transition-all ${
+              activeTab === tab.id
+                ? 'bg-[#f8ed1a] text-black shadow-lg shadow-[#f8ed1a]/10'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {filteredProperties.length === 0 && (
-          <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl">
-              <p className="text-gray-500 text-lg">No properties found matching "{searchTerm}".</p>
+      {/* GRID DE PROPIEDADES */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredProperties.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-500">
+            No properties found in this category.
           </div>
-      )}
+        ) : (
+          filteredProperties.map((property) => (
+            <PropertyCard key={property.id} property={property} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
-      <PropertySection title="Available Properties" items={availableProps} icon="✅" colorClass="text-[#529e14]" />
-      <PropertySection title="Coming Soon" items={comingSoonProps} icon="⏳" colorClass="text-blue-400" />
-      <PropertySection title="Under Contract" items={underContractProps} icon="📝" colorClass="text-[#f8ed1a]" />
-      <PropertySection title="Sold Properties" items={soldProps} icon="🤝" colorClass="text-gray-400" />
+// --- COMPONENTE DE TARJETA INDIVIDUAL ---
+function PropertyCard({ property }: { property: any }) {
+  // Cálculos de la tarjeta
+  const collected = property.downPayment || 0;
+  const balance = (property.price || 0) - collected;
+  const monthlyPmt = property.monthlyRent || 0; // Usamos renta o puedes crear un campo specificLoanPayment luego
+  
+  // Determinamos el color y etiqueta del estado
+  let statusColor = 'bg-gray-800 text-gray-300';
+  let statusText = property.status;
+
+  if (property.status === 'AVAILABLE') {
+    statusColor = 'bg-[#529e14]/20 text-[#529e14] border-[#529e14]/30';
+    statusText = 'Available';
+  } else if (property.status === 'UNDER_CONTRACT') {
+    statusColor = 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+    statusText = 'Pending';
+  } else if (property.status === 'SOLD') {
+    statusColor = 'bg-[#f8ed1a]/20 text-[#f8ed1a] border-[#f8ed1a]/30';
+    statusText = 'Sold';
+  }
+
+  // Sobrescribimos el estado si es una renta activa
+  if (property.isForRent && property.status !== 'AVAILABLE') {
+    statusColor = 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    statusText = 'Renting';
+  }
+
+  return (
+    <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 flex flex-col justify-between hover:border-gray-700 transition-colors">
+      
+      {/* Info Principal */}
+      <div className="mb-6">
+        <h3 className="text-xl font-black text-white truncate" title={property.address}>
+          {property.address}
+        </h3>
+        <p className="text-gray-400 text-sm mb-4">
+          {property.city}, {property.state} {property.zipCode}
+        </p>
+        
+        {/* Placeholder para el Cliente (A futuro conectarlo a un modelo Contract/Lead) */}
+        <div className="flex items-center gap-2 bg-black/40 p-3 rounded border border-gray-800/50">
+          <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs">👤</div>
+          <div>
+            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Client</p>
+            <p className="text-sm font-medium text-gray-300">
+              {property.status === 'AVAILABLE' ? '—' : 'Pending Assignment'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Finanzas */}
+      <div className="grid grid-cols-3 gap-2 mb-6 bg-black/50 p-4 rounded-lg border border-gray-800">
+        {property.status === 'AVAILABLE' ? (
+           // Vista para disponibles (Solo mostramos el precio)
+           <div className="col-span-3 text-center py-2">
+             <p className="text-3xl font-black text-white">{formatMoney(property.price)}</p>
+             <p className="text-xs text-gray-500 uppercase font-bold mt-1">Sale / List Price</p>
+           </div>
+        ) : (
+           // Vista para Rentados / Vendidos / Pendientes
+           <>
+            <div className="text-center">
+              <p className="text-lg font-black text-white">{formatMoney(monthlyPmt)}<span className="text-xs font-normal text-gray-500">/mo</span></p>
+              <p className="text-[10px] text-gray-500 uppercase font-bold mt-1">Monthly Pmt</p>
+            </div>
+            <div className="text-center border-l border-gray-800">
+              <p className="text-lg font-black text-[#529e14]">{formatMoney(collected)}</p>
+              <p className="text-[10px] text-gray-500 uppercase font-bold mt-1">Collected</p>
+            </div>
+            <div className="text-center border-l border-gray-800">
+              <p className="text-lg font-black text-red-400">{formatMoney(balance)}</p>
+              <p className="text-[10px] text-gray-500 uppercase font-bold mt-1">Balance</p>
+            </div>
+           </>
+        )}
+      </div>
+
+      {/* Botón / Estado Inferior */}
+      <button className={`w-full py-2 rounded font-bold text-sm uppercase tracking-wide border transition-colors flex justify-center items-center gap-2 ${statusColor} hover:bg-opacity-30`}>
+        {statusText} <span>▼</span>
+      </button>
+
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
-import SellerForm from '../../../ui/seller-form'; // Ajusta la ruta
+import SellerForm from '../../../../components/ui/seller-form'; // Ajusta la ruta
 
 export default async function EditSellerPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

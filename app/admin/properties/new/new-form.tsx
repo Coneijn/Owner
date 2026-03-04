@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { createProperty } from '@/lib/actions';
 import { useActionState, useState, useMemo, useRef, useCallback } from 'react'; 
-import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload'; 
+import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload'; 
 import dynamic from 'next/dynamic'; 
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
-const LocationPicker = dynamic(() => import('@/app/admin/ui/location-picker'), { 
+const LocationPicker = dynamic(() => import('@/app/components/ui/location-picker'), { 
   ssr: false,
   loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
 });

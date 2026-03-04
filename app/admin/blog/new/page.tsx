@@ -2,9 +2,9 @@
 
 import { createPost } from '@/lib/blog-actions';
 import { useState } from 'react';
-import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload';
+import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload';
 import Link from 'next/link';
-import HtmlEditor from '@/app/admin/ui/html-editor';
+import HtmlEditor from '@/app/components/ui/html-editor';
 
 // Reusable Accordion Component
 const AccordionSection = ({ title, children, defaultOpen = false, icon }: { title: string, children: React.ReactNode, defaultOpen?: boolean, icon?: string }) => {

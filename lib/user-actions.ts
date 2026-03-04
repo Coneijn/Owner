@@ -13,7 +13,7 @@ import {
 } from '@/lib/otp'; 
 
 // ==========================================
-// 1. CAMBIAR MI CONTRASEÑA (Renombrado a changePassword)
+// 1. CAMBIAR MI CONTRASEÑA
 // ==========================================
 export async function changePassword(formData: FormData) {
   const session = await auth();
@@ -43,9 +43,13 @@ export async function changePassword(formData: FormData) {
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
+  
   await prisma.user.update({
     where: { email: session.user.email },
-    data: { password: hashedPassword },
+    data: { 
+      password: hashedPassword,
+      forcePasswordChange: false // <-- AÑADIDO: Libera al usuario del primer paso de Onboarding
+    },
   });
 
   revalidatePath('/admin/user_settings');
@@ -53,7 +57,7 @@ export async function changePassword(formData: FormData) {
 }
 
 // ==========================================
-// 2. CREAR USUARIO (Renombrado a createUser)
+// 2. CREAR USUARIO 
 // ==========================================
 export async function createUser(formData: FormData) {
   const session = await auth();
@@ -62,9 +66,11 @@ export async function createUser(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   
-  // 2. Obtener el string, convertirlo a Mayúsculas (si tu Enum es ADMIN) y castearlo
+  // Obtenemos el valor exacto del select ('admin', 'seller', 'agent')
   const rawRole = formData.get('role') as string; 
-  const role = (rawRole ? rawRole.toUpperCase() : 'USER') as Role;
+  
+  // A nivel base de datos (modelo User), el rol sigue siendo ADMIN o USER
+  const baseRole = (rawRole === 'admin' ? 'ADMIN' : 'USER') as Role;
 
   if (!email || !password || !name) return { error: 'Todos los campos son obligatorios.' };
 
@@ -79,7 +85,24 @@ export async function createUser(formData: FormData) {
         name,
         email,
         password: hashedPassword,
-        role: role, // Ahora sí es de tipo 'Role'
+        role: baseRole, 
+        
+        // 👇 CREACIÓN CONDICIONAL DE PERFILES (El Admin queda exento)
+        ...(rawRole === 'agent' && {
+          agentProfile: {
+            create: { agentName: name }
+          }
+        }),
+        ...(rawRole === 'seller' && {
+          sellerProfile: {
+            create: { 
+              sellerName: name,
+              sellerType: 'OWNER' // Por defecto lo asignamos como OWNER
+            }
+          }
+        })
+        // Si rawRole === 'admin', simplemente no se ejecuta ninguna de las dos 
+        // y se crea un User normal con role: ADMIN.
       },
     });
   } catch (error) {
@@ -91,14 +114,13 @@ export async function createUser(formData: FormData) {
   return { success: true, tempPassword: password }; 
 }
 // ==========================================
-// 3. ELIMINAR USUARIO (Agregado deleteUser)
+// 3. ELIMINAR USUARIO
 // ==========================================
 export async function deleteUser(userId: string) {
   const session = await auth();
   if (!session?.user?.email) return { error: 'No autorizado' };
 
   try {
-    // Evitar que se borre a sí mismo
     const userToDelete = await prisma.user.findUnique({ where: { id: userId } });
     if (userToDelete?.email === session.user.email) {
         return { error: 'No puedes eliminar tu propia cuenta desde aquí.' };
@@ -116,17 +138,19 @@ export async function deleteUser(userId: string) {
 }
 
 // ==========================================
-// 4. RESETEAR PASSWORD (Renombrado a resetUserPassword)
+// 4. RESETEAR PASSWORD 
 // ==========================================
 export async function resetUserPassword(userId: string) {
-  // Generar contraseña aleatoria
   const newRawPassword = Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
   const hashedPassword = await bcrypt.hash(newRawPassword, 10);
 
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: { 
+        password: hashedPassword,
+        forcePasswordChange: true // <-- AÑADIDO: Lo obliga a cambiarla cuando vuelva a entrar
+      },
     });
     
     revalidatePath('/admin/user_settings');
@@ -138,9 +162,8 @@ export async function resetUserPassword(userId: string) {
 }
 
 // ==========================================
-// 5. GESTIÓN 2FA (Mantenemos lo que ya funcionaba)
+// 5. GESTIÓN 2FA 
 // ==========================================
-
 export async function setupTwoFactor() {
   const session = await auth();
   if (!session?.user?.email) throw new Error("No autorizado");
@@ -154,10 +177,8 @@ export async function setupTwoFactor() {
   let qrCodeUrl = '';
 
   if (secret) {
-    // Reutilizar secreto existente
     qrCodeUrl = await generateQrFromSecret(session.user.email, secret);
   } else {
-    // Generar nuevo
     const generated = await generateTwoFactorSecret(session.user.email);
     secret = generated.secret;
     qrCodeUrl = generated.qrCodeUrl;

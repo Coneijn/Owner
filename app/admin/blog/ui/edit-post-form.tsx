@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { updatePost } from '@/lib/blog-actions';
 import { useState } from 'react';
-import ImageUpload, { ImageFile } from '@/app/admin/ui/image-upload';
+import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload';
 import DeletePostButton from './delete-post-button';
-import HtmlEditor from '@/app/admin/ui/html-editor';
+import HtmlEditor from '@/app/components/ui/html-editor';
 
 // Interface matching the updated Schema
 interface PostData {

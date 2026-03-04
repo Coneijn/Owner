@@ -9,17 +9,24 @@ datasource db {
 }
 
 // 2. Modelo de Usuario 
+// Busca tu modelo User y actualízalo así:
 model User {
-  id                 String   @id @default(cuid())
-  name               String?
-  email              String   @unique
-  password           String // Hash del password
-  role               Role     @default(ADMIN)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  twoFactorSecret    String? // El secreto generado por otplib
-  isTwoFactorEnabled Boolean  @default(false)
-  sellerProfile      SellerProfile?
+  id                  String   @id @default(cuid())
+  name                String?
+  email               String   @unique
+  password            String // Hash del password
+  role                Role     @default(ADMIN)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // Seguridad y Onboarding
+  twoFactorSecret     String? 
+  isTwoFactorEnabled  Boolean  @default(false)
+  forcePasswordChange Boolean  @default(true) // <-- NUEVO: Para el flujo de onboarding
+
+  // Relaciones de Perfiles
+  sellerProfile       SellerProfile?
+  agentProfile        AgentProfile?  // <-- NUEVO: Relación con el Agente
 }
 
 model SellerProfile {
@@ -40,7 +47,26 @@ model SellerProfile {
   // Relación 1-a-Muchos con las propiedades
   properties  Property[]
 }
+// NUEVO MODELO: Perfil para Agentes que refieren clientes
+model AgentProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String?  @unique
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Datos del agente
+  agentName   String?
+  agentPhone  String?
+  agentImage  String?
+  company     String?  // Opcional, por si trabajan para una agencia
+  
+  // Notas internas sobre comisiones o acuerdos
+  commissionNotes String? @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 // 3. Modelo de Propiedad 
 model Property {
   id        String   @id @default(cuid())
@@ -91,6 +117,7 @@ model Property {
   latitude      Float?
   longitude     Float?
   lockboxCode   String?
+  lockboxAccesses LockboxAccess[] // Relación con los magic links generados
   availableDate DateTime?
 
   // --- Especificaciones Técnicas ---
@@ -111,7 +138,8 @@ model Property {
   seoDescriptionEn String? @db.Text
   seoTitleEs       String?
   seoDescriptionEs String? @db.Text
-
+  focusKeywordEn String?
+  focusKeywordEs String?
   // --- Características Extra ---
   features String[]
 
@@ -156,6 +184,7 @@ model Post {
   seoTitleEs     String?
   seoDescEs      String?
   focusKeywordEs String? // Keyword principal ES
+  isCaseStudy Boolean @default(false) // <-- NUEVO: Para el blog de casos de estudio
 }
 
 // 5. Modelo de Imágenes para el Blog [NUEVO]
@@ -167,7 +196,25 @@ model PostImage {
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
-
+// NUEVO MODELO: Sistema de Magic Links para Códigos de Lockbox
+model LockboxAccess {
+  id          String   @id @default(cuid())
+  token       String   @unique // El hash único para la URL (ej. misitio.com/access/ab12cd34)
+  
+  // Relación con la propiedad
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // Datos del solicitante (Viene de GHL)
+  contactName  String?
+  contactPhone String? 
+  
+  // Control de tiempo y uso
+  expiresAt   DateTime // Se calculará como now() + 5 minutos al crearlo
+  isUsed      Boolean  @default(false) // Para invalidarlo si ya lo abrieron y se salieron
+  
+  createdAt   DateTime @default(now())
+}
 // 6. Modelo de Imágenes de Propiedades (Existente)
 model PropertyImage {
   id  String @id @default(cuid())

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import DeletePropertyButton from '@/app/admin/ui/delete-button';
+import DeletePropertyButton from '@/app/components/ui/delete-button';
 
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {

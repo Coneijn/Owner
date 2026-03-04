@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import EditForm from '@/app/admin/ui/edit-form';
+import EditForm from '@/app/components/ui/edit-form';
 
 export default async function EditPropertyPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
