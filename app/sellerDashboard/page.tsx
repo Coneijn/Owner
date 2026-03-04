@@ -186,7 +186,8 @@ export default async function DashboardVendedor() {
             </p>
           </div>
           <div className="flex gap-4">
-            <Link href="/admin/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">
+            {/*<Link href="/admin/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">*/}
+            <Link href="/sellerDashboard/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">
               + New Listing
             </Link>
             <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>

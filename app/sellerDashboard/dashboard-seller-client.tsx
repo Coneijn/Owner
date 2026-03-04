@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link'; // <-- NUEVO: Importamos Link
 
 // Utilidad para formatear moneda
 const formatMoney = (amount: number | null | undefined) => {
@@ -73,7 +74,7 @@ function PropertyCard({ property }: { property: any }) {
   // Cálculos de la tarjeta
   const collected = property.downPayment || 0;
   const balance = (property.price || 0) - collected;
-  const monthlyPmt = property.monthlyRent || 0; // Usamos renta o puedes crear un campo specificLoanPayment luego
+  const monthlyPmt = property.monthlyRent || 0;
   
   // Determinamos el color y etiqueta del estado
   let statusColor = 'bg-gray-800 text-gray-300';
@@ -90,25 +91,46 @@ function PropertyCard({ property }: { property: any }) {
     statusText = 'Sold';
   }
 
-  // Sobrescribimos el estado si es una renta activa
   if (property.isForRent && property.status !== 'AVAILABLE') {
     statusColor = 'bg-blue-500/20 text-blue-400 border-blue-500/30';
     statusText = 'Renting';
   }
 
   return (
-    <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 flex flex-col justify-between hover:border-gray-700 transition-colors">
+    <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 flex flex-col justify-between hover:border-gray-700 transition-colors relative group">
       
-      {/* Info Principal */}
+      {/* Info Principal con el botón de edición */}
       <div className="mb-6">
-        <h3 className="text-xl font-black text-white truncate" title={property.address}>
-          {property.address}
-        </h3>
-        <p className="text-gray-400 text-sm mb-4">
-          {property.city}, {property.state} {property.zipCode}
-        </p>
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-black text-white truncate" title={property.address}>
+              {property.address}
+            </h3>
+            <p className="text-gray-400 text-sm mb-4">
+              {property.city}, {property.state} {property.zipCode}
+            </p>
+          </div>
+          
+          {/* NUEVO: Botón de Editar */}
+          <Link
+            href={`/sellerDashboard/properties/${property.id}/edit`} // <-- Asegúrate de que esta ruta sea la correcta en tu app
+            className="p-2 bg-gray-800/80 hover:bg-[#f8ed1a] text-gray-400 hover:text-black rounded-lg transition-all duration-200 border border-gray-700 hover:border-[#f8ed1a] flex-shrink-0"
+            title="Editar Propiedad"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={2} 
+              stroke="currentColor" 
+              className="w-4 h-4"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+            </svg>
+          </Link>
+        </div>
         
-        {/* Placeholder para el Cliente (A futuro conectarlo a un modelo Contract/Lead) */}
+        {/* Placeholder para el Cliente */}
         <div className="flex items-center gap-2 bg-black/40 p-3 rounded border border-gray-800/50">
           <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs">👤</div>
           <div>
@@ -123,13 +145,11 @@ function PropertyCard({ property }: { property: any }) {
       {/* Finanzas */}
       <div className="grid grid-cols-3 gap-2 mb-6 bg-black/50 p-4 rounded-lg border border-gray-800">
         {property.status === 'AVAILABLE' ? (
-           // Vista para disponibles (Solo mostramos el precio)
            <div className="col-span-3 text-center py-2">
              <p className="text-3xl font-black text-white">{formatMoney(property.price)}</p>
              <p className="text-xs text-gray-500 uppercase font-bold mt-1">Sale / List Price</p>
            </div>
         ) : (
-           // Vista para Rentados / Vendidos / Pendientes
            <>
             <div className="text-center">
               <p className="text-lg font-black text-white">{formatMoney(monthlyPmt)}<span className="text-xs font-normal text-gray-500">/mo</span></p>
