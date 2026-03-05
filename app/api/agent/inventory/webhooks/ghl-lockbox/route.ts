@@ -6,16 +6,23 @@ import crypto from 'crypto';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { messageBody, contactPhone, contactName } = body;
+    
+    // 1. Extraemos de 'customData' que es donde GHL pone tus mapeos manuales
+    // Usamos un fallback (||) por si acaso GHL decidiera enviarlo en la raíz
+    const messageBody = body.customData?.messageBody || body.message?.body;
+    const contactPhone = body.customData?.contactPhone || body.phone;
+    const contactName = body.customData?.contactName || body.full_name;
 
+    // Validación con log para debugear si algo falla
     if (!messageBody) {
+      console.error("❌ No se encontró messageBody en customData ni en message.body");
       return NextResponse.json(
         { error: 'El cuerpo del mensaje (messageBody) es obligatorio.' }, 
         { status: 400 }
       );
     }
 
-    // 1. Aislar la URL dentro del texto del SMS usando Regex
+    // 2. Aislar la URL (El resto de tu lógica de Regex y Prisma sigue igual...)
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const urls = messageBody.match(urlRegex);
 
