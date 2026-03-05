@@ -9,7 +9,10 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
   
   // Obtener solo posts publicados
   const posts = await prisma.post.findMany({
-    where: { isPublished: true },
+    where: { 
+      isPublished: true,
+      isCaseStudy: false // <-- AÑADIR ESTE FILTRO
+    },
     orderBy: { createdAt: 'desc' }
   });
 

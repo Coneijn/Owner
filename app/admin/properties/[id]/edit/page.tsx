@@ -52,6 +52,8 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
     updatedAt: property.updatedAt.toISOString(),
     lastPriceChangeAt: property.lastPriceChangeAt ? property.lastPriceChangeAt.toISOString() : null,
     availableDate: property.availableDate ? property.availableDate.toISOString() : null,
+    focusKeywordEn: property.focusKeywordEn || '',
+    focusKeywordEs: property.focusKeywordEs || '',
   };
 
 

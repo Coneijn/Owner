@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script"; 
 import "./globals.css";
-
+import ChatWidget from "./components/ChatWidget";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -98,12 +98,7 @@ export default function RootLayout({
         {children}
 
         {/* --- 4. NUEVO: LEADCONNECTOR CHAT WIDGET (GLOBAL) --- */}
-        <Script
-          src="https://widgets.leadconnectorhq.com/loader.js"
-          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-          data-widget-id="6982bc477cd1e65428cc69fe"
-          strategy="afterInteractive"
-        />
+        <ChatWidget />
 
       </body>
     </html>

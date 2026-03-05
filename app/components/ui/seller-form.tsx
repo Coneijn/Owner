@@ -13,7 +13,13 @@ type SellerData = {
   sellerImage: string | null;
 };
 
-export default function SellerForm({ initialData }: { initialData?: SellerData }) {
+export default function SellerForm({ 
+  initialData, 
+  redirectTo 
+}: { 
+  initialData?: SellerData;
+  redirectTo?: string; 
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +55,14 @@ export default function SellerForm({ initialData }: { initialData?: SellerData }
         
         if (result?.message) {
           setError(result.message);
+        }else if (result?.success) {
+          // ✅ 2. Manejamos la redirección aquí
+          if (redirectTo) {
+            router.push(redirectTo);
+          } else {
+            // Si no hay redirectTo, es el Onboarding: Refrescamos para evaluar isFirstLogin
+            router.refresh(); 
+          }
         }
       } catch (err) {
         setError('Ocurrió un error inesperado al guardar el perfil.');

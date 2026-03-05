@@ -12,6 +12,7 @@ interface PostData {
   id: string;
   slug: string;
   isPublished: boolean;
+  isCaseStudy: boolean;
   titleEn: string;
   titleEs: string;
   contentEn: string;
@@ -104,6 +105,15 @@ export default function EditPostForm({ post }: { post: PostData }) {
                         />
                         <span className="font-bold uppercase text-sm text-white">Publish on Site</span>
                     </label>
+                    <label className="flex items-center cursor-pointer gap-3 p-3 mt-4 bg-gray-900 rounded border border-gray-700 hover:border-[#f8ed1a]">
+    <input 
+        type="checkbox" 
+        name="isCaseStudy" 
+        defaultChecked={post.isCaseStudy} 
+        className="w-5 h-5 accent-[#f8ed1a]" 
+    />
+    <span className="font-bold uppercase text-sm text-[#f8ed1a]">Is case study</span>
+</label>
                 </div>
             </div>
             <div>

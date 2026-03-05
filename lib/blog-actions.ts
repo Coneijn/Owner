@@ -14,7 +14,7 @@ export async function createPost(formData: FormData) {
     data: {
       slug,
       isPublished: rawData.isPublished === 'on',
-      
+      isCaseStudy: rawData.isCaseStudy === 'on', // <-- AÑADIR ESTA LÍNEA
       // Main Content
       titleEn: rawData.titleEn as string,
       titleEs: rawData.titleEs as string,
@@ -52,7 +52,7 @@ export async function updatePost(formData: FormData) {
     data: {
       slug: rawData.slug as string,
       isPublished: rawData.isPublished === 'on',
-      
+      isCaseStudy: rawData.isCaseStudy === 'on', // <-- AÑADIR ESTA LÍNEA
       // Main Content
       titleEn: rawData.titleEn as string,
       titleEs: rawData.titleEs as string,

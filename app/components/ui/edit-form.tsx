@@ -36,6 +36,8 @@ interface PropertyData {
   seoDescriptionEn?: string | null;
   seoTitleEs?: string | null;
   seoDescriptionEs?: string | null;
+  focusKeywordEn?: string | null;
+  focusKeywordEs?: string | null;
   address: string;
   phoneNumber?: string | null;
   city: string;
@@ -454,17 +456,23 @@ export default function EditForm({
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
-                  <div>
-                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
-                      <input type="text" name="seoTitleEn" placeholder="Meta Title" defaultValue={property.seoTitleEn || ''} className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
-                      <textarea name="seoDescriptionEn" rows={2} placeholder="Meta Desc" defaultValue={property.seoDescriptionEn || ''} className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
-                  </div>
-                  <div>
-                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
-                      <input type="text" name="seoTitleEs" placeholder="Meta Title" defaultValue={property.seoTitleEs || ''} className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
-                      <textarea name="seoDescriptionEs" rows={2} placeholder="Meta Desc" defaultValue={property.seoDescriptionEs || ''} className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
-                  </div>
-              </div>
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
+                        <input type="text" name="seoTitleEn" defaultValue={property.seoTitleEn|| ''} placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        <textarea name="seoDescriptionEn" defaultValue={property.seoDescriptionEn|| ''} rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                        
+                        {/* NUEVO CAMPO EN INGLÉS (Modo Edición) */}
+                        <input type="text" name="focusKeywordEn" defaultValue={property.focusKeywordEn|| ''} placeholder="Focus Keyword" className="mt-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
+                        <input type="text" name="seoTitleEs" defaultValue={property.seoTitleEs|| ''} placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                        <textarea name="seoDescriptionEs" defaultValue={property.seoDescriptionEs|| ''} rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                        
+                        {/* NUEVO CAMPO EN ESPAÑOL (Modo Edición) */}
+                        <input type="text" name="focusKeywordEs" defaultValue={property.focusKeywordEs|| ''} placeholder="Focus Keyword" className="mt-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                    </div>
+                </div>
           </div>
         </AccordionSection>
 
@@ -728,72 +736,7 @@ export default function EditForm({
           </div>
         </AccordionSection>
 
-        {/* 6. MARKETING ALERTS (SMS) */}
-        <AccordionSection title="Marketing: Send SMS Alert" icon="📲">
-          <div className="bg-[#529e14]/10 p-6 rounded-lg border border-[#529e14]/30">
-              <div className="grid grid-cols-1 gap-6">
-                  <div>
-                      <label className="block text-xs font-bold text-[#f8ed1a] uppercase mb-2">Target Audience</label>
-                      <div className="flex items-center gap-6">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                              <input 
-                                  type="radio" 
-                                  name="smsTarget" 
-                                  value="ZIP" 
-                                  checked={smsTarget === 'ZIP'} 
-                                  onChange={() => setSmsTarget('ZIP')}
-                                  className="text-[#529e14] focus:ring-[#529e14] bg-gray-800 border-gray-600"
-                              />
-                              <span className="text-white text-sm">Target Zip Code Only ({zipCode})</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                              <input 
-                                  type="radio" 
-                                  name="smsTarget" 
-                                  value="ALL" 
-                                  checked={smsTarget === 'ALL'} 
-                                  onChange={() => setSmsTarget('ALL')}
-                                  className="text-[#529e14] focus:ring-[#529e14] bg-gray-800 border-gray-600"
-                              />
-                              <span className="text-white text-sm">All Active Buyers</span>
-                          </label>
-                      </div>
-                  </div>
-                  
-                  <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Message Body</label>
-                      <textarea 
-                          value={smsMessage}
-                          onChange={(e) => setSmsMessage(e.target.value)}
-                          placeholder="New property alert! Check out this deal in..."
-                          rows={3} 
-                          className="block w-full rounded-md border-0 py-2 bg-gray-900 text-white shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-[#529e14] sm:text-sm"
-                      ></textarea>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                      <div className="text-sm">
-                          {smsStatus && (
-                              <span className={`font-bold ${smsStatus.type === 'success' ? 'text-[#529e14]' : 'text-red-500'}`}>
-                                  {smsStatus.msg}
-                              </span>
-                          )}
-                      </div>
-                      <button 
-                          type="button" 
-                          onClick={handlePreSendSms}
-                          disabled={isSendingSms || !smsMessage}
-                          className={`px-4 py-2 rounded font-bold uppercase text-xs tracking-wider text-white shadow-lg transition-all ${
-                              isSendingSms ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
-                          }`}
-                      >
-                          {isSendingSms ? 'Sending...' : '🚀 Send SMS Alert'}
-                      </button>
-                  </div>
-                  <p className="text-[10px] text-gray-500 uppercase">* This action triggers a webhook to GHL (10 SMS/hr drip).</p>
-              </div>
-          </div>
-        </AccordionSection>
+        
 
         {/* ERROR MESSAGE (MAIN FORM) */}
         {state?.message && (

@@ -6,9 +6,10 @@ import Image from 'next/image';
 import LanguageSwitch from './LanguageSwitch';
 import MapFloatingButtons from '@/app/map/ui/MapFloatingButtons';
 
+// 1. Añadimos las traducciones para "Casos de Estudio"
 const HEADER_TEXTS = {
-  es: { home: "Inicio", properties: "Propiedades", about: "Nosotros", blog: "Blog", contact: "Contacto", login: "Login" },
-  en: { home: "Home", properties: "Properties", about: "About Us", blog: "Blog", contact: "Contact", login: "Login" }
+  es: { home: "Inicio", properties: "Propiedades", about: "Nosotros", blog: "Blog", caseStudies: "Casos de Estudio", contact: "Contacto", login: "Login" },
+  en: { home: "Home", properties: "Properties", about: "About Us", blog: "Blog", caseStudies: "Case Studies", contact: "Contact", login: "Login" }
 };
 
 interface HeaderProps {
@@ -50,6 +51,8 @@ export default function Header({ lang, activePage }: HeaderProps) {
                     <Link href={`/properties?lang=${lang}`} className={getLinkClass('properties')}>{t.properties}</Link>
                     <Link href={`/about-us?lang=${lang}`} className={getLinkClass('about')}>{t.about}</Link>
                     <Link href={`/blog?lang=${lang}`} className={getLinkClass('blog')}>{t.blog}</Link> 
+                    {/* 2. Añadimos el enlace para escritorio */}
+                    <Link href={`/case-studies?lang=${lang}`} className={getLinkClass('case-studies')}>{t.caseStudies}</Link>
                     <Link href={`/contact-us?lang=${lang}`} className={getLinkClass('contact')}>{t.contact}</Link>
                 </nav>
 
@@ -95,6 +98,8 @@ export default function Header({ lang, activePage }: HeaderProps) {
                 <Link href={`/properties?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('properties')}>{t.properties}</Link>
                 <Link href={`/about-us?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('about')}>{t.about}</Link>
                 <Link href={`/blog?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('blog')}>{t.blog}</Link>
+                {/* 3. Añadimos el enlace para móvil */}
+                <Link href={`/case-studies?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('case-studies')}>{t.caseStudies}</Link>
                 <Link href={`/contact-us?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('contact')}>{t.contact}</Link>
             </nav>
 

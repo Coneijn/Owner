@@ -104,6 +104,8 @@ export async function generateMetadata(
         seoDescriptionEn: true,
         seoDescriptionEs: true,
         mainImage: true,
+        focusKeywordEn: true, 
+        focusKeywordEs: true,
     }
   });
 
@@ -120,12 +122,13 @@ export async function generateMetadata(
   const description = lang === 'en'
     ? (property.seoDescriptionEn || property.descriptionEn)
     : (property.seoDescriptionEs || property.descriptionEs);
-
+  const focusKeyword = lang === 'en' ? property.focusKeywordEn : property.focusKeywordEs;
   const metaDescription = description?.length && description.length > 160 ? description.substring(0, 157) + '...' : description;
 
   return {
     title: title,
     description: metaDescription || '',
+    keywords: focusKeyword ? [focusKeyword] : [],
     openGraph: {
       title: title || '',
       description: metaDescription || '',

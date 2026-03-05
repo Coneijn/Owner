@@ -26,7 +26,7 @@ export default async function EditSellerPage(props: { params: Promise<{ id: stri
     <div className="min-h-screen bg-[#0a0f1c] p-8 font-sans text-gray-200">
       <div className="max-w-2xl mx-auto">
         {/* Le pasamos la data, el form sabe automáticamente que está en modo edición */}
-        <SellerForm initialData={seller} />
+        <SellerForm initialData={seller} redirectTo="/admin/sellers" />
       </div>
     </div>
   );

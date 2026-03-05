@@ -1,15 +1,19 @@
-'use client'; 
+'use client';
 
 import Link from 'next/link';
+import { useActionState, useState, useRef, useCallback } from 'react'; 
 import { createProperty } from '@/lib/actions'; 
-import { useActionState, useState, useCallback, useMemo } from 'react'; 
 import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload'; 
-import dynamic from 'next/dynamic'; 
+import dynamic from 'next/dynamic';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
+// Importamos el mapa dinámicamente (sin SSR)
 const LocationPicker = dynamic(() => import('@/app/components/ui/location-picker'), { 
   ssr: false,
-  loading: () => <div className="h-[300px] w-full bg-[#1a1a1a] animate-pulse rounded-lg flex items-center justify-center text-gray-500 font-bold uppercase tracking-wide text-xs">Cargando Mapa...</div>
+  loading: () => <div className="h-[300px] w-full bg-gray-800 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Loading Map...</div>
 });
+
+const libraries: ("places")[] = ["places"];
 
 interface Props {
   sellerProfileId: string;
@@ -24,28 +28,28 @@ const AccordionSection = ({
 }: { 
   title: string, 
   children: React.ReactNode, 
-  defaultOpen?: boolean,
+  defaultOpen?: boolean, 
   icon?: string
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-gray-700/50 rounded-lg bg-gray-900/40 overflow-hidden mb-4 transition-all duration-200 shadow-sm">
+    <div className="border border-gray-700 rounded-lg bg-gray-900/30 overflow-hidden mb-4 transition-all duration-200">
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-gray-800/80 hover:bg-gray-700/80 transition-colors focus:outline-none focus:ring-2 focus:ring-[#f8ed1a]/50"
+        className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-750 transition-colors"
       >
         <div className="flex items-center gap-3">
             {icon && <span className="text-lg">{icon}</span>}
-            <h2 className="text-xs md:text-sm font-black text-white uppercase tracking-widest">{title}</h2>
+            <h2 className="text-sm md:text-base font-black text-white uppercase tracking-wide">{title}</h2>
         </div>
-        <span className={`transform transition-transform duration-300 text-[#f8ed1a] ${isOpen ? 'rotate-180' : ''}`}>
+        <span className={`transform transition-transform duration-200 text-[#f8ed1a] ${isOpen ? 'rotate-180' : ''}`}>
           ▼
         </span>
       </button>
       
-      <div className={isOpen ? 'block p-6 border-t border-gray-700/50 animate-in fade-in slide-in-from-top-2 duration-300' : 'hidden'}>
+      <div className={isOpen ? 'block p-6 border-t border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200' : 'hidden'}>
         {children}
       </div>
     </div>
@@ -54,30 +58,40 @@ const AccordionSection = ({
 
 export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
   const [state, formAction, isPending] = useActionState(createProperty, null);
+    
+  // Sale & rental states
+  const [isForSale, setIsForSale] = useState<boolean>(true);
+  const [isForRent, setIsForRent] = useState<boolean>(false);
   
-  // Estados de Operación
-  const [isForSale, setIsForSale] = useState(true);
-  const [isForRent, setIsForRent] = useState(false);
-  
-  // --- ESTADO DE VISIBILIDAD DEL VENDEDOR ---
+  // Visibility state for the seller
   const [showSeller, setShowSeller] = useState<boolean>(true);
-  
-  // Estado para UX Smart (Cálculo automático)
-  const [price, setPrice] = useState('');
 
-  // Estados para Imágenes
+  // ---  Google Maps Script ---
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries
+  });
+
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+ 
+  // --- STATUS STATE ---
+  const [status, setStatus] = useState<string>('AVAILABLE');
+
+  // --- IMAGE STATE ---
   const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
   const [galleryImageFiles, setGalleryImageFiles] = useState<ImageFile[]>([]);
 
-  // Estados de Ubicación para el LocationPicker
+  // --- LOCATION STATE ---
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
-  const [stateLoc, setStateLoc] = useState('');
+  const [stateLoc, setStateLoc] = useState('TN');
   const [zipCode, setZipCode] = useState('');
   
-  const [coords, setCoords] = useState({ lat: 19.7028, lng: -101.1924 });
-
-  const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
+  const [coords, setCoords] = useState({ 
+    lat: 35.1495, 
+    lng: -90.0490 
+  });
 
   const handleLocationChange = useCallback((lat: number, lng: number) => {
     setCoords(prev => {
@@ -85,259 +99,502 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
         return { lat, lng };
     });
   }, []);
+  
+  const fullAddressQuery = `${address}, ${city}, ${stateLoc} ${zipCode}`;
 
-  // Automatización inteligente: Calcula un seguro anual estimado basado en el precio
-  const estimatedInsurance = useMemo(() => {
-    const numericPrice = parseFloat(price);
-    return isNaN(numericPrice) ? '0.00' : (numericPrice * 0.0035).toFixed(2);
-  }, [price]);
+  // --- Autocomplete Handler ---
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+        const place = autocompleteRef.current.getPlace();
+        
+        if (place.geometry && place.geometry.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            setCoords({ lat, lng });
 
-  // Interceptar el formulario
-  const handleFormSubmit = (formData: FormData) => {
-    if (!isForSale) {
-         formData.set('price', '0');
-         formData.set('downPayment', '0');
-         formData.set('interestRate', '0');
-         formData.set('taxes', '0');
-         formData.set('insurance', '0');
-    } else {
-         // Inyectar el cálculo automático si no se llenó manualmente
-         if (!formData.get('insurance')) formData.set('insurance', estimatedInsurance);
+            let streetNumber = "";
+            let route = "";
+            let newCity = "";
+            let newState = "";
+            let newZip = "";
+
+            place.address_components?.forEach(component => {
+                const types = component.types;
+                if (types.includes("street_number")) streetNumber = component.long_name;
+                if (types.includes("route")) route = component.long_name;
+                if (types.includes("locality")) newCity = component.long_name;
+                if (types.includes("administrative_area_level_1")) newState = component.short_name;
+                if (types.includes("postal_code")) newZip = component.long_name;
+            });
+
+            const fullStreet = (streetNumber && route) ? `${streetNumber} ${route}` : (place.name || address);
+            
+            setAddress(fullStreet);
+            if (newCity) setCity(newCity);
+            if (newState) setStateLoc(newState);
+            if (newZip) setZipCode(newZip);
+        }
     }
-    
-    formData.set('sellerProfileId', sellerProfileId);
-    
-    // --- ACTUALIZADO: Mandamos el valor real del estado showSeller ---
-    formData.set('showSeller', showSeller ? 'true' : 'false');
-    
-    formData.set('latitude', coords.lat.toString());
-    formData.set('longitude', coords.lng.toString());
-
-    formAction(formData);
   };
-
-  const inputStyles = "block w-full rounded-md bg-[#1a1a1a] border border-gray-700 py-2.5 px-4 text-white text-sm focus:ring-2 focus:ring-[#f8ed1a] focus:border-transparent outline-none transition-all placeholder-gray-600";
-  const labelStyles = "block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide";
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] py-10 font-sans text-gray-200">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"></div>
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">Agregar Propiedad</h1>
-        <p className="mt-2 text-sm text-[#f8ed1a]/80 font-medium tracking-wide">COMPLETA LOS DETALLES DE TU NUEVA PROPIEDAD PARA PUBLICARLA.</p>
-      </div>
-
-      <form action={handleFormSubmit} className="space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
-        <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
-
-        <div className="space-y-4">
-
-          {/* --- NUEVO: SECCIÓN PRIVACIDAD DEL VENDEDOR --- */}
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-5 mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-              <div>
-                  <h3 className="text-[#f8ed1a] font-black uppercase tracking-wide text-sm flex items-center gap-2">
-                      <span>👤</span> Visibilidad de tu Perfil (Público)
-                  </h3>
-                  <p className="text-gray-400 text-xs mt-1">
-                      Permite que los compradores vean tu nombre, foto y rol en la página de la propiedad.
-                  </p>
-              </div>
-              
-              <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={showSeller}
-                      onChange={(e) => setShowSeller(e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#529e14]"></div>
-                  <span className="ml-3 text-sm font-bold text-white uppercase min-w-[70px]">
-                      {showSeller ? 'Visible' : 'Oculto'}
-                  </span>
-              </label>
+        <div className="md:flex md:items-center md:justify-between mb-10 border-b border-gray-800 pb-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-3xl font-black leading-7 text-white uppercase tracking-tight sm:truncate">
+              Create New Property
+            </h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Publish a new listing to the catalog.
+            </p>
           </div>
+        </div>
+
+        <div className="bg-[#1a1a1a] p-8 shadow-2xl rounded-2xl border border-gray-800 relative">
           
-          <AccordionSection title="Información Básica" defaultOpen={true} icon="📋">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                  <label className={labelStyles}>Título (Español) *</label>
-                  <input name="titleEs" type="text" required className={inputStyles} placeholder="Ej. Casa de lujo en el centro" />
-              </div>
-              <div>
-                  <label className={labelStyles}>Title (English) *</label>
-                  <input name="titleEn" type="text" required className={inputStyles} placeholder="Ex. Luxury house downtown" />
-              </div>
+          <form action={formAction} className="space-y-6 relative">
+            
+            {/* HIDDEN INPUTS */}
+            <input type="hidden" name="sellerProfileId" value={sellerProfileId} />
+            <input type="hidden" name="showSeller" value={showSeller ? 'on' : ''} />
+            <input type="hidden" name="mainImageData" value={JSON.stringify(mainImageFiles[0] || null)} />
+            <input type="hidden" name="galleryImagesData" value={JSON.stringify(galleryImageFiles)} />
 
-              <div className="col-span-1 md:col-span-2">
-                  <label className={labelStyles}>Estado de la Propiedad</label>
-                  <select name="status" className={inputStyles}>
-                    <option value="AVAILABLE">Disponible (Available)</option>
-                    <option value="DRAFT">Borrador (Draft)</option>
-                    <option value="COMING_SOON">Próximamente (Coming Soon)</option>
-                  </select>
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                  <label className={labelStyles}>Slug (URL) *</label>
-                  <input name="slug" type="text" required placeholder="ej-casa-en-centro" className={inputStyles} />
-              </div>
-
-              <div>
-                  <label className={labelStyles}>Descripción (Español) *</label>
-                  <textarea name="descriptionEs" rows={4} required className={inputStyles} placeholder="Describe la propiedad..." />
-              </div>
-              <div>
-                  <label className={labelStyles}>Description (English) *</label>
-                  <textarea name="descriptionEn" rows={4} required className={inputStyles} placeholder="Describe the property..." />
-              </div>
+            {/* --- SELLER PRIVACY SECTION --- */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-[#f8ed1a] font-black uppercase tracking-wide text-sm flex items-center gap-2">
+                        <span>👤</span> Public Profile Visibility
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-1">
+                        Allow buyers to see your name, photo, and role on the property page.
+                    </p>
+                </div>
+                
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={showSeller}
+                        onChange={(e) => setShowSeller(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#529e14]"></div>
+                    <span className="ml-3 text-sm font-bold text-white uppercase min-w-[60px]">
+                        {showSeller ? 'Visible' : 'Hidden'}
+                    </span>
+                </label>
             </div>
-          </AccordionSection>
 
-          <AccordionSection title="Detalles Financieros" icon="💰">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              <div className="border border-gray-700/50 p-5 rounded-lg bg-[#1a1a1a]/50">
-                <label className="flex items-center space-x-3 mb-5 cursor-pointer group">
-                  <input type="checkbox" name="isForSale" checked={isForSale} onChange={(e) => setIsForSale(e.target.checked)} className="form-checkbox h-5 w-5 text-[#529e14] rounded bg-[#1a1a1a] border-gray-600 focus:ring-[#529e14] focus:ring-offset-gray-900 transition-colors" value="on" />
-                  <span className="text-white font-bold uppercase tracking-wide text-sm group-hover:text-[#529e14] transition-colors">En Venta (For Sale)</span>
-                </label>
-                {isForSale && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <div>
-                      <label className={labelStyles}>Precio Total *</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                        <input name="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required={isForSale} className={`${inputStyles} pl-8`} placeholder="0.00" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className={labelStyles}>Enganche Mínimo</label>
-                      <input name="downPayment" type="number" step="0.01" className={inputStyles} placeholder="0.00" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-2">Seguro Anual Estimado: <span className="text-[#f8ed1a]">${estimatedInsurance}</span></label>
-                    </div>
+            {/* 1. STATUS & LOCATION */}
+            <AccordionSection title="Status, Location & Specs" icon="📍" defaultOpen={true}>
+              <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                  
+                  <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
+                      <select 
+                        name="status" 
+                        value={status} 
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
+                      >
+                          <option value="AVAILABLE">Available</option>
+                          <option value="UNDER_CONTRACT">Under Contract | Pending</option>
+                          <option value="SOLD">Sold</option>
+                          <option value="DRAFT">Draft</option>
+                          <option value="COMING_SOON">Coming Soon</option>
+                      </select>
                   </div>
-                )}
-              </div>
 
-              <div className="border border-gray-700/50 p-5 rounded-lg bg-[#1a1a1a]/50">
-                <label className="flex items-center space-x-3 mb-5 cursor-pointer group">
-                  <input type="checkbox" name="isForRent" checked={isForRent} onChange={(e) => setIsForRent(e.target.checked)} className="form-checkbox h-5 w-5 text-[#f8ed1a] rounded bg-[#1a1a1a] border-gray-600 focus:ring-[#f8ed1a] focus:ring-offset-gray-900 transition-colors" value="on" />
-                  <span className="text-white font-bold uppercase tracking-wide text-sm group-hover:text-[#f8ed1a] transition-colors">En Renta (For Rent)</span>
-                </label>
+                  {status === 'COMING_SOON' && (
+                    <div className="sm:col-span-2 animate-in fade-in slide-in-from-top-2">
+                        <label className="block text-xs font-bold leading-6 text-blue-400 uppercase">Available Date</label>
+                        <input 
+                            type="date" 
+                            name="availableDate" 
+                            className="mt-2 block w-full rounded bg-gray-800 border border-blue-500/50 text-white shadow-sm ring-1 ring-inset ring-blue-500/20 focus:ring-blue-500 sm:text-sm" 
+                        />
+                    </div>
+                  )}
+
+                  <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Phone Number</label>
+                      <input type="text" name="phoneNumber"  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  </div>
+                  <div className="sm:col-span-6">
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
+                      <input type="text" name="slug" required placeholder="e-g-beautiful-house-memphis" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  </div>
+
+                  {/* LOCATION */}
+                  <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
+                      {isLoaded ? (
+                        <Autocomplete
+                            onLoad={(auto) => (autocompleteRef.current = auto)}
+                            onPlaceChanged={onPlaceChanged}
+                        >
+                            <input 
+                                type="text" 
+                                name="address" 
+                                value={address} 
+                                onChange={(e) => setAddress(e.target.value)}
+                                required 
+                                placeholder="Type to search..."
+                                className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm placeholder-gray-500" 
+                            />
+                        </Autocomplete>
+                      ) : (
+                        <input 
+                            type="text" 
+                            disabled
+                            placeholder="Loading..."
+                            className="mt-2 block w-full rounded bg-gray-800 border-0 text-gray-500 cursor-not-allowed sm:text-sm"
+                        />
+                      )}
+                  </div>
+                  <div className="sm:col-span-1">
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
+                      <input 
+                        type="text" 
+                        name="city" 
+                        value={city} 
+                        onChange={(e) => setCity(e.target.value)}
+                        required 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                      />
+                  </div>
+                  <div className="sm:col-span-1">
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">State</label>
+                      <input 
+                        type="text" 
+                        name="state" 
+                        value={stateLoc} 
+                        onChange={(e) => setStateLoc(e.target.value)}
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                      />
+                  </div>
+                  <div className="sm:col-span-1">
+                      <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Zip Code</label>
+                      <input 
+                        type="text" 
+                        name="zipCode" 
+                        value={zipCode} 
+                        onChange={(e) => setZipCode(e.target.value)}
+                        required 
+                        className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                      />
+                  </div>
+
+                  {/* Specs */}
+                  <div className="sm:col-span-6 border-t border-gray-700 pt-6 mt-2">
+                      <p className="text-[#f8ed1a] text-xs font-black uppercase mb-4">Specifications</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase">Bedrooms</label>
+                              <input type="number" name="bedrooms" defaultValue={0} className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase">Bathrooms</label>
+                              <input type="number" step="0.5" name="bathrooms" defaultValue={0} className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase">Sqft</label>
+                              <input type="number" name="sqft" defaultValue={0} className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase">Year</label>
+                              <input type="number" name="yearBuilt" className="mt-1 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          </div>
+                      </div>
+                  </div>
+              </div>
+            </AccordionSection>
+
+            {/* 2. ADVANCED CONFIG & SEO */}
+            <AccordionSection title="Advanced Config & SEO" icon="⚙️" defaultOpen={false}>
+              <div className="grid grid-cols-1 gap-6">
+                  <div className="flex gap-8 flex-wrap p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                      <div className="flex items-start">
+                          <div className="flex h-6 items-center">
+                            <input id="isFeatured" name="isFeatured" type="checkbox" className="h-5 w-5 rounded bg-gray-800 border-gray-600 text-[#529e14] focus:ring-[#529e14]" />
+                          </div>
+                          <div className="ml-3">
+                            <label htmlFor="isFeatured" className="text-sm font-bold text-white block">Featured Property</label>
+                            <span className="text-xs text-gray-400">Shows in the <strong className="text-[#f8ed1a]">Home Page Carousel</strong>.</span>
+                          </div>
+                      </div>
+                      
+                      <div className="flex items-start">
+                          <div className="flex h-6 items-center">
+                            <input id="isOffMarket" name="isOffMarket" type="checkbox" className="h-5 w-5 rounded bg-gray-800 border-gray-600 text-red-500 focus:ring-red-500" />
+                          </div>
+                          <div className="ml-3">
+                            <label htmlFor="isOffMarket" className="text-sm font-bold text-white block">Off Market Deal</label>
+                            <span className="text-xs text-gray-400">Activates the <strong className="text-[#f8ed1a]">Yellow Label</strong> on cards.</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div>
+                      <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Calendar Link</label>
+                      <input type="url" name="calendarLink" placeholder="https://calendly.com/..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
+                      <div>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
+                          <input type="text" name="seoTitleEn" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                          <textarea name="seoDescriptionEn" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                          <input type="text" name="focusKeywordEn" placeholder="Focus Keyword (e.g. houses in memphis)" className="mt-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                      </div>
+                      <div>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
+                          <input type="text" name="seoTitleEs" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                          <textarea name="seoDescriptionEs" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                          <input type="text" name="focusKeywordEs" placeholder="Focus Keyword (ej. casas en memphis)" className="mt-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
+                      </div>
+                  </div>
+              </div>
+            </AccordionSection>
+
+            {/* 3. FINANCIALS */}
+            <AccordionSection title="Financial Data (Sale)" icon="💰">
+              <div className="space-y-6">
+                  
+                  <div className="flex items-center">
+                    <input
+                      id="isForSale"
+                      name="isForSale"
+                      type="checkbox"
+                      checked={isForSale} 
+                      onChange={(e) => setIsForSale(e.target.checked)} 
+                      className="h-5 w-5 rounded bg-gray-800 text-[#529e14] focus:ring-[#529e14] border-gray-600"
+                    />
+                    <label htmlFor="isForSale" className="ml-2 text-sm font-bold text-white uppercase">
+                      Enable Sale Option
+                    </label>
+                  </div>
+
+                  {isForSale && (
+                      <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
+                          <div className="sm:col-span-2">
+                              <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                name="price" 
+                                required={isForSale} 
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                              />
+                          </div>
+                          <div className="sm:col-span-2">
+                              <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                    Down Payment ($)
+                                </label>
+                                <select
+                                    name="downPayment"
+                                    defaultValue="10000"
+                                    required={isForSale}
+                                    className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                                >
+                                    <option value="10000">$10,000</option>
+                                    <option value="20000">$20,000</option>
+                                    <option value="30000">$30,000</option>
+                                    <option value="40000">$40,000</option>
+                                    <option value="50000">$50,000</option>
+                                </select>
+                          </div>
+                          <div className="sm:col-span-2">
+                              <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                name="interestRate" 
+                                defaultValue="10"
+                                required={isForSale} 
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                              />
+                          </div>
+                          <div className="sm:col-span-3">
+                              <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                name="taxes" 
+                                defaultValue="0"
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                              />
+                          </div>
+                          <div className="sm:col-span-3">
+                              <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                name="insurance" 
+                                defaultValue="0"
+                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
+                              />
+                          </div>
+                      </div>
+                  )}
+              </div>
+            </AccordionSection>
+
+            {/* 3.5 RENTAL INFO */}
+            <AccordionSection title="Financial Data (Rent)" icon="🔑">
+              <div className="space-y-6">
+                
+                <div className="flex items-center">
+                  <input
+                    id="isForRent"
+                    name="isForRent"
+                    type="checkbox"
+                    checked={isForRent} 
+                    onChange={(e) => setIsForRent(e.target.checked)} 
+                    className="h-5 w-5 rounded bg-gray-800 text-[#529e14] focus:ring-[#529e14] border-gray-600"
+                  />
+                  <label htmlFor="isForRent" className="ml-2 text-sm font-bold text-white uppercase">
+                    Enable Rental / Lease Option
+                  </label>
+                </div>
+
                 {isForRent && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <div>
-                      <label className={labelStyles}>Renta Mensual *</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                        <input name="monthlyRent" type="number" step="0.01" required={isForRent} className={`${inputStyles} pl-8`} placeholder="0.00" />
-                      </div>
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold leading-6 text-white uppercase">
+                        Monthly Rent ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="monthlyRent"
+                        placeholder="0.00"
+                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                      />
                     </div>
-                    <div>
-                      <label className={labelStyles}>Depósito de Seguridad</label>
-                      <input name="securityDeposit" type="number" step="0.01" className={inputStyles} placeholder="0.00" />
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold leading-6 text-white uppercase">
+                        Security Deposit ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="securityDeposit"
+                        placeholder="0.00"
+                        className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
+                      />
                     </div>
                   </div>
                 )}
               </div>
+            </AccordionSection>
+
+            {/* 4. MEDIA & CONTENT */}
+            <AccordionSection title="Photos, Video & Descriptions" icon="📷">
+              <div className="space-y-8">
+                  <div className="grid grid-cols-1 gap-8">
+                      <ImageUpload label="Main Image" value={mainImageFiles} onChange={setMainImageFiles} multiple={false} />
+                      <ImageUpload label="Gallery Images" value={galleryImageFiles} onChange={setGalleryImageFiles} multiple={true} />
+                  </div>
+
+                  <div>
+                      <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Video Tour URL</label>
+                      <input type="url" name="videoUrl" placeholder="https://youtube.com..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-4 border-t border-gray-700">
+                      <div className="space-y-4">
+                          <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇺🇸 English Content</h3>
+                          <input type="text" name="titleEn" placeholder="Title EN" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          <textarea name="descriptionEn" rows={4} placeholder="Description EN" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                      </div>
+                      <div className="space-y-4">
+                          <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇲🇽 Spanish Content</h3>
+                          <input type="text" name="titleEs" placeholder="Title ES" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          <textarea name="descriptionEs" rows={4} placeholder="Description ES" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                      </div>
+                  </div>
+
+                  <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase">Features (Comma separated)</label>
+                      <textarea name="features" rows={2} placeholder="Hardwood floors, pool, big backyard..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                  </div>
+              </div>
+            </AccordionSection>
+
+            {/* 4.5 LOCATION & ACCESS */}
+            <AccordionSection title="Location & Access" icon="🗺️">
+                <div className="space-y-6">
+                    <div className="w-full">
+                        <LocationPicker 
+                            lat={coords.lat} 
+                            lng={coords.lng} 
+                            searchQuery={fullAddressQuery}
+                            onLocationChange={handleLocationChange} 
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Latitude</label>
+                            <input 
+                                type="text" 
+                                name="latitude" 
+                                value={coords.lat}
+                                onChange={(e) => setCoords({...coords, lat: Number(e.target.value)})}
+                                className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase">Longitude</label>
+                            <input 
+                                type="text" 
+                                name="longitude" 
+                                value={coords.lng}
+                                onChange={(e) => setCoords({...coords, lng: Number(e.target.value)})}
+                                className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-[#f8ed1a] uppercase">Lockbox Code</label>
+                            <input 
+                                type="text" 
+                                name="lockboxCode" 
+                                placeholder="e.g. 1234" 
+                                className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" 
+                            />
+                        </div>
+                    </div>
+                </div>
+            </AccordionSection>
+
+            {/* ERROR MESSAGE (MAIN FORM) */}
+            {state?.message && (
+              <div className="rounded-md bg-red-900/30 p-4 border border-red-800">
+                <p className="text-sm text-red-400">{state.message}</p>
+              </div>
+            )}
+
+            {/* MAIN SAVE BUTTON */}
+            <div className="sticky bottom-0 z-40 bg-[#1a1a1a]/95 backdrop-blur py-4 border-t border-gray-800 flex items-center justify-end gap-x-6">
+              <Link href="/sellerDashboard" className="text-sm font-bold leading-6 text-gray-400 hover:text-white">Cancel</Link>
+              <button
+                type="submit"
+                disabled={isPending}
+                className={`rounded-lg px-8 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg transition-all ${
+                  isPending ? 'bg-gray-600 cursor-not-allowed' : 'bg-[#529e14] hover:bg-[#458510] hover:scale-105'
+                }`}
+              >
+                {isPending ? 'Saving...' : 'Create Property'}
+              </button>
             </div>
-          </AccordionSection>
 
-          <AccordionSection title="Ubicación y Características" icon="🏠">
-             <div className="grid grid-cols-2 gap-5 mb-6">
-                <div className="col-span-2">
-                    <label className={labelStyles}>Dirección Completa *</label>
-                    <input name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Calle y número" required className={inputStyles} />
-                </div>
-                
-                <div>
-                    <label className={labelStyles}>Ciudad *</label>
-                    <input name="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ciudad" required className={inputStyles} />
-                </div>
-                <div>
-                    <label className={labelStyles}>Estado *</label>
-                    <input name="state" value={stateLoc} onChange={(e) => setStateLoc(e.target.value)} placeholder="Estado" required className={inputStyles} />
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                    <label className={labelStyles}>Código Postal *</label>
-                    <input name="zipCode" value={zipCode} onChange={(e) => setZipCode(e.target.value)} placeholder="ZIP" required className={inputStyles} />
-                </div>
-                
-                <div className="col-span-2 grid grid-cols-3 gap-4 mt-2 pt-4 border-t border-gray-700/50">
-                  <div>
-                    <label className={labelStyles}>Camas</label>
-                    <input name="bedrooms" type="number" required className={inputStyles} placeholder="0" />
-                  </div>
-                  <div>
-                    <label className={labelStyles}>Baños</label>
-                    <input name="bathrooms" type="number" step="0.5" required className={inputStyles} placeholder="0" />
-                  </div>
-                  <div>
-                    <label className={labelStyles}>Metros (Sqft)</label>
-                    <input name="sqft" type="number" required className={inputStyles} placeholder="0" />
-                  </div>
-                </div>
-             </div>
-             
-             <div className="w-full mt-6 bg-[#1a1a1a] p-2 rounded-lg border border-gray-700/50">
-                <label className={`${labelStyles} px-2 pt-2`}>Ajustar Pin en el Mapa</label>
-                <div className="rounded-md overflow-hidden">
-                    <LocationPicker 
-                        lat={coords.lat} 
-                        lng={coords.lng} 
-                        searchQuery={fullAddressQuery}
-                        onLocationChange={handleLocationChange} 
-                    />
-                </div>
-             </div>
-          </AccordionSection>
-
-          <AccordionSection title="Fotos y Archivos Multimedia" icon="📸">
-             <div className="space-y-8">
-                <ImageUpload 
-                  label="Imagen Principal (Cover)" 
-                  value={mainImageFiles} 
-                  onChange={setMainImageFiles} 
-                  multiple={false} 
-                />
-                <div className="border-t border-gray-700/50 pt-8">
-                    <ImageUpload 
-                    label="Galería de Imágenes" 
-                    value={galleryImageFiles} 
-                    onChange={setGalleryImageFiles} 
-                    multiple={true} 
-                    />
-                </div>
-             </div>
-          </AccordionSection>
-
+          </form>
         </div>
-
-        {/* ERROR MESSAGE */}
-        {state?.message && (
-          <div className="rounded-md bg-red-900/20 p-4 border border-red-500/50 animate-in fade-in">
-            <p className="text-xs uppercase tracking-wide font-bold text-red-400">{state.message}</p>
-          </div>
-        )}
-
-        {/* SUBMIT BUTTON */}
-        <div className="flex items-center justify-end gap-x-6 pt-6 mt-8 border-t border-gray-800">
-          <Link href="/sellerDashboard/properties" className="text-xs uppercase tracking-wider font-bold text-gray-400 hover:text-white transition-colors">
-            Cancelar
-          </Link>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-md bg-[#529e14] px-8 py-3 text-sm font-black text-white shadow-lg shadow-[#529e14]/20 hover:bg-[#458510] hover:-translate-y-0.5 transition-all uppercase tracking-widest disabled:opacity-50 disabled:hover:translate-y-0 flex items-center"
-          >
-            {isPending ? 'Guardando...' : 'Crear Propiedad'}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

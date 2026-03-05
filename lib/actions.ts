@@ -115,7 +115,7 @@ export async function createSellerProfile(prevState: any, formData: FormData) {
   }
 
   revalidatePath('/admin/sellers');
-  redirect('/admin/sellers');
+  return { success: true }; // ✅ DEVOLVER ÉXITO
 }
 
 
@@ -175,7 +175,8 @@ export async function createProperty(prevState: any, formData: FormData) {
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
         seoTitleEs: rawFormData.seoTitleEs as string,
         seoDescriptionEs: rawFormData.seoDescriptionEs as string,
-
+        focusKeywordEn: rawFormData.focusKeywordEn as string,
+        focusKeywordEs: rawFormData.focusKeywordEs as string,
         titleEn: rawFormData.titleEn as string,
         titleEs: rawFormData.titleEs as string,
         descriptionEn: rawFormData.descriptionEn as string,
@@ -309,7 +310,8 @@ export async function updateProperty(prevState: any, formData: FormData) {
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
         seoTitleEs: rawFormData.seoTitleEs as string,
         seoDescriptionEs: rawFormData.seoDescriptionEs as string,
-
+        focusKeywordEn: rawFormData.focusKeywordEn as string,
+        focusKeywordEs: rawFormData.focusKeywordEs as string,
         titleEn: rawFormData.titleEn as string,
         titleEs: rawFormData.titleEs as string,
         descriptionEn: rawFormData.descriptionEn as string,
@@ -430,5 +432,5 @@ export async function updateSellerProfile(id: string, prevState: any, formData: 
   }
 
   revalidatePath('/admin/sellers');
-  redirect('/admin/sellers');
+  return { success: true }; // ✅ DEVOLVER ÉXITO
 }

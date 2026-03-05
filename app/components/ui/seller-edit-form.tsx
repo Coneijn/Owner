@@ -36,6 +36,8 @@ interface PropertyData {
   seoDescriptionEn?: string | null;
   seoTitleEs?: string | null;
   seoDescriptionEs?: string | null;
+  focusKeywordEn?: string | null;
+  focusKeywordEs?: string | null;
   address: string;
   phoneNumber?: string | null;
   city: string;
@@ -282,7 +284,7 @@ export default function SellerEditForm({ property }: { property: PropertyData })
 
               <div className="sm:col-span-2">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Phone Number</label>
-                  <input type="text" name="phoneNumber" defaultValue={property.phoneNumber || '901-660-4115'}  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                  <input type="text" name="phoneNumber" defaultValue={property.phoneNumber || ''}  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
               </div>
               <div className="sm:col-span-6">
                   <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
@@ -409,11 +411,17 @@ export default function SellerEditForm({ property }: { property: PropertyData })
                       <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
                       <input type="text" name="seoTitleEn" placeholder="Meta Title" defaultValue={property.seoTitleEn || ''} className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
                       <textarea name="seoDescriptionEn" rows={2} placeholder="Meta Desc" defaultValue={property.seoDescriptionEn || ''} className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                      
+                      {/* NUEVO CAMPO EN INGLÉS */}
+                      <input type="text" name="focusKeywordEn" defaultValue={property.focusKeywordEn || ''} placeholder="Focus Keyword" className="mt-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
                   </div>
                   <div>
                       <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
                       <input type="text" name="seoTitleEs" placeholder="Meta Title" defaultValue={property.seoTitleEs || ''} className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
                       <textarea name="seoDescriptionEs" rows={2} placeholder="Meta Desc" defaultValue={property.seoDescriptionEs || ''} className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
+                      
+                      {/* NUEVO CAMPO EN ESPAÑOL */}
+                      <input type="text" name="focusKeywordEs" defaultValue={property.focusKeywordEs || ''} placeholder="Focus Keyword" className="mt-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
                   </div>
               </div>
           </div>

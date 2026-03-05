@@ -110,7 +110,8 @@ export default async function DashboardVendedor() {
       </div>
     );
   }
-// ==========================================
+
+  // ==========================================
   // 3. FLUJO NORMAL: DASHBOARD (PORTAFOLIO)
   // ==========================================
   const rawProperties = await prisma.property.findMany({
@@ -137,42 +138,20 @@ export default async function DashboardVendedor() {
     };
   });
 
-  // --- CÁLCULO DE MÉTRICAS DEL PORTAFOLIO ---
+  // --- NUEVAS MÉTRICAS DEL PORTAFOLIO (SIN LOANS) ---
   const totalProperties = properties.length;
+  const availableProperties = properties.filter(p => p.status === 'AVAILABLE').length;
+  const pendingProperties = properties.filter(p => p.status === 'UNDER_CONTRACT').length;
+  const soldProperties = properties.filter(p => p.status === 'SOLD').length;
   
-  // Consideramos "Préstamos Activos" a los que están UNDER_CONTRACT o rentados
-  const activeLoans = properties.filter(p => p.status === 'UNDER_CONTRACT' || (p.isForRent && p.status !== 'AVAILABLE')).length;
-  
-  // Total Recaudado: Por ahora sumamos los enganches (downPayments) de las propiedades vendidas o en contrato
-  const totalCollected = properties.reduce((acc, p) => {
-    if (p.status === 'SOLD' || p.status === 'UNDER_CONTRACT') {
-      return acc + (p.downPayment || 0);
-    }
-    return acc;
-  }, 0);
-
-  // Balances Adeudados: Precio total menos el enganche de las propiedades en contrato
-  const totalBalancesOwed = properties.reduce((acc, p) => {
-    if (p.status === 'UNDER_CONTRACT') {
-      return acc + ((p.price || 0) - (p.downPayment || 0));
-    }
-    return acc;
-  }, 0);
-
-  // Ingreso Mensual: Suma de las rentas o aproximación del pago mensual
-  const monthlyIncome = properties.reduce((acc, p) => {
-    if (p.status === 'UNDER_CONTRACT' || p.isForRent) {
-       // Si tienes una fórmula de amortización se puede agregar, por ahora sumamos rentas
-      return acc + (p.monthlyRent || 0); 
-    }
-    return acc;
-  }, 0);
+  // Valor total del portafolio sumando los precios de todas las propiedades
+  const portfolioValue = properties.reduce((acc, p) => acc + (p.price || 0), 0);
 
   return (
     <div className="min-h-screen bg-[#111111] text-white p-4 md:p-10 font-sans">
       <main className="max-w-7xl mx-auto">
         
-        {/* CABECERA ESTILO PORTAL DE INVERSIONISTA */}
+        {/* CABECERA ESTILO PORTAL */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 border-b border-gray-800 pb-8">
           <div>
             <h2 className="text-[#f8ed1a] uppercase tracking-widest text-xs font-bold mb-2">
@@ -181,12 +160,12 @@ export default async function DashboardVendedor() {
             <h1 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight">
               {sellerProfile.sellerName}'s <span className="text-gray-500">Portfolio</span>
             </h1>
+            {/* DESCRIPCIÓN ACTUALIZADA */}
             <p className="text-gray-400 font-medium">
-              Your properties, loan balances, and payment history.
+              Manage your properties and monitor your real estate portfolio.
             </p>
           </div>
           <div className="flex gap-4">
-            {/*<Link href="/admin/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">*/}
             <Link href="/sellerDashboard/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">
               + New Listing
             </Link>
@@ -198,13 +177,13 @@ export default async function DashboardVendedor() {
           </div>
         </header>
 
-        {/* MÉTRICAS FINANCIERAS */}
+        {/* MÉTRICAS (ACTUALIZADAS SIN PRÉSTAMOS) */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
           <StatCard title="Total Properties" value={totalProperties} />
-          <StatCard title="Active Loans" value={activeLoans} color="text-white" />
-          <StatCard title="Total Collected" value={formatMoney(totalCollected)} color="text-[#529e14]" />
-          <StatCard title="Total Balances Owed" value={formatMoney(totalBalancesOwed)} color="text-red-400" />
-          <StatCard title="Monthly Income" value={formatMoney(monthlyIncome)} color="text-[#f8ed1a]" />
+          <StatCard title="Available" value={availableProperties} color="text-[#529e14]" />
+          <StatCard title="Pending" value={pendingProperties} color="text-[#f8ed1a]" />
+          <StatCard title="Sold" value={soldProperties} color="text-blue-400" />
+          <StatCard title="Portfolio Value" value={formatMoney(portfolioValue)} color="text-white" />
         </div>
 
         {/* TABLAS Y PESTAÑAS (COMPONENTE CLIENTE) */}

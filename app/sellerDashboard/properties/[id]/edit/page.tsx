@@ -81,7 +81,7 @@ export default async function SellerEditPropertyPage(props: { params: Promise<{ 
           </div>
           <div className="mt-4 flex md:ml-4 md:mt-0">
             <Link
-              href="/sellerDashboard/properties" // <-- Actualizado al dashboard de seller
+              href="/sellerDashboard/" // <-- Actualizado al dashboard de seller
               className="inline-flex items-center rounded-lg bg-white/5 border border-gray-600 px-4 py-2 text-sm font-bold text-gray-300 shadow-sm hover:bg-white/10 hover:text-white transition-colors"
             >
               Volver

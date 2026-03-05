@@ -14,7 +14,6 @@ export default async function SellersManagerPage() {
     },
     orderBy: { createdAt: 'desc' }
   });
-
   // 2. Obtenemos las propiedades para poblar los dropdowns
   // Traemos el título y la dirección para que el staff sepa cuál es
   const properties = await prisma.property.findMany({

@@ -67,6 +67,10 @@ export default function NewPostPage() {
                                 <input type="checkbox" name="isPublished" className="w-5 h-5 accent-[#529e14]" />
                                 <span className="font-bold uppercase text-sm">Publish Immediately</span>
                             </label>
+                            <label className="flex items-center cursor-pointer gap-3 p-3 bg-gray-900 rounded border border-gray-700 hover:border-[#f8ed1a]">
+        <input type="checkbox" name="isCaseStudy" className="w-5 h-5 accent-[#f8ed1a]" />
+        <span className="font-bold uppercase text-sm text-[#f8ed1a]">Is Case Study</span>
+    </label>
                         </div>
                     </div>
                     <div>
