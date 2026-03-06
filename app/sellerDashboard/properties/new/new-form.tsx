@@ -63,6 +63,24 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
   const [isForSale, setIsForSale] = useState<boolean>(true);
   const [isForRent, setIsForRent] = useState<boolean>(false);
   
+  // --- CALCULADORA DE COMISIÓN ---
+  const priceRef = useRef<HTMLInputElement>(null);
+  const pctRef = useRef<HTMLInputElement>(null);
+  const amtRef = useRef<HTMLInputElement>(null);
+
+  const handleCommissionCalc = () => {
+    if (priceRef.current && pctRef.current && amtRef.current) {
+      const p = parseFloat(priceRef.current.value) || 0;
+      const pct = parseFloat(pctRef.current.value) || 0;
+      
+      if (p > 0 && pct > 0) {
+        amtRef.current.value = (p * (pct / 100)).toFixed(2);
+      } else if (pct === 0) {
+        amtRef.current.value = '';
+      }
+    }
+  };
+
   // Visibility state for the seller
   const [showSeller, setShowSeller] = useState<boolean>(true);
 
@@ -385,6 +403,8 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                                 type="number" 
                                 step="0.01" 
                                 name="price" 
+                                ref={priceRef}
+                                onChange={handleCommissionCalc}
                                 required={isForSale} 
                                 className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                               />
@@ -570,6 +590,118 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                     </div>
                 </div>
             </AccordionSection>
+                
+          {/* --- AGENT PORTAL / REP DASHBOARD --- */}
+          <AccordionSection title="Agent Portal Details" icon="💼">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+              
+              {/* Emoji & Condition */}
+              <div>
+                <label htmlFor="emoji" className="block text-sm font-medium leading-6 text-white">Emoji Identificator</label>
+                <div className="mt-2">
+                  <input type="text" name="emoji" id="emoji" placeholder="🏡" className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" />
+                </div>
+              </div>
+              <div>
+  <label htmlFor="condition" className="block text-sm font-medium leading-6 text-white">Property Condition</label>
+  <div className="mt-2">
+    <select 
+      name="condition" 
+      id="condition" 
+      defaultValue=""
+      className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6"
+    >
+      <option value="" className="bg-gray-800">-- Select condition --</option>
+      <option value="Excellent (Move-in ready, no repairs needed)" className="bg-gray-800">Excellent (Move-in ready, no repairs needed)</option>
+      <option value="Good (Minor cosmetic updates needed)" className="bg-gray-800">Good (Minor cosmetic updates needed)</option>
+      <option value="Fair (Some repairs required)" className="bg-gray-800">Fair (Some repairs required)</option>
+      <option value="Needs Work (Major repairs needed)" className="bg-gray-800">Needs Work (Major repairs needed)</option>
+    </select>
+  </div>
+</div>
+
+              {/* Commissions */}
+              <div>
+                <label htmlFor="commissionPct" className="block text-sm font-medium leading-6 text-white">Commission Percentage (%)</label>
+                <div className="mt-2">
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    name="commissionPct" 
+                    id="commissionPct" 
+                    ref={pctRef} 
+                    onChange={handleCommissionCalc} placeholder="7.00" 
+                    className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="commissionAmt" className="block text-sm font-medium leading-6 text-white">Commission amount ($)</label>
+                <div className="mt-2">
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    name="commissionAmt" 
+                    id="commissionAmt" 
+                    ref={amtRef} 
+                    readOnly
+                    placeholder="12950" 
+                    className="block w-full rounded-md border-0 bg-white/10 py-1.5 text-gray-400 shadow-sm ring-1 ring-inset ring-white/10 cursor-not-allowed focus:outline-none sm:text-sm sm:leading-6"                  />
+                </div>
+              </div>
+
+              {/* Showings */}
+              <div className="md:col-span-2">
+                <label htmlFor="showingSteps" className="block text-sm font-medium leading-6 text-white">Showing Steps (Separated by commas)</label>
+                <div className="mt-2">
+                  <textarea name="showingSteps" id="showingSteps" rows={2} placeholder="Email showings@ownertodueno.com, Receive lockbox code, Greet the buyer" className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label htmlFor="showingNotes" className="block text-sm font-medium leading-6 text-white">Additional Notes for Showings</label>
+                <div className="mt-2">
+                  <textarea name="showingNotes" id="showingNotes" rows={2} placeholder="Best times: weekday evenings and Saturday mornings." className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" />
+                </div>
+              </div>
+
+              {/* Buyers */}
+              <div className="md:col-span-2">
+                <label htmlFor="buyerTags" className="block text-sm font-medium leading-6 text-white">Buyer Tags (Separated by commas)</label>
+                <div className="mt-2">
+                  <input type="text" name="buyerTags" id="buyerTags" placeholder="First-time homebuyers, Young families" className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="buyerIncome" className="block text-sm font-medium leading-6 text-white">Client Target Income</label>
+                <div className="mt-2">
+                  <input type="text" name="buyerIncome" id="buyerIncome" placeholder="$55K–$90K" className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="buyerCredit" className="block text-sm font-medium leading-6 text-white">Client Target Credit</label>
+                <div className="mt-2">
+                  <input type="text" name="buyerCredit" id="buyerCredit" placeholder="580+" className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6" />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label htmlFor="buyerFinancing" className="block text-sm font-medium leading-6 text-white">Eligible Financing</label>
+                <div className="mt-2">
+                  <select 
+                    name="buyerFinancing" 
+                    id="buyerFinancing" 
+                    defaultValue=""
+                    className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-[#529e14] sm:text-sm sm:leading-6"
+                  >
+                    <option value="" className="bg-gray-800">-- Select financing --</option>
+                    <option value="FHA" className="bg-gray-800">FHA</option>
+                    <option value="VA" className="bg-gray-800">VA</option>
+                    <option value="Conventional" className="bg-gray-800">Conventional</option>
+                  </select>
+                </div>
+              </div>
+
+            </div>
+          </AccordionSection>
 
             {/* ERROR MESSAGE (MAIN FORM) */}
             {state?.message && (

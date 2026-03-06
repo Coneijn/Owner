@@ -147,6 +147,32 @@ model Property {
   showSeller  Boolean @default(false)
   sellerProfileId String?
   sellerProfile   SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: SetNull)
+
+  //contenido para agentes 
+  emoji              String?
+  condition          String?
+  commissionPct      Decimal? @db.Decimal(5, 2)
+  commissionAmt      Decimal? @db.Decimal(10, 2)
+  commissionNote     String?  @db.Text
+  showingSteps       String[]
+  showingNotes       String?  @db.Text
+  buyerTags          String[]
+  buyerIncome        String?
+  buyerCredit        String?
+  buyerFinancing     String?
+  marketingMaterials MarketingMaterial[]
+}
+
+//Usado por el agente
+model MarketingMaterial {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title      String
+  body       String   @db.Text
+  script     String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 // 4. Modelo de Blog Post (Actualizado)

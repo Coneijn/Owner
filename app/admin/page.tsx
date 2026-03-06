@@ -34,6 +34,10 @@ export default async function AdminDashboard() {
       interestRate: p.interestRate ? Number(p.interestRate) : 0,
       taxes: p.taxes ? Number(p.taxes) : 0,
       insurance: p.insurance ? Number(p.insurance) : 0,
+
+      commissionPct: p.commissionPct ? Number(p.commissionPct) : null,
+      commissionAmt: p.commissionAmt ? Number(p.commissionAmt) : null,
+
       monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
       securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
       createdAt: p.createdAt.toISOString(),

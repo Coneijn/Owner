@@ -135,6 +135,9 @@ export default async function DashboardVendedor() {
       monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
       taxes: p.taxes ? Number(p.taxes) : 0,
       insurance: p.insurance ? Number(p.insurance) : 0,
+      securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : null,
+      commissionPct: p.commissionPct ? Number(p.commissionPct) : null,
+      commissionAmt: p.commissionAmt ? Number(p.commissionAmt) : null,
     };
   });
 

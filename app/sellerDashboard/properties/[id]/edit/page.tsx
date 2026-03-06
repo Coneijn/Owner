@@ -63,6 +63,10 @@ export default async function SellerEditPropertyPage(props: { params: Promise<{ 
     insurance: property.insurance ? property.insurance.toNumber() : 0,
     monthlyRent: property.monthlyRent ? property.monthlyRent.toNumber() : 0,
     securityDeposit: property.securityDeposit ? property.securityDeposit.toNumber() : 0,
+    //datos para agente
+    commissionPct: property.commissionPct ? property.commissionPct.toNumber() : null,
+    commissionAmt: property.commissionAmt ? property.commissionAmt.toNumber() : null,
+    // Fechas
   };
 
   return (

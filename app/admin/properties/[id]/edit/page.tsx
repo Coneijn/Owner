@@ -46,7 +46,9 @@ export default async function EditPropertyPage(props: { params: Promise<{ id: st
     // Financieros de Renta
     monthlyRent: property.monthlyRent ? property.monthlyRent.toNumber() : null,
     securityDeposit: property.securityDeposit ? property.securityDeposit.toNumber() : null,
-
+    //datos para agente
+    commissionPct: property.commissionPct ? property.commissionPct.toNumber() : null,
+    commissionAmt: property.commissionAmt ? property.commissionAmt.toNumber() : null,
     // Fechas
     createdAt: property.createdAt.toISOString(),
     updatedAt: property.updatedAt.toISOString(),

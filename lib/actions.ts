@@ -160,6 +160,8 @@ export async function createProperty(prevState: any, formData: FormData) {
   try {
     await prisma.property.create({
       data: {
+        
+
         slug: sanitizedSlug,
         status: rawFormData.status as PropertyStatus, 
         isFeatured: rawFormData.isFeatured === 'on',
@@ -219,6 +221,18 @@ export async function createProperty(prevState: any, formData: FormData) {
         // --- CAMBIO APLICADO: Vendedor ---
         showSeller: rawFormData.showSeller === 'on',
         sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
+        //agents data nedded
+        emoji: parseStringOrNull(rawFormData.emoji),
+        condition: parseStringOrNull(rawFormData.condition),
+        commissionPct: parseDecimalOrNull(rawFormData.commissionPct),
+        commissionAmt: parseDecimalOrNull(rawFormData.commissionAmt),
+        commissionNote: parseStringOrNull(rawFormData.commissionNote),
+        showingSteps: processFeatures(rawFormData.showingSteps),
+        showingNotes: parseStringOrNull(rawFormData.showingNotes),
+        buyerTags: processFeatures(rawFormData.buyerTags),
+        buyerIncome: parseStringOrNull(rawFormData.buyerIncome),
+        buyerCredit: parseStringOrNull(rawFormData.buyerCredit),
+        buyerFinancing: parseStringOrNull(rawFormData.buyerFinancing),
       },
     });
   } catch (error) {
@@ -358,6 +372,18 @@ export async function updateProperty(prevState: any, formData: FormData) {
         // --- CAMBIO APLICADO: Vendedor ---
         showSeller: rawFormData.showSeller === 'on',
         sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
+        //agents data nedded
+        emoji: parseStringOrNull(rawFormData.emoji),
+        condition: parseStringOrNull(rawFormData.condition),
+        commissionPct: parseDecimalOrNull(rawFormData.commissionPct),
+        commissionAmt: parseDecimalOrNull(rawFormData.commissionAmt),
+        commissionNote: parseStringOrNull(rawFormData.commissionNote),
+        showingSteps: processFeatures(rawFormData.showingSteps),
+        showingNotes: parseStringOrNull(rawFormData.showingNotes),
+        buyerTags: processFeatures(rawFormData.buyerTags),
+        buyerIncome: parseStringOrNull(rawFormData.buyerIncome),
+        buyerCredit: parseStringOrNull(rawFormData.buyerCredit),
+        buyerFinancing: parseStringOrNull(rawFormData.buyerFinancing),
       },
     });
 

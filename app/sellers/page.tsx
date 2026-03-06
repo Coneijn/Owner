@@ -10,7 +10,7 @@ import ServiceExplanation from '../components/ServiceExplanation';
 import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
 import MapLegend from '../components/MapLegend';  
-
+import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -162,11 +162,13 @@ export default async function SellersPage(props: {
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
       <Header lang={lang} />
-
+      <SellerFunnelWrapper lang={lang} />
       <ProblemsWeSolve lang={lang} /> 
 
       {/* Se pasa el array de items traducidos al Marquee */}
       <Marquee items={t.marqueeItems} />
+
+      
 
       {/* SECCIÓN SUPERIOR (Hero + Métricas integradas) */}
       <section className="relative bg-gradient-to-b from-gray-900 to-[#1a1a1a] pt-8 pb-8 px-4 border-b border-gray-800">
@@ -216,10 +218,6 @@ export default async function SellersPage(props: {
       </section>
       
       <ServiceExplanation lang={lang} />
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 relative z-10 mt-16">
-        <GHLFormEmbed src={formUrl} height="850px" />
-      </main>
 
       <Testimonials reviews={reviewsData} lang={lang} />
       
