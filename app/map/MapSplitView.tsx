@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link'; // <-- IMPORTANTE: Añadimos Link para la redirección
 import { useRouter, useSearchParams } from 'next/navigation';
-import MapLoader from './MapLoader'; // <-- Usamos tu nuevo componente centralizado
+import MapLoader from './MapLoader'; 
 import FloatingSearch from './ui/FloatingSearch';
 import FilterModal from './ui/FilterModal';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils'; 
@@ -56,7 +58,7 @@ const getStatusBadge = (status: string, texts: any) => {
     switch (status) {
         case 'COMING_SOON':
             return { text: texts.comingSoon, color: 'bg-blue-600/80 border-blue-400/30' };
-        case 'SOLD': // --- NUEVO: Estilos para propiedades vendidas ---
+        case 'SOLD': 
             return { text: texts.sold, color: 'bg-red-600/80 border-red-400/30 text-white' };
         case 'AVAILABLE':
         default:
@@ -97,7 +99,6 @@ function MapTabs({ currentType, texts }: { currentType: string, texts: any }) {
             >
                 {texts.rent}
             </button>
-            {/* --- NUEVO: Botón de propiedades vendidas --- */}
             <button
                 onClick={() => handleSwitch('sold')}
                 className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
@@ -169,6 +170,10 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
               </p>
           </div>
           <div id="sidebar-list-container" className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+             
+             {/* --- NUEVO: Tarjeta CTA para vendedores (Desktop) --- */}
+             {searchType === 'sold' && <SoldCTACard lang={lang} />}
+
              {orderedProperties.map((property: any) => (
                 <DesktopCard 
                     key={property.id} 
@@ -186,7 +191,6 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
 
      {/* MAP CONTAINER */}
      <div className="absolute inset-0 w-full h-full lg:relative lg:flex-1 z-0 bg-[#0a0f1c] relative">
-         {/* Aquí mandamos llamar al nuevo Loader centralizado */}
          <MapLoader 
             properties={properties} 
             lang={lang} 
@@ -208,7 +212,6 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
       {/* MOBILE UI */}
       <div className="lg:hidden pointer-events-none absolute inset-0 z-30 flex flex-col justify-end">
           
-          {/* BARRA SUPERIOR MÓVIL */}
           <div className="absolute top-0 left-0 w-full pointer-events-auto p-4 pt-4 flex flex-col items-start gap-4">             
              <MapTabs currentType={searchType} texts={t.tabs} />
              <div className="w-full">
@@ -216,7 +219,6 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
              </div>
           </div>
 
-          {/* BOTÓN FLOTANTE "VER LISTA" */}
           <div className="flex justify-center mb-4 pointer-events-auto relative z-50">
               <button 
                 onClick={() => setIsMobileExpanded(!isMobileExpanded)} 
@@ -236,13 +238,16 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
               </button>
           </div>
 
-          {/* CONTENEDOR DE LA LISTA */}
           <div className={`pointer-events-auto bg-[#0a0f1c] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.6)] border-t border-white/10 transition-all duration-500 ease-in-out flex flex-col ${isMobileExpanded ? 'h-[75vh]' : 'h-0 overflow-hidden'} `}>
               <div className="w-full flex justify-center pt-3 pb-1 cursor-pointer" onClick={() => setIsMobileExpanded(false)}>
                   <div className="w-12 h-1.5 bg-gray-700 rounded-full"></div>
               </div>
 
               <div id="mobile-list-container" className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-4 scrollbar-hide">
+                 
+                 {/* --- NUEVO: Tarjeta CTA para vendedores (Móvil) --- */}
+                 {searchType === 'sold' && <SoldCTACard lang={lang} isMobile={true} />}
+
                  {orderedProperties.length > 0 ? (
                       orderedProperties.map((property: any) => (
                          <DesktopCard 
@@ -275,6 +280,33 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
 
     </div>
   );
+}
+
+// --- NUEVA TARJETA CTA PARA VENDEDORES ---
+function SoldCTACard({ lang, isMobile = false }: { lang: string, isMobile?: boolean }) {
+    // Textos bilingües
+    const title = lang === 'en' ? 'Your property could be here!' : '¡Tu propiedad podría estar aquí!';
+    const subtitle = lang === 'en' ? 'Send us your details and sell your house fast.' : 'Manda tus datos y vende tu casa con nosotros.';
+    const buttonText = lang === 'en' ? 'Sell my property' : 'Vender mi propiedad';
+
+    return (
+        <div className={`
+            relative rounded-2xl overflow-hidden border-2 border-dashed border-[#f8ed1a]/40 bg-[#121826]/60 
+            flex flex-col items-center justify-center p-6 text-center transition-all duration-300 hover:border-[#f8ed1a] hover:bg-[#121826] group
+            ${isMobile ? 'min-h-[160px] my-2' : 'min-h-[200px]'}
+        `}>
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform duration-300">🏡✨</div>
+            <h3 className="text-white font-black text-lg md:text-xl mb-1 uppercase tracking-tight">{title}</h3>
+            <p className="text-gray-400 text-xs md:text-sm mb-5 px-2">{subtitle}</p>
+            
+            <Link 
+                href="/sellers" 
+                className="bg-[#f8ed1a] text-black font-black uppercase tracking-wider text-xs px-6 py-3 rounded-full shadow-[0_0_15px_rgba(248,237,26,0.3)] hover:shadow-[0_0_25px_rgba(248,237,26,0.6)] hover:scale-105 transition-all duration-300"
+            >
+                {buttonText}
+            </Link>
+        </div>
+    );
 }
 
 // --- CARD ACTUALIZADA ---

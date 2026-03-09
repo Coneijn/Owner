@@ -1,15 +1,15 @@
-import { auth, signOut } from '@/auth';
-import prisma from '@/lib/prisma';
-import AgentDashboardClient from './agent-dashboard-client';
-import { redirect } from 'next/navigation'; // <-- Agregamos esto
+import prisma from "@/lib/prisma";
+import { redirect } from "next/navigation";
+// Asegúrate de importar tu método de autenticación (NextAuth, Clerk, Supabase, etc.)
+// Ajusta la ruta de importación según tu configuración
+import { auth } from "@/auth"; 
 
-// Componentes de Onboarding de Seguridad
-import { 
-  ChangePasswordForm, 
-  TwoFactorManager 
-} from '@/app/components/ui/client-components';
+import AgentDashboardClient from "./agent-dashboard-client";
 
-import AgentProfileForm from './agent-profile-form';
+// Importa aquí tus componentes de cliente para el onboarding
+// import ForcePasswordChangeClient from "@/components/onboarding/ForcePasswordChangeClient";
+// import Setup2FAClient from "@/components/onboarding/Setup2FAClient";
+// import CompleteAgentProfileClient from "@/components/onboarding/CompleteAgentProfileClient";
 
 export const metadata = {
   title: "Rep Portal — Owner To Dueño",
@@ -17,91 +17,58 @@ export const metadata = {
 };
 
 export default async function AgentDashboardPage() {
+  // 1. Verificación de Autenticación
   const session = await auth();
-
-  if (!session?.user?.email) return null;
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { agentProfile: true }
-  });
-
-  const agentProfile = user?.agentProfile;
-
-  if (!agentProfile) {
-    redirect('/');
+  if (!session?.user?.email) {
+    redirect("/login");
   }
 
-  // ==========================================
-  // 2. EVALUACIÓN DE PRIMER LOGIN (ONBOARDING)
-  // ==========================================
-  
-  // Usamos `(user as any)` temporalmente si TypeScript marca error por forcePasswordChange
-  const needsPasswordChange = (user as any).forcePasswordChange === true; 
-  const needs2FA = !user.isTwoFactorEnabled; 
-  const needsProfileCompletion = !agentProfile.agentImage; // Requiere subir foto
-  
-  const isFirstLogin = needsPasswordChange || needs2FA || needsProfileCompletion;
+  // 2. Obtener el usuario de la DB y su Perfil de Agente asociado
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { agentProfile: true },
+  });
 
-  if (isFirstLogin) {
+  // 3. Control de Acceso Estricto: Si no hay usuario o no tiene perfil de agente, bloqueamos.
+  if (!currentUser || !currentUser.agentProfile) {
     return (
-      <div className="min-h-screen bg-[#111111] text-white p-4 md:p-10 font-sans flex flex-col items-center pb-20">
-        <div className="max-w-3xl w-full bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl p-8 mt-10">
-          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-[#f8ed1a] mb-2">
-            Agent Account Setup
-          </h1>
-          <p className="text-gray-400 mb-8">
-            Before accessing your dashboard, please complete your initial setup.
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#111111] px-4">
+        <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-lg shadow-xl text-center max-w-md w-full">
+          <h2 className="text-2xl font-bold text-[#f8ed1a] mb-4">Acceso Denegado</h2>
+          <p className="text-gray-300">
+            Tu cuenta no tiene un perfil de representante local asignado. Si crees que esto es un error, por favor contacta al administrador del sistema.
           </p>
-
-          <div className="space-y-10">
-            {/* LÓGICA SECUENCIAL: Solo muestra el paso que toca */}
-            
-            {needsPasswordChange ? (
-              <section className="bg-black/50 p-6 rounded-lg border border-gray-800">
-                <h2 className="text-xl font-bold text-white mb-4">Step 1: Change Temporary Password</h2>
-                <ChangePasswordForm />
-              </section>
-            
-            ) : needs2FA ? (
-              <section className="bg-black/50 p-6 rounded-lg border border-gray-800">
-                <h2 className="text-xl font-bold text-white mb-4">Step 2: Setup Two-Factor Authentication (2FA)</h2>
-                <TwoFactorManager 
-                  isEnabled={user.isTwoFactorEnabled} 
-                  email={session.user.email} 
-                />
-              </section>
-            
-            ) : needsProfileCompletion ? (
-              <section className="bg-black/50 p-6 rounded-lg border border-gray-800">
-                <h2 className="text-xl font-bold text-white mb-4">Step 3: Complete Agent Profile</h2>
-                <AgentProfileForm 
-                  initialData={{
-                    id: agentProfile.id,
-                    agentName: agentProfile.agentName || '',
-                    agentImage: agentProfile.agentImage || ''
-                  }} 
-                />
-              </section>
-            
-            ) : null}
-          </div>
-
-          <div className="mt-10 flex justify-between items-center pt-6 border-t border-gray-800">
-            <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
-              <button className="text-gray-400 font-bold uppercase hover:text-white transition-colors">
-                Sign Out
-              </button>
-            </form>
-          </div>
         </div>
       </div>
     );
   }
 
-  // ==========================================
-  // 3. FLUJO NORMAL: DASHBOARD DEL AGENTE
-  // ==========================================
+  // 4. Lógica de Onboarding Secuencial (Sin el parche de 'any')
+  const needsPasswordChange = currentUser.forcePasswordChange === true;
+  const needs2FA = currentUser.isTwoFactorEnabled === false;
+  // Determinamos que el perfil está incompleto si falta el nombre o la imagen
+  const needsProfileCompletion = !currentUser.agentProfile.agentName || !currentUser.agentProfile.agentImage;
+
+  // Renderizamos las vistas en orden estricto. El usuario no ve las propiedades hasta pasar esto.
+  if (needsPasswordChange) {
+    // Reemplaza este div con tu componente real
+    return <div className="p-8 text-white">Componente: Obligar cambio de contraseña...</div>;
+  }
+
+  if (needs2FA) {
+    // Reemplaza este div con tu componente real
+    return <div className="p-8 text-white">Componente: Configurar Autenticación 2 Pasos...</div>;
+  }
+
+  if (needsProfileCompletion) {
+    // Reemplaza este div con tu componente real pasándole el agentProfile
+    return <div className="p-8 text-white">Componente: Completar información del perfil de Agente...</div>;
+  }
+
+  // =========================================================================
+  // 5. Flujo Normal: Si pasó todo el onboarding, cargamos su Dashboard
+  // =========================================================================
+
   const propertiesData = await prisma.property.findMany({
     where: {
       isOffMarket: false,
@@ -121,7 +88,7 @@ export default async function AgentDashboardPage() {
       id: p.id,
       address: p.address,
       city: `${p.city}, ${p.state}`,
-      mainImage: p.mainImage,
+      mainImage: p.mainImage ,
       emoji: p.emoji || "🏡",
       beds: p.bedrooms,
       baths: Number(p.bathrooms),
@@ -153,11 +120,12 @@ export default async function AgentDashboardPage() {
     };
   });
 
+  // Le pasamos las propiedades y opcionalmente los datos del agente al cliente
   return (
-    <div>
-      {/* Botón de Logout Global oculto o integrado según lo requieras en el Dashboard */}
-      {/* Aquí podrías inyectar el AgentProfile si deseas usar la foto en el navbar del cliente */}
-      <AgentDashboardClient initialProps={serializedProps} />
-    </div>
+    <AgentDashboardClient 
+      initialProps={serializedProps} 
+      // Si en el futuro AgentDashboardClient necesita mostrar la foto del agente, 
+      // puedes pasárselo así: agentData={currentUser.agentProfile}
+    />
   );
 }
