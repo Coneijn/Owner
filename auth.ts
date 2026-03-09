@@ -30,7 +30,7 @@ export const { auth, signIn, signOut } = NextAuth({
             include: {
               sellerProfile: true, // Traemos el perfil de vendedor si existe
               // buyerProfile: true, // Descomenta esto en el futuro cuando agregues compradores
-              // agentProfile: true, // Descomenta esto en el futuro cuando agregues agentes
+              agentProfile: true, // Descomenta esto en el futuro cuando agregues agentes
             }
           });
           
@@ -64,7 +64,7 @@ export const { auth, signIn, signOut } = NextAuth({
           
           if (user.sellerProfile) userProfiles.push('SELLER');
           // if (user.buyerProfile) userProfiles.push('BUYER');
-          // if (user.agentProfile) userProfiles.push('AGENT');
+           if (user.agentProfile) userProfiles.push('AGENT');
 
           // 3. Retornamos la información vital, inyectando el rol y los perfiles
           return {

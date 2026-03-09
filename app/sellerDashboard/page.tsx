@@ -1,15 +1,14 @@
 import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { redirect } from 'next/navigation'; // <-- Importación
 import DashboardVendedorClient from './dashboard-seller-client';
 
-// 👇 1. Importamos tus formularios de seguridad desde client-components
 import { 
   ChangePasswordForm, 
   TwoFactorManager 
 } from '@/app/components/ui/client-components';
 
-// 👇 2. Importamos el formulario real del Vendedor
 import SellerForm from '@/app/components/ui/seller-form';
 
 const formatMoney = (amount: number | unknown) => {
@@ -33,21 +32,16 @@ export default async function DashboardVendedor() {
 
   const sellerProfile = user?.sellerProfile;
 
+  // 👇 Validación simplificada con redirección
   if (!sellerProfile) {
-    return (
-      <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center p-10">
-        <h2 className="text-2xl">You do not have a seller profile assigned. Please contact the administrator.</h2>
-      </div>
-    );
+    redirect('/'); 
   }
 
   // ==========================================
   // 2. EVALUACIÓN DE PRIMER LOGIN (ONBOARDING SECUENCIAL)
   // ==========================================
   
-  // NOTA: Usamos `(user as any)` temporalmente para evitar errores de TypeScript 
-  // hasta que agregues el campo `forcePasswordChange` a tu base de datos.
-  const needsPasswordChange = (user as any).forcePasswordChange === true; 
+  const needsPasswordChange = user.forcePasswordChange === true; 
   
   const needs2FA = !user.isTwoFactorEnabled; 
   const needsProfileCompletion = !sellerProfile.sellerImage; 

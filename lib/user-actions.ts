@@ -12,6 +12,14 @@ import {
   verifyTwoFactorToken 
 } from '@/lib/otp'; 
 
+export async function updateAgentProfile(id: string, data: { agentImage: string }) {
+  await prisma.agentProfile.update({
+    where: { id },
+    data: {
+      agentImage: data.agentImage,
+    },
+  });
+}
 // ==========================================
 // 1. CAMBIAR MI CONTRASEÑA
 // ==========================================

@@ -381,18 +381,6 @@ export default function NewPropertyForm({ sellers = [] }: { sellers?: SellerProf
                     <input type="url" name="calendarLink" placeholder="https://cal.com/..." className="mt-2 block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
-                    <div>
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO English</h4>
-                        <input type="text" name="seoTitleEn" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
-                        <textarea name="seoDescriptionEn" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
-                    </div>
-                    <div>
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">SEO Spanish</h4>
-                        <input type="text" name="seoTitleEs" placeholder="Meta Title" className="mb-2 block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm" />
-                        <textarea name="seoDescriptionEs" rows={2} placeholder="Meta Desc" className="block w-full rounded bg-gray-900 border-0 text-white ring-1 ring-gray-700 sm:text-sm"></textarea>
-                    </div>
-                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
                     <div>

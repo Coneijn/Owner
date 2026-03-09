@@ -23,7 +23,7 @@ export const authConfig = {
         if (userRole === 'ADMIN') return new URL('/admin', nextUrl);
         
         // 2. Jerarquía de perfiles (puedes ajustar el orden de prioridad)
-        if (profiles.includes('AGENT')) return new URL('/agentDashboard', nextUrl);
+        if (profiles.includes('AGENT')) return new URL('/agentsDashboard', nextUrl);
         if (profiles.includes('SELLER')) return new URL('/sellerDashboard', nextUrl);
         // if (profiles.includes('BUYER')) return new URL('/dashboard-comprador', nextUrl);
         

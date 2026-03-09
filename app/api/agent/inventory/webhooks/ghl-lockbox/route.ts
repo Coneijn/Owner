@@ -2,69 +2,86 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // 1. Extraemos de 'customData' que es donde GHL pone tus mapeos manuales
-    // Usamos un fallback (||) por si acaso GHL decidiera enviarlo en la raíz
-    const messageBody = body.customData?.messageBody || body.message?.body;
+    // 1. Extracción de datos con soporte para GHL
+    const messageBody = body.customData?.messageBody || body.message?.body || "";
     const contactPhone = body.customData?.contactPhone || body.phone;
     const contactName = body.customData?.contactName || body.full_name;
+    
+    // Campo donde GHL suele poner la dirección o nombre de la propiedad
+    const propertyOfInterest = body.customData?.["Property of Interest"] || body.customData?.propertyAddress || "";
 
-    // Validación con log para debugear si algo falla
-    if (!messageBody) {
-      console.error("❌ No se encontró messageBody en customData ni en message.body");
-      return NextResponse.json(
-        { error: 'El cuerpo del mensaje (messageBody) es obligatorio.' }, 
-        { status: 400 }
-      );
+    if (!messageBody && !propertyOfInterest) {
+      return NextResponse.json({ error: 'Faltan datos de la propiedad.' }, { status: 400 });
     }
 
-    // 2. Aislar la URL (El resto de tu lógica de Regex y Prisma sigue igual...)
+    let property = null;
+
+    // ==========================================
+    // ESTRATEGIA A: URL / SLUG (Prioridad Máxima)
+    // ==========================================
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const urls = messageBody.match(urlRegex);
 
-    if (!urls || urls.length === 0) {
-      return NextResponse.json(
-        { error: 'No se detectó ninguna URL en el mensaje.' }, 
-        { status: 400 }
-      );
+    if (urls && urls.length > 0) {
+      let propertyUrl = urls[0].replace(/[.,;!?]+$/, '');
+      const urlObj = new URL(propertyUrl);
+      const slug = urlObj.pathname.split('/').filter(Boolean).pop(); 
+
+      if (slug) {
+        property = await prisma.property.findUnique({ where: { slug: slug } });
+      }
     }
 
-    // 2. Limpieza de SMS: Quitamos puntos, comas o signos al final
-    let propertyUrl = urls[0].replace(/[.,;!?]+$/, '');
-
-    // 3. Extraer el slug (Ignorando parámetros bilingües)
-    const urlObj = new URL(propertyUrl);
-    const pathSegments = urlObj.pathname.split('/').filter(Boolean);
-    const slug = pathSegments[pathSegments.length - 1]; 
-
-    if (!slug) {
-      return NextResponse.json(
-        { error: 'No se pudo extraer el identificador (slug) de la URL.' }, 
-        { status: 400 }
-      );
+    // ==========================================
+    // ESTRATEGIA B: BÚSQUEDA BILINGÜE DIRECTA (OR Logic)
+    // ==========================================
+    // Buscamos en titleEn, titleEs y address al mismo tiempo
+    if (!property && propertyOfInterest) {
+      property = await prisma.property.findFirst({
+        where: {
+          OR: [
+            { titleEn: { contains: propertyOfInterest, mode: 'insensitive' } },
+            { titleEs: { contains: propertyOfInterest, mode: 'insensitive' } },
+            { address: { contains: propertyOfInterest, mode: 'insensitive' } }
+          ]
+        }
+      });
     }
 
-    // 4. Buscar la propiedad en Prisma usando el slug extraído
-    const property = await prisma.property.findUnique({
-      where: { slug: slug } 
-    });
+    // ==========================================
+    // ESTRATEGIA C: ESCANEO "FUZZY" MULTILINGÜE
+    // ==========================================
+    // Si el cliente escribió el nombre de la casa dentro de una oración
+    if (!property && messageBody) {
+       const allProps = await prisma.property.findMany({ 
+         select: { id: true, titleEn: true, titleEs: true, address: true } 
+       });
+       
+       const found = allProps.find(p => 
+         messageBody.toLowerCase().includes(p.titleEn.toLowerCase()) || 
+         messageBody.toLowerCase().includes(p.titleEs.toLowerCase()) ||
+         (p.address && messageBody.toLowerCase().includes(p.address.toLowerCase()))
+       );
+
+       if (found) {
+         property = await prisma.property.findUnique({ where: { id: found.id } });
+       }
+    }
 
     if (!property) {
-        return NextResponse.json(
-            { error: `Propiedad no encontrada para el slug: ${slug}` }, 
-            { status: 404 }
-        );
+      return NextResponse.json({ error: 'Propiedad no identificada.' }, { status: 404 });
     }
 
-    // 5. Generar el Token (Magic Link) de 5 minutos
+    // ==========================================
+    // GENERACIÓN DE TOKEN (Seguridad de 5 min)
+    // ==========================================
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); 
 
-    // 6. Guardar el acceso temporal en la Base de Datos
     await prisma.lockboxAccess.create({
       data: {
         token,
@@ -76,46 +93,31 @@ export async function POST(request: Request) {
       }
     });
 
-    // 7. Construir la URL del Magic Link
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
-    
-    const magicLink = `${baseUrl}/access/${token}`;
+    const magicLink = `${protocol}://${host}/access/${token}`;
 
-    // ==========================================
-    // 8. ENVIAR RESPUESTA AL WORKFLOW 2 DE GHL
-    // ==========================================
+    // 7. Feedback a GHL (Confirmamos usando el título bilingüe)
     const ghlInboundWebhookUrl = 'https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/acca4ef0-9f58-43f7-8b25-13b69e52fbb6';
 
-    try {
-      await fetch(ghlInboundWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactPhone: contactPhone, // GHL usará esto para saber a quién enviarle el SMS
-          contactName: contactName,
-          magicLink: magicLink,
-          propertyId: property.id,
-          slugFound: slug
-        })
-      });
-      console.log('✅ Magic Link enviado exitosamente a GHL:', magicLink);
-    } catch (ghlError) {
-      console.error('❌ Error enviando el webhook de regreso a GHL:', ghlError);
-    }
-
-    // 9. Devolver un 200 OK al Workflow 1 (solo para cerrar la conexión)
-    return NextResponse.json({
-      success: true,
-      message: 'Magic link generado y enviado al Inbound Webhook de GHL'
+    await fetch(ghlInboundWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contactPhone,
+        magicLink,
+        propertyId: property.id,
+        // Enviamos ambos títulos para que GHL decida cuál usar
+        titleEn: property.titleEn,
+        titleEs: property.titleEs,
+        address: property.address
+      })
     });
 
+    return NextResponse.json({ success: true, message: 'Propiedad encontrada y link enviado' });
+
   } catch (error) {
-    console.error('Error en GHL Lockbox Webhook:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor.' }, 
-      { status: 500 }
-    );
+    console.error('Webhook Error:', error);
+    return NextResponse.json({ error: 'Error interno.' }, { status: 500 });
   }
 }
