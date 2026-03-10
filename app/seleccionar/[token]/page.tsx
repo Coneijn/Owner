@@ -5,9 +5,9 @@ import { notFound } from 'next/navigation';
 export default async function SelectionPage({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
-  const { token } = params;
+  const { token } = await params;
 
   // 1. Buscar la sesión en la base de datos
   const session = await prisma.selectionSession.findUnique({

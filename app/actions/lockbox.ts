@@ -61,7 +61,7 @@ export async function processPropertySelection(formData: FormData) {
       })
     ]);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.AUTH_URL || 'http://ownertodueno.com';
     const magicLink = `${baseUrl}/access/${lockboxToken}`;
     
     const ghlInboundWebhookUrl = 'https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/acca4ef0-9f58-43f7-8b25-13b69e52fbb6';
