@@ -1,123 +1,74 @@
-// app/api/webhooks/ghl-lockbox/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // 1. Extracción de datos con soporte para GHL
-    const messageBody = body.customData?.messageBody || body.message?.body || "";
-    const contactPhone = body.customData?.contactPhone || body.phone;
-    const contactName = body.customData?.contactName || body.full_name;
-    
-    // Campo donde GHL suele poner la dirección o nombre de la propiedad
-    const propertyOfInterest = body.customData?.["Property of Interest"] || body.customData?.propertyAddress || "";
+    // 1. Extraer los datos del cliente desde GHL
+    const contactPhone = body.phone || body.customData?.contactPhone;
+    const contactName = body.full_name || body.first_name || body.customData?.contactName || "Cliente";
 
-    if (!messageBody && !propertyOfInterest) {
-      return NextResponse.json({ error: 'Faltan datos de la propiedad.' }, { status: 400 });
+    if (!contactPhone) {
+      return NextResponse.json({ error: 'Falta el número de teléfono.' }, { status: 400 });
     }
 
-    let property = null;
+    // 2. Generar el Token Seguro y Expiración (1 hora)
+    // Usamos randomBytes para generar un token más corto y amigable para URLs que un UUID completo
+    const token = crypto.randomBytes(12).toString('hex'); 
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora a partir de ahora
 
-    // ==========================================
-    // ESTRATEGIA A: URL / SLUG (Prioridad Máxima)
-    // ==========================================
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urls = messageBody.match(urlRegex);
-
-    if (urls && urls.length > 0) {
-      let propertyUrl = urls[0].replace(/[.,;!?]+$/, '');
-      const urlObj = new URL(propertyUrl);
-      const slug = urlObj.pathname.split('/').filter(Boolean).pop(); 
-
-      if (slug) {
-        property = await prisma.property.findUnique({ where: { slug: slug } });
-      }
-    }
-
-    // ==========================================
-    // ESTRATEGIA B: BÚSQUEDA BILINGÜE DIRECTA (OR Logic)
-    // ==========================================
-    // Buscamos en titleEn, titleEs y address al mismo tiempo
-    if (!property && propertyOfInterest) {
-      property = await prisma.property.findFirst({
-        where: {
-          OR: [
-            { titleEn: { contains: propertyOfInterest, mode: 'insensitive' } },
-            { titleEs: { contains: propertyOfInterest, mode: 'insensitive' } },
-            { address: { contains: propertyOfInterest, mode: 'insensitive' } }
-          ]
-        }
-      });
-    }
-
-    // ==========================================
-    // ESTRATEGIA C: ESCANEO "FUZZY" MULTILINGÜE
-    // ==========================================
-    // Si el cliente escribió el nombre de la casa dentro de una oración
-    if (!property && messageBody) {
-       const allProps = await prisma.property.findMany({ 
-         select: { id: true, titleEn: true, titleEs: true, address: true } 
-       });
-       
-       const found = allProps.find(p => 
-         messageBody.toLowerCase().includes(p.titleEn.toLowerCase()) || 
-         messageBody.toLowerCase().includes(p.titleEs.toLowerCase()) ||
-         (p.address && messageBody.toLowerCase().includes(p.address.toLowerCase()))
-       );
-
-       if (found) {
-         property = await prisma.property.findUnique({ where: { id: found.id } });
-       }
-    }
-
-    if (!property) {
-      return NextResponse.json({ error: 'Propiedad no identificada.' }, { status: 404 });
-    }
-
-    // ==========================================
-    // GENERACIÓN DE TOKEN (Seguridad de 5 min)
-    // ==========================================
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); 
-
-    await prisma.lockboxAccess.create({
+    // 3. Guardar la Sesión en la Base de Datos
+    const session = await prisma.selectionSession.create({
       data: {
         token,
-        propertyId: property.id,
-        contactPhone: contactPhone || null,
-        contactName: contactName || null,
+        contactPhone,
+        contactName,
         expiresAt,
         isUsed: false,
       }
     });
-
+    // --- ESTA ES LA PARTE ACTUALIZADA ---
+    await prisma.auditLog.create({
+      data: {
+        action: 'SELECTION_SESSION_CREATED',
+        entityType: 'SESSION',           // <-- NUEVO
+        entityId: session.token,         // <-- NUEVO
+        contactPhone: session.contactPhone,
+        contactName: session.contactName,
+        details: `El cliente solicitó el menú de propiedades.`
+      }
+    });
+    // 4. Construir el Enlace Limpio
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const magicLink = `${protocol}://${host}/access/${token}`;
+    
+    // Este es el enlace que verá el cliente: limpio y sin parámetros
+    const selectionUrl = `${protocol}://${host}/seleccionar/${session.token}`;
 
-    // 7. Feedback a GHL (Confirmamos usando el título bilingüe)
-    const ghlInboundWebhookUrl = 'https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/acca4ef0-9f58-43f7-8b25-13b69e52fbb6';
+    // 5. Enviar el enlace de vuelta a GoHighLevel
+    // NOTA: Reemplaza esta URL por el webhook de GHL que recibirá este link para mandarlo por SMS/WhatsApp
+    const ghlInboundWebhookUrl = 'https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/51e37de2-f172-4add-a7b7-a3cee6237cd5';
 
     await fetch(ghlInboundWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contactPhone,
-        magicLink,
-        propertyId: property.id,
-        // Enviamos ambos títulos para que GHL decida cuál usar
-        titleEn: property.titleEn,
-        titleEs: property.titleEs,
-        address: property.address
+        contactPhone: session.contactPhone,
+        selectionUrl: selectionUrl,
+        sessionToken: session.token // Por si lo necesitas guardar en un custom field de GHL
       })
     });
 
-    return NextResponse.json({ success: true, message: 'Propiedad encontrada y link enviado' });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Sesión creada y enviada a GHL',
+      url: selectionUrl
+    });
 
   } catch (error) {
-    console.error('Webhook Error:', error);
-    return NextResponse.json({ error: 'Error interno.' }, { status: 500 });
+    console.error('Error creando Selection Session:', error);
+    return NextResponse.json({ error: 'Error interno del servidor.' }, { status: 500 });
   }
 }

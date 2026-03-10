@@ -1,6 +1,6 @@
 'use server';
 
-import { signIn } from '@/auth';
+import { signIn, auth } from '@/auth';
 import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -42,11 +42,31 @@ export async function authenticate(
 // --- DELETE ---
 export async function deleteProperty(formData: FormData) {
   const id = formData.get('id') as string;
+  const session = await auth(); // Obtenemos el usuario logueado
   
   try {
-    await prisma.property.delete({
-      where: { id },
-    });
+    // 1. Buscamos la propiedad antes de eliminarla para guardar sus datos en el log
+    const propertyToDelete = await prisma.property.findUnique({ where: { id } });
+    
+    if (propertyToDelete) {
+      // 2. Eliminamos la propiedad
+      await prisma.property.delete({
+        where: { id },
+      });
+
+      // 3. Guardamos el Log
+      await prisma.auditLog.create({
+        data: {
+          action: 'PROPERTY_DELETED',
+          entityType: 'PROPERTY',
+          entityId: id,
+          userId: session?.user?.id || null, // Actor interno
+          propertyId: id,
+          address: propertyToDelete.address,
+          details: 'Propiedad eliminada del sistema.',
+        }
+      });
+    }
     
     revalidatePath('/admin');
     revalidatePath('/');
@@ -158,21 +178,21 @@ export async function createProperty(prevState: any, formData: FormData) {
   const legacyGalleryUrls = Array.isArray(galleryImagesArray) ? galleryImagesArray.map((img:any) => img.url) : [];
 
   try {
-    await prisma.property.create({
-      data: {
-        
+    // 1. OBTENEMOS LA SESIÓN
+    const session = await auth();
 
+    // 2. GUARDAMOS EL RESULTADO EN UNA VARIABLE (newProperty)
+    const newProperty = await prisma.property.create({
+      data: {
+        // ... (Mantén exactamente todos los datos que ya tienes aquí adentro)
         slug: sanitizedSlug,
         status: rawFormData.status as PropertyStatus, 
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
-        
         isForSale: rawFormData.isForSale === 'on', 
         isForRent: rawFormData.isForRent === 'on', 
-
         calendarLink: rawFormData.calendarLink as string,
         availableDate: parseDate(rawFormData.availableDate),
-
         seoTitleEn: rawFormData.seoTitleEn as string,
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
         seoTitleEs: rawFormData.seoTitleEs as string,
@@ -183,45 +203,35 @@ export async function createProperty(prevState: any, formData: FormData) {
         titleEs: rawFormData.titleEs as string,
         descriptionEn: rawFormData.descriptionEn as string,
         descriptionEs: rawFormData.descriptionEs as string,
-        
         price: parseDecimalOrNull(rawFormData.price), 
         downPayment: parseDecimalOrNull(rawFormData.downPayment),
         interestRate: parseDecimalOrNull(rawFormData.interestRate),
         taxes: parseDecimalOrNull(rawFormData.taxes),
         insurance: parseDecimalOrNull(rawFormData.insurance),
-
         monthlyRent: parseDecimalOrNull(rawFormData.monthlyRent),
         securityDeposit: parseDecimalOrNull(rawFormData.securityDeposit),
-        
         address: rawFormData.address as string,
         city: rawFormData.city as string,
         state: rawFormData.state as string,
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
-        
         latitude: parseFloatSafe(rawFormData.latitude),
         longitude: parseFloatSafe(rawFormData.longitude),
         lockboxCode: rawFormData.lockboxCode as string,
-
         bedrooms: Number(rawFormData.bedrooms),
         bathrooms: Number(rawFormData.bathrooms),
         sqft: Number(rawFormData.sqft),
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
-        
         mainImage: mainImageObj?.url || '',
         galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
         features: processFeatures(rawFormData.features),
-
         images: {
           create: imagesToCreate
         },
-
-        // --- CAMBIO APLICADO: Vendedor ---
         showSeller: rawFormData.showSeller === 'on',
         sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
-        //agents data nedded
         emoji: parseStringOrNull(rawFormData.emoji),
         condition: parseStringOrNull(rawFormData.condition),
         commissionPct: parseDecimalOrNull(rawFormData.commissionPct),
@@ -235,6 +245,20 @@ export async function createProperty(prevState: any, formData: FormData) {
         buyerFinancing: parseStringOrNull(rawFormData.buyerFinancing),
       },
     });
+
+    // 3. CREAMOS EL REGISTRO DE AUDITORÍA
+    await prisma.auditLog.create({
+      data: {
+        action: 'PROPERTY_CREATED',
+        entityType: 'PROPERTY',
+        entityId: newProperty.id,
+        userId: session?.user?.id || null, // Guardamos el ID de quien la creó
+        propertyId: newProperty.id,
+        address: newProperty.address,
+        details: 'Nueva propiedad agregada al sistema.',
+      }
+    });
+
   } catch (error) {
     console.error('Error creating property:', error);
     return { message: 'Error al crear la propiedad.' };
@@ -289,6 +313,9 @@ export async function updateProperty(prevState: any, formData: FormData) {
   let priceHistoryData = {};
 
   try {
+    // 1. Obtenemos sesión
+    const session = await auth();
+
     const currentProperty = await prisma.property.findUnique({
       where: { id },
       select: { price: true }
@@ -297,6 +324,8 @@ export async function updateProperty(prevState: any, formData: FormData) {
     const currentPriceNum = currentProperty?.price ? Number(currentProperty.price) : null;
     const newPriceNum = newPriceValue ? Number(newPriceValue) : null;
 
+    let logDetails = 'Propiedad actualizada.'; // Mensaje por defecto para la auditoría
+
     if (newPriceNum !== currentPriceNum) {
        console.log(`Detectado cambio de precio: De ${currentPriceNum} a ${newPriceNum}`);
        
@@ -304,22 +333,24 @@ export async function updateProperty(prevState: any, formData: FormData) {
          previousPrice: currentProperty?.price, 
          lastPriceChangeAt: new Date()          
        };
+
+       // Si el precio cambió, lo anotamos en el log
+       logDetails = `Propiedad actualizada. Cambio de precio detectado: de $${currentPriceNum || 0} a $${newPriceNum || 0}`;
     }
 
-    await prisma.property.update({
+    // 2. Actualizamos la propiedad y la guardamos en una variable
+    const updatedProperty = await prisma.property.update({
       where: { id },
       data: {
+        // ... (Todos los datos que ya tienes para actualizar)
         slug: sanitizedSlug,
         status: rawFormData.status as PropertyStatus,
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
-        
         isForSale: rawFormData.isForSale === 'on',
         isForRent: rawFormData.isForRent === 'on',
-
         calendarLink: rawFormData.calendarLink as string,
         availableDate: parseDate(rawFormData.availableDate),
-        
         seoTitleEn: rawFormData.seoTitleEn as string,
         seoDescriptionEn: rawFormData.seoDescriptionEn as string,
         seoTitleEs: rawFormData.seoTitleEs as string,
@@ -330,49 +361,37 @@ export async function updateProperty(prevState: any, formData: FormData) {
         titleEs: rawFormData.titleEs as string,
         descriptionEn: rawFormData.descriptionEn as string,
         descriptionEs: rawFormData.descriptionEs as string,
-        
         price: newPriceValue, 
-        
         ...priceHistoryData,
-
         downPayment: parseDecimalOrNull(rawFormData.downPayment),
         interestRate: parseDecimalOrNull(rawFormData.interestRate),
         taxes: parseDecimalOrNull(rawFormData.taxes),
         insurance: parseDecimalOrNull(rawFormData.insurance),
-
         monthlyRent: parseDecimalOrNull(rawFormData.monthlyRent),
         securityDeposit: parseDecimalOrNull(rawFormData.securityDeposit),
-        
         address: rawFormData.address as string,
         city: rawFormData.city as string,
         state: rawFormData.state as string,
         zipCode: rawFormData.zipCode as string,
         phoneNumber: rawFormData.phoneNumber as string,
-        
         latitude: parseFloatSafe(rawFormData.latitude),
         longitude: parseFloatSafe(rawFormData.longitude),
         lockboxCode: rawFormData.lockboxCode as string,
-        
         bedrooms: Number(rawFormData.bedrooms),
         bathrooms: Number(rawFormData.bathrooms),
         sqft: Number(rawFormData.sqft),
         lotSize: Number(rawFormData.lotSize) || 0,
         yearBuilt: Number(rawFormData.yearBuilt) || new Date().getFullYear(),
-        
         mainImage: mainImageObj?.url || '',
         galleryImages: legacyGalleryUrls,
         videoUrl: rawFormData.videoUrl as string,
         features: processFeatures(rawFormData.features),
-
         images: {
           deleteMany: {}, 
           create: imagesToCreate 
         },
-
-        // --- CAMBIO APLICADO: Vendedor ---
         showSeller: rawFormData.showSeller === 'on',
         sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
-        //agents data nedded
         emoji: parseStringOrNull(rawFormData.emoji),
         condition: parseStringOrNull(rawFormData.condition),
         commissionPct: parseDecimalOrNull(rawFormData.commissionPct),
@@ -385,6 +404,19 @@ export async function updateProperty(prevState: any, formData: FormData) {
         buyerCredit: parseStringOrNull(rawFormData.buyerCredit),
         buyerFinancing: parseStringOrNull(rawFormData.buyerFinancing),
       },
+    });
+
+    // 3. Creamos el log
+    await prisma.auditLog.create({
+      data: {
+        action: 'PROPERTY_UPDATED',
+        entityType: 'PROPERTY',
+        entityId: updatedProperty.id,
+        userId: session?.user?.id || null, // Actor interno
+        propertyId: updatedProperty.id,
+        address: updatedProperty.address,
+        details: logDetails, // Guardará el mensaje de si cambió el precio o no
+      }
     });
 
   } catch (error) {

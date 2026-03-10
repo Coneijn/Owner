@@ -23,7 +23,7 @@ model User {
   twoFactorSecret     String? 
   isTwoFactorEnabled  Boolean  @default(false)
   forcePasswordChange Boolean  @default(true) // <-- NUEVO: Para el flujo de onboarding
-
+  auditLogs           AuditLog[]
   // Relaciones de Perfiles
   sellerProfile       SellerProfile?
   agentProfile        AgentProfile?  // <-- NUEVO: Relación con el Agente
@@ -221,6 +221,45 @@ model PostImage {
 
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+// NUEVO MODELO: Registro de Auditoría Centralizado (Para Accesos y Cambios en Plataforma)
+model AuditLog {
+  id           String   @id @default(cuid())
+  
+  // 1. QUÉ pasó
+  action       String   // Ej: "MAGIC_LINK_GENERATED", "PROPERTY_UPDATED", "PROPERTY_DELETED"
+  entityType   String?  // Ej: "LOCKBOX", "PROPERTY", "SELLER_PROFILE"
+  entityId     String?  // El ID del registro que fue modificado o creado
+  
+  // 2. QUIÉN lo hizo (Actor Interno: Admin / Seller)
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // 3. QUIÉN lo hizo (Actor Externo: Cliente desde GHL)
+  contactPhone String?
+  contactName  String?
+  
+  // 4. CONTEXTO (Datos fijos por si la propiedad o el usuario son eliminados en el futuro)
+  propertyId   String?  // Relación suave (solo el ID como texto)
+  address      String?  
+  details      String?  @db.Text // Aquí puedes guardar qué campos cambiaron (en formato JSON o texto)
+  
+  createdAt    DateTime @default(now())
+}
+// NUEVO MODELO: Sesión temporal segura para la vista del Dropdown
+model SelectionSession {
+  id           String   @id @default(cuid())
+  token        String   @unique // Token corto para la URL (ej. misitio.com/seleccionar/abc-123)
+  
+  // Datos del solicitante guardados de forma segura (No van en la URL)
+  contactPhone String   // Aquí sí lo hacemos obligatorio
+  contactName  String?
+  
+  // Control de tiempo y uso
+  expiresAt    DateTime // Le puedes dar más tiempo, ej. 30 minutos o 1 hora
+  isUsed       Boolean  @default(false) // Se marca true cuando eligen la casa
+  
+  createdAt    DateTime @default(now())
 }
 // NUEVO MODELO: Sistema de Magic Links para Códigos de Lockbox
 model LockboxAccess {
