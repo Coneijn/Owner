@@ -273,7 +273,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang }: ModalProps)
                   
                   <div className="rounded-xl overflow-hidden border border-gray-800 h-[450px] bg-white relative mb-4">
                     <iframe 
-                        src={`https://api.leadconnectorhq.com/widget/booking/TU_ID_AQUI?firstName=${encodeURIComponent(data.firstName)}&lastName=${encodeURIComponent(data.lastName)}&email=${encodeURIComponent(data.email)}&phone=${encodeURIComponent(data.phone)}`} 
+                        src={`https://api.leadconnectorhq.com/widget/booking/zigZYlLW8X7nRcvgAitP?firstName=${encodeURIComponent(data.firstName)}&lastName=${encodeURIComponent(data.lastName)}&email=${encodeURIComponent(data.email)}&phone=${encodeURIComponent(data.phone)}`} 
                         className="w-full h-full border-none" 
                         title="Calendar"
                     />

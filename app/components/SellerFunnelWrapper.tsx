@@ -39,7 +39,7 @@ export default function SellerFunnelWrapper({ lang }: WrapperProps) {
   
   return (
     <>
-      <div className="text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="text-center animate-in fade-in slide-in-from-bottom-2 duration-300 mb-8" >
         <div className="text-7xl md:text-8xl text-center mb-8 drop-shadow-lg">
           🏡
         </div>
@@ -68,12 +68,7 @@ export default function SellerFunnelWrapper({ lang }: WrapperProps) {
         </div>
       </div>
 
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 z-40 px-6 py-4 bg-[#529e14] text-white text-lg font-black uppercase tracking-wide rounded-full shadow-2xl hover:bg-[#458510] hover:scale-110 transition-all border-2 border-white/10"
-      >
-        {lang === 'en' ? 'List Now 🚀' : 'Publicar Ahora 🚀'}
-      </button>
+      
 
       <SellerFunnelModal 
         isOpen={isModalOpen} 
