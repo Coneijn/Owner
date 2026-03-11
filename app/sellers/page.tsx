@@ -11,6 +11,7 @@ import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
 import MapLegend from '../components/MapLegend';  
 import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
+import CashOfferWidget from '../components/CashOfferWidget';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -162,6 +163,12 @@ export default async function SellersPage(props: {
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
       <Header lang={lang} />
+
+      <div className="mt-12">
+          <CashOfferWidget lang={lang}/>
+
+      </div>
+
       <SellerFunnelWrapper lang={lang} />
       <ProblemsWeSolve lang={lang} /> 
 
