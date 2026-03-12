@@ -226,7 +226,7 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
   const formatMoney = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 
 return (
-    <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden mt-8 text-white">
+    <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden text-white">
       
       {/* HEADER BUSCADOR Y SLIDER DE CONDICIÓN */}
       <div className="p-6 border-b border-white/10 bg-white/5 relative z-20">
