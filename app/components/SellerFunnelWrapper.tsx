@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SellerFunnelModal from './SellerFunnelModal'; 
+import CashOfferWidget from './CashOfferWidget'; // Importamos el nuevo widget
 
 interface WrapperProps {
   lang: 'es' | 'en';
@@ -9,34 +10,48 @@ interface WrapperProps {
 
 const DICTIONARY = {
   es: {
-    welcome: { title: "Publica tu Casa.", titleHigh: "Recibe Pagos Mensuales.", sub: "OwnerToDueno conecta vendedores con compradores que quieren financiamiento directo — sin bancos, sin esperas. Tú pones las reglas, nosotros el resto.", pts: [["📋", "Publica tu casa", "Gratis para empezar"], ["🤝", "Encuentra comprador", "Te conectamos"], ["💰", "Cobra mensual", "Por 15+ años"]], btn: "Publicar Mi Casa ->" },
-    property: { title: "Ubicación de la Propiedad", street: "Dirección", city: "Ciudad", state: "Estado", zip: "Código Postal", btn: "Continuar ->" },
-    details: { title: "Detalles de la Propiedad", beds: "Habitaciones", baths: "Baños", sqft: "Pies Cuadrados", price: "Precio de Venta ($)", cond: "Condición", desc: "Descripción Breve", condOpts: [{id: "excellent", label: "Excelente", emoji: "✨"}, {id: "good", label: "Buena", emoji: "👍"}, {id: "fair", label: "Regular", emoji: "🔧"}, {id: "poor", label: "Necesita Trabajo", emoji: "🏚"}], btn: "Ver Ganancias Estimadas ->" },
-    contact: { title: "Tus Datos de Contacto", sub: "Para mostrarte tu proyección financiera, necesitamos saber a dónde enviarla.", fname: "Nombre", lname: "Apellido", phone: "Celular", email: "Correo Electrónico", btn: "Ver mis Ganancias ->", loading: "Procesando..." },
-    pricing: { title: "Tus Ganancias Estimadas", asking: "Precio de Venta", down: "Enganche (Recibes tú)", financed: "Monto a Financiar", interest: "Tasa de Interés", term: "Plazo", gross: "Pago Mensual Bruto", fee: "Cuota de Administración", net: "Ingreso Mensual Neto", oneTime: "Tarifa Única de Publicación (paga el comprador)", oneTimeSub1: "50% del enganche, tope a $10,000", oneTimeSub2: "*Esta tarifa sale del enganche del comprador — no de tu bolsillo. Conservas tu precio íntegro.", disclaimer: "📌 Estos son estimados basados en tu precio de venta. Los términos finales se acuerdan entre tú y el comprador.", btn: "Cómo Funciona ->" },
-    howItWorks: { title: "Cómo Funciona", pts: [{icon: "🏷️", title: "Tú estableces el precio", body: "Los compradores darán un enganche de $10k–$20k."}, {icon: "📈", title: "Interés del 10–12%", body: "Actúas como el banco a 15 años."}, {icon: "💵", title: "Cobramos 50% del enganche", body: "Como tarifa al comprador (tope $10k)."}, {icon: "🔧", title: "$129/mes de administración", body: "Manejamos la amortización y papeleo."}], btn: "Agendar Llamada ->" },
-    schedule: { title: "Agenda tu Llamada", sub: "Elige un horario para afinar los detalles de tu publicación.", booked: "¿Ya agendaste? Continuar ->", doneTitle: "¡Llamada Agendada!", doneSub: "Revisa tu teléfono y correo para la confirmación.", btn: "Terminar ->" },
-    done: { title: "¡Todo Listo", sub: "Tu propiedad está en proceso y tu llamada agendada.", next: "Qué pasa después:", pts: [["📅", "Recibirás recordatorios de tu llamada"], ["📸", "Recolectaremos fotos en la llamada"], ["🌐", "Saldrás en ownertodueno.com"], ["💰", "Al conectar comprador, inician pagos"]], link: "<- Volver al inicio" },
-    back: "<- Volver"
+    welcome: { 
+      title: "Descubre tus Opciones.", 
+      titleHigh: "Maximiza tu Ganancia.", 
+      sub: "Ingresa tu dirección para ver estimaciones reales. Ya sea que quieras ser el banco, vender rápido en efectivo, remodelar o rentar. Tú decides, nosotros te conectamos.", 
+      pts: [
+        ["📊", "Analiza tu casa", "Datos en tiempo real"], 
+        ["🤝", "Elige tu estrategia", "4 opciones diferentes"], 
+        ["💰", "Maximiza tu dinero", "Tú tienes el control"]
+      ] 
+    }
   },
   en: {
-    welcome: { title: "List Your Home.", titleHigh: "Get Paid Monthly.", sub: "OwnerToDueno connects sellers with buyers who want to finance directly — no banks, no waiting!  You set the terms, we handle the rest.", pts: [["📋", "List your home", "Free to start"], ["🤝", "Find a buyer", "We match you"], ["💰", "Collect monthly", "For 15+ years"]], btn: "List My Home ->" },
-    property: { title: "Property Location", street: "Street Address", city: "City", state: "State", zip: "Zip Code", btn: "Continue ->" },
-    details: { title: "Property Details", beds: "Bedrooms", baths: "Bathrooms", sqft: "Sq Ft", price: "Asking Price ($)", cond: "Condition", desc: "Brief Description", condOpts: [{id: "excellent", label: "Excellent", emoji: "✨"}, {id: "good", label: "Good", emoji: "👍"}, {id: "fair", label: "Fair", emoji: "🔧"}, {id: "poor", label: "Needs Work", emoji: "🏚"}], btn: "See Estimated Earnings ->" },
-    contact: { title: "Your Contact Info", sub: "To show your financial projection, we need to know where to send it.", fname: "First Name", lname: "Last Name", phone: "Cell Number", email: "Email Address", btn: "See My Earnings ->", loading: "Processing..." },
-    pricing: { title: "Your Estimated Earnings", asking: "Asking Price", down: "Down Payment (To You)", financed: "Financed Amount", interest: "Interest Rate", term: "Term", gross: "Gross Monthly Payment", fee: "Admin Fee", net: "Net Monthly Income", oneTime: "One-Time Listing Fee (paid by buyer)", oneTimeSub1: "50% of down payment, capped at $10k", oneTimeSub2: "*This fee comes out of the buyer's down payment. You keep your full asking price.", disclaimer: "📌 These are estimates based on your asking price. Final terms are agreed upon between you and your buyer.", btn: "How It Works ->" },
-    howItWorks: { title: "How It Works", pts: [{icon: "🏷️", title: "You set the asking price", body: "Buyers will make a down payment of $10k–$20k."}, {icon: "📈", title: "Interest rate: 10–12%", body: "You act as the bank for 15 years."}, {icon: "💵", title: "We collect 50% of down payment", body: "As a placement fee (capped at $10k)."}, {icon: "🔧", title: "$129/month admin fee", body: "We manage amortization and paperwork."}], btn: "Book Your Call ->" },
-    schedule: { title: "Book Your Call", sub: "Pick a time to fine-tune your listing details.", booked: "Already booked? Continue ->", doneTitle: "Call Booked!", doneSub: "Check your phone and email for confirmation.", btn: "Finish ->" },
-    done: { title: "You're All Set", sub: "Your property is being processed and your call is booked.", next: "What happens next:", pts: [["📅", "You'll receive call reminders"], ["📸", "We'll collect photos on the call"], ["🌐", "Your listing goes live"], ["💰", "Once matched, payments begin"]], link: "<- Back to home" },
-    back: "<- Back"
+    welcome: { 
+      title: "Discover Your Options.", 
+      titleHigh: "Maximize Your Profit.", 
+      sub: "Enter your address to see real estimates. Whether you want to be the bank, sell for fast cash, fix & list, or rent it out. You decide, we connect you.", 
+      pts: [
+        ["📊", "Analyze your home", "Real-time data"], 
+        ["🤝", "Choose your strategy", "4 different options"], 
+        ["💰", "Maximize your money", "You are in control"]
+      ] 
+    }
   }
 };
 
 export default function SellerFunnelWrapper({ lang }: WrapperProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const t = DICTIONARY[lang];
-  const btnPrimary = "w-full py-4 mt-2 bg-[#529e14] text-white font-black uppercase tracking-wide rounded-lg shadow-lg hover:bg-[#458510] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center";
+  const [prefillData, setPrefillData] = useState<any>(null); // Estado para guardar la data del widget
   
+  const t = DICTIONARY[lang];
+
+  // Esta función recibe los datos cuando el usuario hace clic en "Elegir esta opción" en el Widget
+  const handleSelectOption = (strategyName: string, widgetData: any) => {
+    // Guardamos la estrategia elegida y toda la data calculada (dirección, ARV, camas, baños, etc.)
+    setPrefillData({
+      strategySelected: strategyName,
+      ...widgetData
+    });
+    // Abrimos el embudo (Modal)
+    setIsModalOpen(true);
+  };
+
   return (
     <>
       <div className="text-center animate-in fade-in slide-in-from-bottom-2 duration-300 mb-8" >
@@ -63,17 +78,18 @@ export default function SellerFunnelWrapper({ lang }: WrapperProps) {
           ))}
         </div>
         
-        <div className="max-w-md mx-auto">
-          <button className={btnPrimary} onClick={() => setIsModalOpen(true)}>{t.welcome.btn}</button>
+        {/* Aquí integramos el Widget de Ofertas como la puerta de entrada principal */}
+        <div className="max-w-6xl mx-auto text-left">
+          <CashOfferWidget lang={lang} onSelectOption={handleSelectOption} />
         </div>
       </div>
 
-      
-
+      {/* Le pasamos la data pre-cargada al Modal para que omita los primeros pasos */}
       <SellerFunnelModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         lang={lang} 
+        prefillData={prefillData} // <-- Pasamos los datos recolectados
       />
     </>
   );
