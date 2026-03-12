@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {Autocomplete} from '@react-google-maps/api';
 
 interface DealInputs {
   arv: number;
@@ -232,14 +233,29 @@ return (
         <h2 className="text-xl font-bold mb-4 text-white">{t.title}</h2>
         
         <div className="flex flex-col gap-4 mb-4">
-          <input 
-            type="text" 
-            placeholder={t.placeholder} 
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && analyzeProperty()}
-            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] text-white placeholder-gray-500 transition-all"
+
+
+
+{/*autocomplete fallido
+          <Autocomplete
+              apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY} // Asegúrate de tener esta variable en tu .env.local
+              onPlaceSelected={(place) => {
+                // Aquí extraemos la información de Google
+                if (place.formatted_address) {
+                  setAddress(place.formatted_address); // O actualizas tu estado 'data.street'
+                  
+                  // EXTRA (Opcional): Puedes extraer la ciudad, estado y zip desde place.address_components
+                  // para autocompletar el resto del formulario si estás en el Modal.
+                }
+              }}
+              options={{
+                types: ["address"],
+                componentRestrictions: { country: "us" }, // Limitar a USA si aplica
+              }}
+              placeholder="Ingresa la dirección completa..."
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] text-white placeholder-gray-500 transition-all"
           />
+*/}
           
           <div className="bg-black/20 p-4 rounded-lg border border-white/5">
             <div className="flex justify-between items-center mb-2">
