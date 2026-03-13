@@ -492,50 +492,30 @@ export async function updateSellerProfile(id: string, prevState: any, formData: 
   revalidatePath('/admin/sellers');
   return { success: true }; // ✅ DEVOLVER ÉXITO
 }
-
-// lib/actions.ts
-
-
-
+// 1. CREAR EL BORRADOR INICIAL (Sin fotos)
 export async function createDraftPropertyFromFunnel(data: any) {
   try {
-    // Generamos un slug único temporal
     const slug = `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     
-    // Extraemos las imágenes si las hay (aunque en este punto del embudo podrían no estar)
-    const mainImageUrl = data.photos && data.photos.length > 0 ? data.photos[0].url : "";
-    const galleryUrls = data.photos && data.photos.length > 1 ? data.photos.slice(1).map((p: any) => p.url) : [];
-
     const draftProperty = await prisma.property.create({
       data: {
         slug,
-        status: PropertyStatus.DRAFT, // Guardamos como borrador
-        isOffMarket: true, // Oculta del catálogo público
+        status: PropertyStatus.DRAFT,
+        isOffMarket: true,
         isForSale: true,
-        
-        // --- Títulos y Descripciones (Requeridos por Schema) ---
         titleEn: `Draft: ${data.street || 'Pending Address'}`,
         titleEs: `Borrador: ${data.street || 'Dirección Pendiente'}`,
         descriptionEn: data.description || 'Draft property created from the seller funnel.',
         descriptionEs: data.description || 'Propiedad en borrador creada desde el embudo de vendedores.',
-        
-        // --- Ubicación ---
         address: data.street || 'Dirección pendiente',
         city: data.city || 'Ciudad pendiente',
         state: data.state || 'Estado pendiente',
         zipCode: data.zip || '00000',
-        
-        // --- Detalles Técnicos y Financieros ---
         price: data.askingPrice ? Number(data.askingPrice) : null,
         bedrooms: data.beds ? Number(data.beds) : 0,
         bathrooms: data.baths ? Number(data.baths) : 0,
         sqft: data.sqft ? Number(data.sqft) : 0,
-        
-        // --- Multimedia ---
-        mainImage: mainImageUrl,
-        galleryImages: galleryUrls,
-        
-        // --- Guardamos los datos del cliente en las notas internas ---
+        mainImage: "", // Se actualizará después
         showingNotes: `CONTACTO LEAD:\nNombre: ${data.firstName} ${data.lastName}\nTel: ${data.phone}\nEmail: ${data.email}\nCondición: ${data.condition}`,
       }
     });
@@ -544,5 +524,40 @@ export async function createDraftPropertyFromFunnel(data: any) {
   } catch (error) {
     console.error("Error creating draft property:", error);
     return { success: false, message: "No se pudo guardar el borrador en la BD." };
+  }
+}
+
+// 2. ACTUALIZAR EL BORRADOR CON FOTOS Y LOCKBOX
+export async function updateDraftPropertyMedia(propertyId: string, photos: any[], lockboxCode: string) {
+  try {
+    const mainImageUrl = photos && photos.length > 0 ? photos[0].url : "";
+    const galleryUrls = photos && photos.length > 1 ? photos.slice(1).map((p: any) => p.url) : [];
+
+    const imagesToCreate = photos.map((img: any, index: number) => ({
+        url: img.url,
+        altText: '',
+        title: '',
+        caption: '',
+        description: '',
+        isMain: index === 0,
+        order: index
+    }));
+
+    await prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        lockboxCode: lockboxCode || null,
+        mainImage: mainImageUrl,
+        galleryImages: galleryUrls,
+        images: {
+            create: imagesToCreate
+        }
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating draft property media:", error);
+    return { success: false, message: "No se pudieron actualizar las fotos del borrador." };
   }
 }

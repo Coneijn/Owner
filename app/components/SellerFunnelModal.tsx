@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { submitSellerLead } from '@/lib/ghl-actions';
-import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload'; // <-- Ajusta la ruta si es necesario
-import { createDraftPropertyFromFunnel } from '@/lib/actions'; // Importa la nueva acción
+import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload'; 
+import { createDraftPropertyFromFunnel, updateDraftPropertyMedia } from '@/lib/actions'; 
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   lang: 'es' | 'en';
-  prefillData?: any; // Recibe los datos del CashOfferWidget
+  prefillData?: any; 
 }
 
 type StepType = "property" | "details" | "contact" | "media" | "pricing" | "howItWorks" | "schedule" | "done";
@@ -33,7 +34,7 @@ const DICTIONARY = {
     property: { title: "Ubicación de la Propiedad", street: "Dirección", city: "Ciudad", state: "Estado", zip: "Código Postal", btn: "Continuar ->" },
     details: { title: "Detalles de la Propiedad", beds: "Habitaciones", baths: "Baños", sqft: "Pies Cuadrados", price: "Precio de Venta ($)", cond: "Condición", desc: "Descripción Breve", condOpts: [{id: "excellent", label: "Excelente", emoji: "✨"}, {id: "good", label: "Buena", emoji: "👍"}, {id: "fair", label: "Regular", emoji: "🔧"}, {id: "poor", label: "Necesita Trabajo", emoji: "🏚"}], btn: "Ver Ganancias Estimadas ->" },
     contact: { title: "Tus Datos de Contacto", sub: "Ingresa tus datos para guardar tu progreso y contactarte.", fname: "Nombre", lname: "Apellido", phone: "Celular", email: "Correo Electrónico", btn: "Continuar ->", loading: "Procesando..." },
-    media: { title: "Fotos y Acceso", sub: "Para publicar tu casa, necesitamos fotos y cómo acceder a ella.", photos: "Fotos de la Propiedad", code: "Código de Acceso (Lockbox)", codePlaceholder: "Ej. 1234 o 'No tiene'", btn: "Continuar ->" },
+    media: { title: "Fotos y Acceso", sub: "Para publicar tu casa, necesitamos fotos y cómo acceder a ella.", photos: "Fotos de la Propiedad", code: "Código de Acceso (Lockbox)", codePlaceholder: "Ej. 1234 o 'No tiene'", btn: "Continuar ->", loading: "Guardando..." },
     pricing: { title: "Tus Ganancias Estimadas", asking: "Precio de Venta", down: "Enganche (Recibes tú)", financed: "Monto a Financiar", interest: "Tasa de Interés", term: "Plazo", gross: "Pago Mensual Bruto", fee: "Cuota de Administración", net: "Ingreso Mensual Neto", oneTime: "Tarifa Única de Publicación (paga el comprador)", oneTimeSub1: "50% del enganche, tope a $10,000", oneTimeSub2: "*Esta tarifa sale del enganche del comprador — no de tu bolsillo. Conservas tu precio íntegro.", disclaimer: "📌 Estos son estimados basados en tu precio de venta. Los términos finales se acuerdan entre tú y el comprador.", btn: "Cómo Funciona ->" },
     howItWorks: { title: "Cómo Funciona", pts: [{icon: "🏷️", title: "Tú estableces el precio", body: "Los compradores darán un enganche de $10k–$20k."}, {icon: "📈", title: "Interés del 10–12%", body: "Actúas como el banco a 15 años."}, {icon: "💵", title: "Cobramos 50% del enganche", body: "Como tarifa al comprador (tope $10k)."}, {icon: "🔧", title: "$129/mes de administración", body: "Manejamos la amortización y papeleo."}], btn: "Agendar Llamada ->" },
     schedule: { title: "Agenda tu Llamada", sub: "Elige un horario para afinar los detalles de tu publicación.", booked: "¿Ya agendaste? Continuar ->", doneTitle: "¡Llamada Agendada!", doneSub: "Revisa tu teléfono y correo para la confirmación.", btn: "Terminar ->" },
@@ -44,7 +45,7 @@ const DICTIONARY = {
     property: { title: "Property Location", street: "Street Address", city: "City", state: "State", zip: "Zip Code", btn: "Continue ->" },
     details: { title: "Property Details", beds: "Bedrooms", baths: "Bathrooms", sqft: "Sq Ft", price: "Asking Price ($)", cond: "Condition", desc: "Brief Description", condOpts: [{id: "excellent", label: "Excellent", emoji: "✨"}, {id: "good", label: "Good", emoji: "👍"}, {id: "fair", label: "Fair", emoji: "🔧"}, {id: "poor", label: "Needs Work", emoji: "🏚"}], btn: "See Estimated Earnings ->" },
     contact: { title: "Your Contact Info", sub: "Enter your details to save your progress and get in touch.", fname: "First Name", lname: "Last Name", phone: "Cell Number", email: "Email Address", btn: "Continue ->", loading: "Processing..." },
-    media: { title: "Photos & Access", sub: "To list your home, we need photos and access instructions.", photos: "Property Photos", code: "Access Code (Lockbox)", codePlaceholder: "E.g. 1234 or 'No lockbox'", btn: "Continue ->" },
+    media: { title: "Photos & Access", sub: "To list your home, we need photos and access instructions.", photos: "Property Photos", code: "Access Code (Lockbox)", codePlaceholder: "E.g. 1234 or 'No lockbox'", btn: "Continue ->", loading: "Saving..." },
     pricing: { title: "Your Estimated Earnings", asking: "Asking Price", down: "Down Payment (To You)", financed: "Financed Amount", interest: "Interest Rate", term: "Term", gross: "Gross Monthly Payment", fee: "Admin Fee", net: "Net Monthly Income", oneTime: "One-Time Listing Fee (paid by buyer)", oneTimeSub1: "50% of down payment, capped at $10k", oneTimeSub2: "*This fee comes out of the buyer's down payment. You keep your full asking price.", disclaimer: "📌 These are estimates based on your asking price. Final terms are agreed upon between you and your buyer.", btn: "How It Works ->" },
     howItWorks: { title: "How It Works", pts: [{icon: "🏷️", title: "You set the asking price", body: "Buyers will make a down payment of $10k–$20k."}, {icon: "📈", title: "Interest rate: 10–12%", body: "You act as the bank for 15 years."}, {icon: "💵", title: "We collect 50% of down payment", body: "As a placement fee (capped at $10k)."}, {icon: "🔧", title: "$129/month admin fee", body: "We manage amortization and paperwork."}], btn: "Book Your Call ->" },
     schedule: { title: "Book Your Call", sub: "Pick a time to fine-tune your listing details.", booked: "Already booked? Continue ->", doneTitle: "Call Booked!", doneSub: "Check your phone and email for confirmation.", btn: "Finish ->" },
@@ -56,7 +57,6 @@ const DICTIONARY = {
 export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }: ModalProps) {
   const t = DICTIONARY[lang];
   
-  // Si viene del widget, acortamos el flujo (ya vieron los números y pusieron la info de la casa)
   const currentFlow: StepType[] = prefillData 
     ? ["contact", "media", "schedule", "done"] 
     : ["property", "details", "contact", "pricing", "howItWorks", "media", "schedule", "done"];
@@ -64,6 +64,9 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
   const [stepId, setStepId] = useState<StepType>(currentFlow[0]);
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
+  
+  // Guardamos el ID del draft para actualizarle las fotos en el siguiente paso
+  const [draftPropertyId, setDraftPropertyId] = useState<string | null>(null);
 
   const [data, setData] = useState({
     street: '', city: '', state: '', zip: '',
@@ -86,7 +89,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
           askingPrice: prefillData.inputs?.arv?.toString() || '',
           strategySelected: prefillData.strategySelected || ''
         }));
-        setStepId("contact"); // Salto directo a contacto
+        setStepId("contact"); 
       } else {
         setStepId("property");
       }
@@ -109,24 +112,40 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
   const goNext = () => setStepId(currentFlow[currentFlow.indexOf(stepId) + 1]);
   const goBack = () => setStepId(currentFlow[currentFlow.indexOf(stepId) - 1]);
 
+  // FASE 1: Se crea el Lead en GHL y la propiedad DRAFT en la BD
   const handleSubmitContact = async () => {
     setLoading(true);
     
     try {
-        // 1. Guardar en el CRM (GoHighLevel)
         await submitSellerLead(data); 
 
-        // 2. Guardar como DRAFT en nuestra Base de Datos
-        await createDraftPropertyFromFunnel(data);
+        const result = await createDraftPropertyFromFunnel(data);
+        if (result.success && result.propertyId) {
+            setDraftPropertyId(result.propertyId);
+        }
 
       } catch (error) {
         console.error("Error al guardar los datos:", error);
-        // Aquí podrías manejar un toast o alerta de error si lo deseas
       } finally {
         setLoading(false);
         goNext();
     }
   };
+
+  // FASE 2: Se adjuntan las fotos y el lockbox al DRAFT existente
+  const handleSubmitMedia = async () => {
+      setLoading(true);
+      try {
+          if (draftPropertyId) {
+             await updateDraftPropertyMedia(draftPropertyId, data.photos, data.accessCode);
+          }
+      } catch(error) {
+          console.error("Error al guardar media", error);
+      } finally {
+          setLoading(false);
+          goNext();
+      }
+  }
 
   const price = parseInt(data.askingPrice) || 185000;
   const downLow = Math.min(Math.max(price * 0.07, DOWN_PAYMENT_MIN), DOWN_PAYMENT_MAX);
@@ -161,7 +180,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
 
         <div className="p-6 sm:p-8">
 
-          {/* ... PASO 1 y 2 SE MANTIENEN IGUAL ... */}
+          {/* PASO 1: PROPERTY (Oculto si viene del widget) */}
           {stepId === "property" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-6">{t.property.title}</h2>
@@ -176,9 +195,9 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
             </div>
           )}
 
+          {/* PASO 2: DETAILS (Oculto si viene del widget) */}
           {stepId === "details" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-               {/* (Contenido de details idéntico) */}
                <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-6">{t.details.title}</h2>
                <div className="grid grid-cols-3 gap-4">
                  <div><label className={labelClass}>{t.details.beds}</label><input type="number" name="beds" value={data.beds} onChange={handleChange} className={inputClass} /></div>
@@ -192,7 +211,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
             </div>
           )}
 
-          {/* PASO: CONTACTO */}
+          {/* PASO 3: CONTACTO (Aquí se crea el Lead y el DRAFT) */}
           {stepId === "contact" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300 text-center">
               <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-2">{t.contact.title}</h2>
@@ -210,12 +229,11 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
               <button className={btnPrimary} disabled={loading || !data.email || !data.firstName} onClick={handleSubmitContact}>
                 {loading ? t.contact.loading : t.contact.btn}
               </button>
-              {/* Ocultamos botón de atrás si vino directo del widget */}
               {!prefillData && <button className={btnBack} onClick={goBack}>{t.back}</button>}
             </div>
           )}
 
-          {/* NUEVO PASO: MEDIA (FOTOS Y CÓDIGO) */}
+          {/* PASO 4: MEDIA (Aquí se adjuntan las fotos al DRAFT) */}
           {stepId === "media" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-2 text-center">{t.media.title}</h2>
@@ -227,7 +245,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
                   value={data.photos} 
                   onChange={(imgs) => handlePropChange('photos', imgs)} 
                   multiple={true} 
-                  disableMetadata={true} // Desactivamos la metadata para que sea más fácil para el seller
+                  disableMetadata={true} 
                 />
               </div>
 
@@ -243,21 +261,24 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
                 />
               </div>
 
-              <button className={btnPrimary} onClick={goNext}>{t.media.btn}</button>
+              {/* AQUÍ ESTABA EL ERROR: Llamar a handleSubmitMedia en lugar de goNext */}
+              <button className={btnPrimary} disabled={loading} onClick={handleSubmitMedia}>
+                  {loading ? t.media.loading : t.media.btn}
+              </button>
               <button className={btnBack} onClick={goBack}>{t.back}</button>
             </div>
           )}
 
-          {/* ... PASOS PRICING Y HOW IT WORKS ... (Solo se muestran si NO viene del widget) */}
+          {/* PASO 5: PRICING (Oculto si viene del widget) */}
           {stepId === "pricing" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              {/* (Contenido de pricing idéntico) */}
               <h2 className="text-2xl font-black text-[#f8ed1a] uppercase tracking-wide mb-6 text-center">{t.pricing.title}</h2>
               <button className={btnPrimary} onClick={goNext}>{t.pricing.btn}</button>
               <button className={btnBack} onClick={goBack}>{t.back}</button>
             </div>
           )}
 
+          {/* PASO 6: HOW IT WORKS (Oculto si viene del widget) */}
           {stepId === "howItWorks" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-6">{t.howItWorks.title}</h2>
@@ -266,7 +287,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
             </div>
           )}
 
-          {/* PASO: CALENDARIO */}
+          {/* PASO 7: CALENDAR */}
           {stepId === "schedule" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               {!booked ? (
@@ -296,7 +317,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
             </div>
           )}
 
-          {/* PASO FINAL: DONE */}
+          {/* PASO 8: DONE */}
           {stepId === "done" && (
             <div className="text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="text-6xl mb-4">🚀</div>

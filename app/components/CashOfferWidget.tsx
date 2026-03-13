@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {Autocomplete} from '@react-google-maps/api';
+import { useState,useEffect,useRef } from 'react';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 interface DealInputs {
   arv: number;
@@ -20,7 +20,7 @@ interface CashOfferWidgetProps {
   lang?: 'es' | 'en';
   onSelectOption?: (option: string, data: any) => void; // Preparado para conectar con el Modal
 }
-
+const libraries : ("places" | "visualization")[] = ["places", "visualization"]; // Necesario para el Autocomplete de Google Maps
 const i18n = {
   es: {
     title: "Descubre el Verdadero Potencial de tu Propiedad",
@@ -123,7 +123,23 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
   const [showSettings, setShowSettings] = useState(false);
   const [propertyDetails, setPropertyDetails] = useState<any>(null);
   const [isDpPercent, setIsDpPercent] = useState(true);
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries 
+  });
 
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      
+      if (place && place.formatted_address) {
+        setAddress(place.formatted_address);
+      }
+    }
+  };
   const [inputs, setInputs] = useState<DealInputs>({
     arv: 250000,
     rehabCosts: 25000,
@@ -233,29 +249,31 @@ return (
         <h2 className="text-xl font-bold mb-4 text-white">{t.title}</h2>
         
         <div className="flex flex-col gap-4 mb-4">
-
-
-
-{/*autocomplete fallido
-          <Autocomplete
-              apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY} // Asegúrate de tener esta variable en tu .env.local
-              onPlaceSelected={(place) => {
-                // Aquí extraemos la información de Google
-                if (place.formatted_address) {
-                  setAddress(place.formatted_address); // O actualizas tu estado 'data.street'
-                  
-                  // EXTRA (Opcional): Puedes extraer la ciudad, estado y zip desde place.address_components
-                  // para autocompletar el resto del formulario si estás en el Modal.
-                }
-              }}
+          {isLoaded ? (
+            <Autocomplete
+              onLoad={(auto) => (autocompleteRef.current = auto)}
+              onPlaceChanged={onPlaceChanged}
               options={{
                 types: ["address"],
                 componentRestrictions: { country: "us" }, // Limitar a USA si aplica
               }}
-              placeholder="Ingresa la dirección completa..."
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] text-white placeholder-gray-500 transition-all"
-          />
-*/}
+            >
+              <input 
+                type="text" 
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder={t.placeholder}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] text-white placeholder-gray-500 transition-all"
+              />
+            </Autocomplete>
+          ) : (
+            <input 
+              type="text" 
+              disabled
+              placeholder="Cargando mapa..."
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-gray-500 cursor-not-allowed transition-all"
+            />
+          )}
           
           <div className="bg-black/20 p-4 rounded-lg border border-white/5">
             <div className="flex justify-between items-center mb-2">

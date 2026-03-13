@@ -175,9 +175,7 @@ export default async function SellersPage(props: {
       
       <Header lang={lang} />
 
-      <div className="mb-8">
-          <CashOfferWidget lang={lang}/>
-      </div>
+      
 
       <SellerFunnelWrapper lang={lang} />
       <ProblemsWeSolve lang={lang} /> 
