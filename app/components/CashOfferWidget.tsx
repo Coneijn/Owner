@@ -123,13 +123,14 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
   const [showSettings, setShowSettings] = useState(false);
   const [propertyDetails, setPropertyDetails] = useState<any>(null);
   const [isDpPercent, setIsDpPercent] = useState(true);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries: libraries 
   });
 
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [parsedAddress, setParsedAddress] = useState({ street: '', city: '', state: '', zip: '' });
 
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -137,6 +138,24 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
       
       if (place && place.formatted_address) {
         setAddress(place.formatted_address);
+
+        // NUEVO: Desglosar los componentes de la dirección de Google
+        let streetNumber = ""; let route = ""; let newCity = ""; let newState = ""; let newZip = "";
+        place.address_components?.forEach((component: google.maps.GeocoderAddressComponent) => {
+            const types = component.types;
+            if (types.includes("street_number")) streetNumber = component.long_name;
+            if (types.includes("route")) route = component.long_name;
+            if (types.includes("locality")) newCity = component.long_name;
+            if (types.includes("administrative_area_level_1")) newState = component.short_name;
+            if (types.includes("postal_code")) newZip = component.long_name;
+        });
+        
+        setParsedAddress({
+            street: (streetNumber && route) ? `${streetNumber} ${route}` : place.name || place.formatted_address,
+            city: newCity,
+            state: newState,
+            zip: newZip
+        });
       }
     }
   };
@@ -233,7 +252,8 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
 
   const handleSelect = (strategyName: string) => {
     if (onSelectOption) {
-      onSelectOption(strategyName, { address, propertyDetails, inputs, strategies });
+      // NUEVO: Pasamos el parsedAddress al modal
+      onSelectOption(strategyName, { address, parsedAddress, propertyDetails, inputs, strategies });
     } else {
       console.log(`Seleccionaste: ${strategyName}`, { address, propertyDetails, inputs, strategies });
     }
@@ -303,11 +323,40 @@ return (
         {error && <p className="text-red-400 text-sm">{error}</p>}
         
         {propertyDetails && (
-          // ... (Sección de métricas camas/baños y comps se mantiene igual)
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-gray-400">
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-gray-400 relative">
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">🛏️ {propertyDetails.bedrooms} {t.beds}</span>
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">🚿 {propertyDetails.bathrooms} {t.baths}</span>
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">📐 {propertyDetails.sqft} {t.sqft}</span>
+            
+            {/* BOTÓN DE COMPARABLES */}
+            {propertyDetails.recentSales && propertyDetails.recentSales.length > 0 && (
+              <div className="relative">
+                <button 
+                  onClick={() => setShowComps(!showComps)}
+                  className="bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 transition-all font-bold"
+                >
+                  📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}
+                </button>
+
+                {/* MODAL FLOTANTE DE COMPARABLES */}
+                {showComps && (
+                  <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-[100] p-4 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">{t.compsTitle}</h4>
+                      <button onClick={() => setShowComps(false)} className="text-gray-500 hover:text-white">✕</button>
+                    </div>
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                      {propertyDetails.recentSales.map((comp: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-start gap-2 border-b border-white/5 pb-2 last:border-0">
+                          <span className="text-[11px] text-gray-300 leading-tight">{comp.address}</span>
+                          <span className="text-xs font-bold text-[#529e14] whitespace-nowrap">{formatMoney(comp.price)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -318,10 +367,32 @@ return (
           
           <div className="py-8 px-6 text-center bg-gradient-to-b from-white/5 to-transparent border-b border-white/10">
             <p className="text-gray-400 uppercase tracking-widest text-sm font-semibold mb-2">{t.rangeTitle}</p>
+            {/* NUEVO: Rango de Precios Gigante */}
+            <div className="text-5xl md:text-6xl font-black text-[#c6ea21] mb-6 drop-shadow-md tracking-tighter">
+              {formatMoney(strategies.cashBuyer.offer)} - {formatMoney(strategies.sellerFinance.totalYield)}
+            </div>
             <p className="text-gray-400 mt-2 max-w-2xl mx-auto text-sm leading-relaxed">
               {t.rangeDesc}
             </p>
           </div>
+          {/* "¿Cómo calculamos esto?" */}
+            <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner">
+              <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
+                {t.transparencyTitle}
+              </h4>
+              <ul className="list-disc list-inside text-xs text-gray-400 space-y-2 leading-relaxed">
+                <li>
+                  {t.transparencyArv.replace('{n}', propertyDetails.recentSales?.length?.toString() || '0')}
+                </li>
+                <li>
+                  {t.transparencyRehab.replace(
+                    '{price}', 
+                    formatMoney(inputs.rehabCosts / (propertyDetails.sqft || 1))
+                  )}
+                </li>
+              </ul>
+            </div>
+          
 
           {/* GRID DE 4 COLUMNAS CON EL NUEVO ORDEN */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-white/10">

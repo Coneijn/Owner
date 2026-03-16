@@ -497,26 +497,45 @@ export async function createDraftPropertyFromFunnel(data: any) {
   try {
     const slug = `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     
+    // Discernir si es renta o venta basado en el widget
+    const isRent = data.strategySelected === 'rent';
+    const isSale = !isRent; // Por defecto lo tratamos como venta si es Seller Finance, Cash, etc.
+
     const draftProperty = await prisma.property.create({
       data: {
         slug,
         status: PropertyStatus.DRAFT,
         isOffMarket: true,
-        isForSale: true,
+        isForSale: isSale,
+        isForRent: isRent,
         titleEn: `Draft: ${data.street || 'Pending Address'}`,
         titleEs: `Borrador: ${data.street || 'Dirección Pendiente'}`,
         descriptionEn: data.description || 'Draft property created from the seller funnel.',
         descriptionEs: data.description || 'Propiedad en borrador creada desde el embudo de vendedores.',
+        
+        // Datos de Ubicación Actualizados
         address: data.street || 'Dirección pendiente',
         city: data.city || 'Ciudad pendiente',
         state: data.state || 'Estado pendiente',
         zipCode: data.zip || '00000',
-        price: data.askingPrice ? Number(data.askingPrice) : null,
+        phoneNumber: data.phone || data.phoneNumber || '', 
+        
+        // Campos Físicos
         bedrooms: data.beds ? Number(data.beds) : 0,
         bathrooms: data.baths ? Number(data.baths) : 0,
         sqft: data.sqft ? Number(data.sqft) : 0,
-        mainImage: "", // Se actualizará después
-        showingNotes: `CONTACTO LEAD:\nNombre: ${data.firstName} ${data.lastName}\nTel: ${data.phone}\nEmail: ${data.email}\nCondición: ${data.condition}`,
+        yearBuilt: data.yearBuilt ? Number(data.yearBuilt) : new Date().getFullYear(),
+        
+        // Datos Financieros (Condicionales)
+        price: isSale && data.askingPrice ? Number(data.askingPrice) : null,
+        downPayment: isSale && data.downPayment ? Number(data.downPayment) : null,
+        interestRate: isSale && data.interestRate ? Number(data.interestRate) : null,
+        taxes: isSale && data.taxes ? Number(data.taxes) : null,
+        insurance: isSale && data.insurance ? Number(data.insurance) : null,
+        monthlyRent: isRent && data.monthlyRent ? Number(data.monthlyRent) : null,
+
+        mainImage: "", 
+        showingNotes: `CONTACTO LEAD:\nNombre: ${data.firstName} ${data.lastName}\nTel: ${data.phone}\nEmail: ${data.email}\nEstrategia Elegida: ${data.strategySelected || 'N/A'}`,
       }
     });
 
@@ -526,7 +545,6 @@ export async function createDraftPropertyFromFunnel(data: any) {
     return { success: false, message: "No se pudo guardar el borrador en la BD." };
   }
 }
-
 // 2. ACTUALIZAR EL BORRADOR CON FOTOS Y LOCKBOX
 export async function updateDraftPropertyMedia(propertyId: string, photos: any[], lockboxCode: string) {
   try {

@@ -32,7 +32,13 @@ function calcMonthlyNote(principal: number, annualRate: number, years: number) {
 const DICTIONARY = {
   es: {
     property: { title: "Ubicación de la Propiedad", street: "Dirección", city: "Ciudad", state: "Estado", zip: "Código Postal", btn: "Continuar ->" },
-    details: { title: "Detalles de la Propiedad", beds: "Habitaciones", baths: "Baños", sqft: "Pies Cuadrados", price: "Precio de Venta ($)", cond: "Condición", desc: "Descripción Breve", condOpts: [{id: "excellent", label: "Excelente", emoji: "✨"}, {id: "good", label: "Buena", emoji: "👍"}, {id: "fair", label: "Regular", emoji: "🔧"}, {id: "poor", label: "Necesita Trabajo", emoji: "🏚"}], btn: "Ver Ganancias Estimadas ->" },
+    details: { 
+      title: "Detalles de la Propiedad", beds: "Habitaciones", baths: "Baños", sqft: "Pies Cuadrados", year: "Año Const.", 
+      price: "Precio de Venta ($)", downPayment: "Enganche ($)", interestRate: "Tasa de Interés (%)", taxes: "Impuestos Anuales ($)", insurance: "Seguro Anual ($)", monthlyRent: "Renta Mensual ($)",
+      saleSection: "Datos Financieros (Venta)", rentSection: "Datos Financieros (Renta)", physicalSection: "Características Físicas",
+      cond: "Condición", desc: "Descripción Breve", 
+      condOpts: [{id: "excellent", label: "Excelente", emoji: "✨"}, {id: "good", label: "Buena", emoji: "👍"}, {id: "fair", label: "Regular", emoji: "🔧"}, {id: "poor", label: "Necesita Trabajo", emoji: "🏚"}], btn: "Continuar ->" 
+    },
     contact: { title: "Tus Datos de Contacto", sub: "Ingresa tus datos para guardar tu progreso y contactarte.", fname: "Nombre", lname: "Apellido", phone: "Celular", email: "Correo Electrónico", btn: "Continuar ->", loading: "Procesando..." },
     media: { title: "Fotos y Acceso", sub: "Para publicar tu casa, necesitamos fotos y cómo acceder a ella.", photos: "Fotos de la Propiedad", code: "Código de Acceso (Lockbox)", codePlaceholder: "Ej. 1234 o 'No tiene'", btn: "Continuar ->", loading: "Guardando..." },
     pricing: { title: "Tus Ganancias Estimadas", asking: "Precio de Venta", down: "Enganche (Recibes tú)", financed: "Monto a Financiar", interest: "Tasa de Interés", term: "Plazo", gross: "Pago Mensual Bruto", fee: "Cuota de Administración", net: "Ingreso Mensual Neto", oneTime: "Tarifa Única de Publicación (paga el comprador)", oneTimeSub1: "50% del enganche, tope a $10,000", oneTimeSub2: "*Esta tarifa sale del enganche del comprador — no de tu bolsillo. Conservas tu precio íntegro.", disclaimer: "📌 Estos son estimados basados en tu precio de venta. Los términos finales se acuerdan entre tú y el comprador.", btn: "Cómo Funciona ->" },
@@ -43,7 +49,13 @@ const DICTIONARY = {
   },
   en: {
     property: { title: "Property Location", street: "Street Address", city: "City", state: "State", zip: "Zip Code", btn: "Continue ->" },
-    details: { title: "Property Details", beds: "Bedrooms", baths: "Bathrooms", sqft: "Sq Ft", price: "Asking Price ($)", cond: "Condition", desc: "Brief Description", condOpts: [{id: "excellent", label: "Excellent", emoji: "✨"}, {id: "good", label: "Good", emoji: "👍"}, {id: "fair", label: "Fair", emoji: "🔧"}, {id: "poor", label: "Needs Work", emoji: "🏚"}], btn: "See Estimated Earnings ->" },
+    details: { 
+      title: "Property Details", beds: "Bedrooms", baths: "Bathrooms", sqft: "Sq Ft", year: "Year Built", 
+      price: "Asking Price ($)", downPayment: "Down Payment ($)", interestRate: "Interest Rate (%)", taxes: "Annual Taxes ($)", insurance: "Annual Insurance ($)", monthlyRent: "Monthly Rent ($)",
+      saleSection: "Financial Data (Sale)", rentSection: "Financial Data (Rent)", physicalSection: "Physical Features",
+      cond: "Condition", desc: "Brief Description", 
+      condOpts: [{id: "excellent", label: "Excellent", emoji: "✨"}, {id: "good", label: "Good", emoji: "👍"}, {id: "fair", label: "Fair", emoji: "🔧"}, {id: "poor", label: "Needs Work", emoji: "🏚"}], btn: "Continue ->" 
+    },
     contact: { title: "Your Contact Info", sub: "Enter your details to save your progress and get in touch.", fname: "First Name", lname: "Last Name", phone: "Cell Number", email: "Email Address", btn: "Continue ->", loading: "Processing..." },
     media: { title: "Photos & Access", sub: "To list your home, we need photos and access instructions.", photos: "Property Photos", code: "Access Code (Lockbox)", codePlaceholder: "E.g. 1234 or 'No lockbox'", btn: "Continue ->", loading: "Saving..." },
     pricing: { title: "Your Estimated Earnings", asking: "Asking Price", down: "Down Payment (To You)", financed: "Financed Amount", interest: "Interest Rate", term: "Term", gross: "Gross Monthly Payment", fee: "Admin Fee", net: "Net Monthly Income", oneTime: "One-Time Listing Fee (paid by buyer)", oneTimeSub1: "50% of down payment, capped at $10k", oneTimeSub2: "*This fee comes out of the buyer's down payment. You keep your full asking price.", disclaimer: "📌 These are estimates based on your asking price. Final terms are agreed upon between you and your buyer.", btn: "How It Works ->" },
@@ -58,19 +70,20 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
   const t = DICTIONARY[lang];
   
   const currentFlow: StepType[] = prefillData 
-    ? ["contact", "media", "schedule", "done"] 
+    ? ["property", "details","contact", "media", "schedule", "done"] 
     : ["property", "details", "contact", "pricing", "howItWorks", "media", "schedule", "done"];
 
   const [stepId, setStepId] = useState<StepType>(currentFlow[0]);
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   
-  // Guardamos el ID del draft para actualizarle las fotos en el siguiente paso
   const [draftPropertyId, setDraftPropertyId] = useState<string | null>(null);
 
   const [data, setData] = useState({
     street: '', city: '', state: '', zip: '',
-    beds: '', baths: '', sqft: '', askingPrice: '', condition: 'good', description: '',
+    beds: '', baths: '', sqft: '', yearBuilt: '', 
+    askingPrice: '', downPayment: '', interestRate: '', taxes: '', insurance: '', monthlyRent: '', // Campos financieros agregados
+    condition: 'good', description: '',
     firstName: '', lastName: '', phone: '', email: '',
     photos: [] as ImageFile[],
     accessCode: '',
@@ -82,14 +95,23 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
       if (prefillData) {
         setData(prev => ({
           ...prev,
-          street: prefillData.address || '',
+          street: prefillData.parsedAddress?.street || prefillData.address || '',
+          city: prefillData.parsedAddress?.city || '',
+          state: prefillData.parsedAddress?.state || '',
+          zip: prefillData.parsedAddress?.zip || '',
           beds: prefillData.propertyDetails?.bedrooms?.toString() || '',
           baths: prefillData.propertyDetails?.bathrooms?.toString() || '',
           sqft: prefillData.propertyDetails?.sqft?.toString() || '',
+          yearBuilt: prefillData.propertyDetails?.yearBuilt?.toString() || '',
           askingPrice: prefillData.inputs?.arv?.toString() || '',
-          strategySelected: prefillData.strategySelected || ''
+          strategySelected: prefillData.strategySelected || '',
+          // Precarga de los nuevos datos del widget
+          downPayment: prefillData.inputs?.sfDownPaymentFlat?.toString() || '',
+          interestRate: prefillData.inputs?.sfInterestRate?.toString() || '',
+          taxes: prefillData.propertyDetails?.taxesMonthly ? (prefillData.propertyDetails.taxesMonthly * 12).toString() : '',
+          monthlyRent: prefillData.inputs?.estimatedRent?.toString() || '',
         }));
-        setStepId("contact"); 
+        setStepId("property"); // Inician en property para revisar dirección
       } else {
         setStepId("property");
       }
@@ -114,23 +136,28 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
 
   // FASE 1: Se crea el Lead en GHL y la propiedad DRAFT en la BD
   const handleSubmitContact = async () => {
-    setLoading(true);
-    
-    try {
-        await submitSellerLead(data); 
+  setLoading(true);
+  
+  try {
+    //esta la dejaremos comentada para no mandar cosas a ghl sin que realmente querramos
+    //await submitSellerLead(data); 
 
-        const result = await createDraftPropertyFromFunnel(data);
-        if (result.success && result.propertyId) {
-            setDraftPropertyId(result.propertyId);
-        }
+    // Añadimos el phoneNumber al objeto que enviamos a la base de datos
+    const result = await createDraftPropertyFromFunnel({
+      ...data,
+      phoneNumber: data.phone // Pasamos el 'phone' del estado al campo 'phoneNumber'
+    });
 
-      } catch (error) {
-        console.error("Error al guardar los datos:", error);
-      } finally {
-        setLoading(false);
-        goNext();
+    if (result.success && result.propertyId) {
+      setDraftPropertyId(result.propertyId);
     }
-  };
+  } catch (error) {
+    console.error("Error al guardar los datos:", error);
+  } finally {
+    setLoading(false);
+    goNext();
+  }
+};
 
   // FASE 2: Se adjuntan las fotos y el lockbox al DRAFT existente
   const handleSubmitMedia = async () => {
@@ -198,15 +225,42 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
           {/* PASO 2: DETAILS (Oculto si viene del widget) */}
           {stepId === "details" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-               <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-6">{t.details.title}</h2>
-               <div className="grid grid-cols-3 gap-4">
+               <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-4">{t.details.title}</h2>
+               
+               <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.physicalSection}</h3>
+               <div className="grid grid-cols-4 gap-4 mb-4">
                  <div><label className={labelClass}>{t.details.beds}</label><input type="number" name="beds" value={data.beds} onChange={handleChange} className={inputClass} /></div>
-                 <div><label className={labelClass}>{t.details.baths}</label><input type="number" name="baths" value={data.baths} onChange={handleChange} className={inputClass} /></div>
+                 <div><label className={labelClass}>{t.details.baths}</label><input type="number" step="0.5" name="baths" value={data.baths} onChange={handleChange} className={inputClass} /></div>
                  <div><label className={labelClass}>{t.details.sqft}</label><input type="number" name="sqft" value={data.sqft} onChange={handleChange} className={inputClass} /></div>
+                 <div><label className={labelClass}>{t.details.year || "Year"}</label><input type="number" name="yearBuilt" value={data.yearBuilt} onChange={handleChange} className={inputClass} /></div>
                </div>
-               <label className={labelClass}>{t.details.price}</label>
-               <input name="askingPrice" value={data.askingPrice} onChange={e => handlePropChange('askingPrice', e.target.value.replace(/[^0-9]/g, ''))} className="w-full bg-gray-900 border border-gray-700 rounded p-3 text-[#f8ed1a] font-bold text-lg focus:border-[#f8ed1a] outline-none transition-colors mb-4" />
-               <button className={btnPrimary} disabled={!data.askingPrice} onClick={goNext}>{t.details.btn}</button>
+
+               {/* Renderizado condicional Renta vs Venta */}
+               {data.strategySelected === 'rent' ? (
+                 <>
+                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.rentSection}</h3>
+                   <div className="mb-4">
+                     <label className={labelClass}>{t.details.monthlyRent}</label>
+                     <input type="number" name="monthlyRent" value={data.monthlyRent} onChange={handleChange} className={inputClass} />
+                   </div>
+                 </>
+               ) : (
+                 <>
+                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.saleSection}</h3>
+                   <div className="grid grid-cols-2 gap-4 mb-4">
+                     <div className="col-span-2">
+                       <label className={labelClass}>{t.details.price}</label>
+                       <input type="number" name="askingPrice" value={data.askingPrice} onChange={handleChange} className={inputClass} />
+                     </div>
+                     <div><label className={labelClass}>{t.details.downPayment}</label><input type="number" name="downPayment" value={data.downPayment} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.interestRate}</label><input type="number" step="0.1" name="interestRate" value={data.interestRate} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.taxes}</label><input type="number" name="taxes" value={data.taxes} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.insurance}</label><input type="number" name="insurance" value={data.insurance} onChange={handleChange} className={inputClass} /></div>
+                   </div>
+                 </>
+               )}
+
+               <button className={btnPrimary} onClick={goNext}>{t.details.btn}</button>
                <button className={btnBack} onClick={goBack}>{t.back}</button>
             </div>
           )}
@@ -261,7 +315,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
                 />
               </div>
 
-              {/* AQUÍ ESTABA EL ERROR: Llamar a handleSubmitMedia en lugar de goNext */}
+              
               <button className={btnPrimary} disabled={loading} onClick={handleSubmitMedia}>
                   {loading ? t.media.loading : t.media.btn}
               </button>
