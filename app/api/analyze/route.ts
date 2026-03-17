@@ -123,8 +123,11 @@ export async function POST(req: Request) {
     const bedrooms = record.bedrooms || 3;
     const bathrooms = record.bathrooms || 2;
     
-    const annualTaxes = record.propertyTaxes || 0;
-    const taxesMonthly = annualTaxes > 0 ? Math.round(annualTaxes / 12) : 250;
+    const lotSize = record.lotSize || 0;
+    const garage = record.garageSpaces || 0;
+
+    //const annualTaxes = record.propertyTaxes || 0;
+    //const taxesMonthly = annualTaxes > 0 ? Math.round(annualTaxes / 12) : 250;
 
     // 3. Extraer Valores Base de AVM
     const baseAvmPrice = avmData.price || 0;
@@ -136,6 +139,22 @@ export async function POST(req: Request) {
 
     const arv = calculateTopTierARV(salesComps, sqft, baseAvmPrice);
     const estimatedRent = calculateAverageRent(rentComps, baseAvmRent);
+
+
+    // 5. LÓGICA DE IMPUESTOS Y SEGUROS (Requisito del Ticket)
+    let annualTaxes = record.propertyTaxes || 0;
+
+    // Fallback de Impuestos: Si no hay datos, usar el 2% del precio de venta estimado (ARV)
+    if (annualTaxes === 0 && arv > 0) {
+      annualTaxes = arv * 0.02;
+    }
+    const taxesMonthly = Math.round(annualTaxes / 12);
+
+    // Fallback de Seguros: Si no hay, estimamos un 0.5% del ARV anual por defecto
+    let insuranceAnnual = record.propertyInsurance || 0;
+    if (insuranceAnnual === 0 && arv > 0) {
+      insuranceAnnual = arv * 0.005;
+    }
 
     // 5. Calcular costos de reparación y estado de la propiedad usando la NUEVA escala
     const repairs = calculateRepairs(sqft, yearBuilt, propertyType, validCondition);
@@ -150,11 +169,15 @@ export async function POST(req: Request) {
       bathrooms,
       sqft,
       yearBuilt,
+      lotSize,
+      garage,
       arv, 
       baseAvmPrice, 
       estimatedRent, 
       repairCosts: repairs.total,
       taxesMonthly,
+      annualTaxes,
+      insuranceAnnual,
       isDistressed,
       conditionScale: validCondition, // Devolvemos la escala usada para validación
       salesCompsCount: salesComps.length,

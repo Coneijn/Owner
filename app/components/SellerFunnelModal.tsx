@@ -37,6 +37,7 @@ const DICTIONARY = {
       price: "Precio de Venta ($)", downPayment: "Enganche ($)", interestRate: "Tasa de Interés (%)", taxes: "Impuestos Anuales ($)", insurance: "Seguro Anual ($)", monthlyRent: "Renta Mensual ($)",
       saleSection: "Datos Financieros (Venta)", rentSection: "Datos Financieros (Renta)", physicalSection: "Características Físicas",
       cond: "Condición", desc: "Descripción Breve", 
+      lotSize: "Tamaño Lote (SqFt)", garage: "Garaje", confirmBtn: "Confirmar Información ->", editBtn: "✏️ Editar", saveBtn: "Guardar Cambios",
       condOpts: [{id: "excellent", label: "Excelente", emoji: "✨"}, {id: "good", label: "Buena", emoji: "👍"}, {id: "fair", label: "Regular", emoji: "🔧"}, {id: "poor", label: "Necesita Trabajo", emoji: "🏚"}], btn: "Continuar ->" 
     },
     contact: { title: "Tus Datos de Contacto", sub: "Ingresa tus datos para guardar tu progreso y contactarte.", fname: "Nombre", lname: "Apellido", phone: "Celular", email: "Correo Electrónico", btn: "Continuar ->", loading: "Procesando..." },
@@ -45,7 +46,7 @@ const DICTIONARY = {
     howItWorks: { title: "Cómo Funciona", pts: [{icon: "🏷️", title: "Tú estableces el precio", body: "Los compradores darán un enganche de $10k–$20k."}, {icon: "📈", title: "Interés del 10–12%", body: "Actúas como el banco a 15 años."}, {icon: "💵", title: "Cobramos 50% del enganche", body: "Como tarifa al comprador (tope $10k)."}, {icon: "🔧", title: "$129/mes de administración", body: "Manejamos la amortización y papeleo."}], btn: "Agendar Llamada ->" },
     schedule: { title: "Agenda tu Llamada", sub: "Elige un horario para afinar los detalles de tu publicación.", booked: "¿Ya agendaste? Continuar ->", doneTitle: "¡Llamada Agendada!", doneSub: "Revisa tu teléfono y correo para la confirmación.", btn: "Terminar ->" },
     done: { title: "¡Todo Listo", sub: "Tu propiedad está en proceso y tu llamada agendada.", next: "Qué pasa después:", pts: [["📅", "Recibirás recordatorios de tu llamada"], ["📸", "Revisaremos las fotos enviadas"], ["🌐", "Saldrás en ownertodueno.com"], ["💰", "Al conectar comprador, inician pagos"]], link: "<- Volver al inicio" },
-    back: "<- Volver"
+    back: "<- Volver",btn: "Obtener mi Oferta ->"
   },
   en: {
     property: { title: "Property Location", street: "Street Address", city: "City", state: "State", zip: "Zip Code", btn: "Continue ->" },
@@ -54,6 +55,7 @@ const DICTIONARY = {
       price: "Asking Price ($)", downPayment: "Down Payment ($)", interestRate: "Interest Rate (%)", taxes: "Annual Taxes ($)", insurance: "Annual Insurance ($)", monthlyRent: "Monthly Rent ($)",
       saleSection: "Financial Data (Sale)", rentSection: "Financial Data (Rent)", physicalSection: "Physical Features",
       cond: "Condition", desc: "Brief Description", 
+      lotSize: "Lot Size (SqFt)", garage: "Garage", confirmBtn: "Confirm Information ->", editBtn: "✏️ Edit", saveBtn: "Save Changes",
       condOpts: [{id: "excellent", label: "Excellent", emoji: "✨"}, {id: "good", label: "Good", emoji: "👍"}, {id: "fair", label: "Fair", emoji: "🔧"}, {id: "poor", label: "Needs Work", emoji: "🏚"}], btn: "Continue ->" 
     },
     contact: { title: "Your Contact Info", sub: "Enter your details to save your progress and get in touch.", fname: "First Name", lname: "Last Name", phone: "Cell Number", email: "Email Address", btn: "Continue ->", loading: "Processing..." },
@@ -62,7 +64,7 @@ const DICTIONARY = {
     howItWorks: { title: "How It Works", pts: [{icon: "🏷️", title: "You set the asking price", body: "Buyers will make a down payment of $10k–$20k."}, {icon: "📈", title: "Interest rate: 10–12%", body: "You act as the bank for 15 years."}, {icon: "💵", title: "We collect 50% of down payment", body: "As a placement fee (capped at $10k)."}, {icon: "🔧", title: "$129/month admin fee", body: "We manage amortization and paperwork."}], btn: "Book Your Call ->" },
     schedule: { title: "Book Your Call", sub: "Pick a time to fine-tune your listing details.", booked: "Already booked? Continue ->", doneTitle: "Call Booked!", doneSub: "Check your phone and email for confirmation.", btn: "Finish ->" },
     done: { title: "You're All Set", sub: "Your property is being processed and your call is booked.", next: "What happens next:", pts: [["📅", "You'll receive call reminders"], ["📸", "We'll review your uploaded photos"], ["🌐", "Your listing goes live"], ["💰", "Once matched, payments begin"]], link: "<- Back to home" },
-    back: "<- Back"
+    btn: "Get My Offer ->", back: "<- Back"
   }
 };
 
@@ -78,11 +80,13 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
   const [booked, setBooked] = useState(false);
   
   const [draftPropertyId, setDraftPropertyId] = useState<string | null>(null);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
 
   const [data, setData] = useState({
     street: '', city: '', state: '', zip: '',
     beds: '', baths: '', sqft: '', yearBuilt: '', 
     askingPrice: '', downPayment: '', interestRate: '', taxes: '', insurance: '', monthlyRent: '', // Campos financieros agregados
+    lotSize: '', garage: '', // Campos físicos agregados
     condition: 'good', description: '',
     firstName: '', lastName: '', phone: '', email: '',
     photos: [] as ImageFile[],
@@ -103,17 +107,23 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
           baths: prefillData.propertyDetails?.bathrooms?.toString() || '',
           sqft: prefillData.propertyDetails?.sqft?.toString() || '',
           yearBuilt: prefillData.propertyDetails?.yearBuilt?.toString() || '',
+          lotSize: prefillData.propertyDetails?.lotSize?.toString() || '',
+          garage: prefillData.propertyDetails?.garage?.toString() || '',
+
           askingPrice: prefillData.inputs?.arv?.toString() || '',
           strategySelected: prefillData.strategySelected || '',
           // Precarga de los nuevos datos del widget
           downPayment: prefillData.inputs?.sfDownPaymentFlat?.toString() || '',
           interestRate: prefillData.inputs?.sfInterestRate?.toString() || '',
-          taxes: prefillData.propertyDetails?.taxesMonthly ? (prefillData.propertyDetails.taxesMonthly * 12).toString() : '',
+         taxes: prefillData.inputs?.taxesAnnual !== undefined ? prefillData.inputs.taxesAnnual.toString() : '',
+         insurance: prefillData.inputs?.insuranceAnnual !== undefined ? prefillData.inputs.insuranceAnnual.toString() : '',
           monthlyRent: prefillData.inputs?.estimatedRent?.toString() || '',
         }));
         setStepId("property"); // Inician en property para revisar dirección
+        setIsEditingDetails(false);
       } else {
         setStepId("property");
+        setIsEditingDetails(true); // Si no hay prefill, empiezan editando
       }
     }
   }, [isOpen, prefillData]);
@@ -142,11 +152,25 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
     //esta la dejaremos comentada para no mandar cosas a ghl sin que realmente querramos
     //await submitSellerLead(data); 
 
-    // Añadimos el phoneNumber al objeto que enviamos a la base de datos
-    const result = await createDraftPropertyFromFunnel({
-      ...data,
-      phoneNumber: data.phone // Pasamos el 'phone' del estado al campo 'phoneNumber'
-    });
+    
+      const draftPayload = {
+        ...data,
+        phoneNumber: data.phone,
+        beds: Number(data.beds) || 0,
+        baths: Number(data.baths) || 0,
+        sqft: Number(data.sqft) || 0,
+        lotSize: data.lotSize ? Number(data.lotSize) : null,
+        yearBuilt: data.yearBuilt ? Number(data.yearBuilt) : null,
+        askingPrice: Number(data.askingPrice) || 0,
+        downPayment: Number(data.downPayment) || 0,
+        interestRate: Number(data.interestRate) || 0,
+        taxes: Number(data.taxes) || 0,
+        insurance: Number(data.insurance) || 0,
+        monthlyRent: Number(data.monthlyRent) || 0,
+        garage: data.garage ? Number(data.garage) : null,
+      };
+
+      const result = await createDraftPropertyFromFunnel(draftPayload);
 
     if (result.success && result.propertyId) {
       setDraftPropertyId(result.propertyId);
@@ -222,45 +246,92 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
             </div>
           )}
 
-          {/* PASO 2: DETAILS (Oculto si viene del widget) */}
+        {/* PASO 2: DETAILS (Modo Confirmación y Edición) */}
           {stepId === "details" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-               <h2 className="text-2xl font-black text-white uppercase tracking-wide mb-4">{t.details.title}</h2>
                
-               <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.physicalSection}</h3>
-               <div className="grid grid-cols-4 gap-4 mb-4">
-                 <div><label className={labelClass}>{t.details.beds}</label><input type="number" name="beds" value={data.beds} onChange={handleChange} className={inputClass} /></div>
-                 <div><label className={labelClass}>{t.details.baths}</label><input type="number" step="0.5" name="baths" value={data.baths} onChange={handleChange} className={inputClass} /></div>
-                 <div><label className={labelClass}>{t.details.sqft}</label><input type="number" name="sqft" value={data.sqft} onChange={handleChange} className={inputClass} /></div>
-                 <div><label className={labelClass}>{t.details.year || "Year"}</label><input type="number" name="yearBuilt" value={data.yearBuilt} onChange={handleChange} className={inputClass} /></div>
+               <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-2xl font-black text-white uppercase tracking-wide">{t.details.title}</h2>
+                 {!isEditingDetails && (
+                   <button onClick={() => setIsEditingDetails(true)} className="text-[#f8ed1a] text-sm font-bold hover:underline flex items-center gap-1">
+                     {t.details.editBtn}
+                   </button>
+                 )}
                </div>
 
-               {/* Renderizado condicional Renta vs Venta */}
-               {data.strategySelected === 'rent' ? (
-                 <>
-                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.rentSection}</h3>
-                   <div className="mb-4">
-                     <label className={labelClass}>{t.details.monthlyRent}</label>
-                     <input type="number" name="monthlyRent" value={data.monthlyRent} onChange={handleChange} className={inputClass} />
+               {!isEditingDetails ? (
+                 // --- MODO LECTURA (CONFIRMACIÓN) ---
+                 <div className="bg-black/40 border border-white/10 rounded-xl p-5 mb-6">
+                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-4 border-b border-gray-700 pb-1">{t.details.physicalSection}</h3>
+                   <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm mb-6">
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.beds}</span> <span className="text-white font-bold">{data.beds || '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.baths}</span> <span className="text-white font-bold">{data.baths || '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.sqft}</span> <span className="text-white font-bold">{data.sqft || '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.lotSize}</span> <span className="text-white font-bold">{data.lotSize || '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.garage}</span> <span className="text-white font-bold">{data.garage || '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.year || "Year"}</span> <span className="text-white font-bold">{data.yearBuilt || '-'}</span></div>
                    </div>
-                 </>
+
+                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-4 border-b border-gray-700 pb-1">
+                     {data.strategySelected === 'rent' ? t.details.rentSection : t.details.saleSection}
+                   </h3>
+                   <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm">
+                     {data.strategySelected === 'rent' ? (
+                       <div><span className="text-gray-500 block text-xs uppercase">{t.details.monthlyRent}</span> <span className="text-white font-bold">${data.monthlyRent || '-'}</span></div>
+                     ) : (
+                       <>
+                         <div className="col-span-2"><span className="text-gray-500 block text-xs uppercase">{t.details.price}</span> <span className="text-white font-bold">${data.askingPrice || '-'}</span></div>
+                         <div><span className="text-gray-500 block text-xs uppercase">{t.details.downPayment}</span> <span className="text-white font-bold">${data.downPayment || '-'}</span></div>
+                         <div><span className="text-gray-500 block text-xs uppercase">{t.details.interestRate}</span> <span className="text-white font-bold">{data.interestRate || '-'}%</span></div>
+                       </>
+                     )}
+                   </div>
+                 </div>
                ) : (
+                 // --- MODO EDICIÓN ---
                  <>
-                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.saleSection}</h3>
-                   <div className="grid grid-cols-2 gap-4 mb-4">
-                     <div className="col-span-2">
-                       <label className={labelClass}>{t.details.price}</label>
-                       <input type="number" name="askingPrice" value={data.askingPrice} onChange={handleChange} className={inputClass} />
-                     </div>
-                     <div><label className={labelClass}>{t.details.downPayment}</label><input type="number" name="downPayment" value={data.downPayment} onChange={handleChange} className={inputClass} /></div>
-                     <div><label className={labelClass}>{t.details.interestRate}</label><input type="number" step="0.1" name="interestRate" value={data.interestRate} onChange={handleChange} className={inputClass} /></div>
-                     <div><label className={labelClass}>{t.details.taxes}</label><input type="number" name="taxes" value={data.taxes} onChange={handleChange} className={inputClass} /></div>
-                     <div><label className={labelClass}>{t.details.insurance}</label><input type="number" name="insurance" value={data.insurance} onChange={handleChange} className={inputClass} /></div>
+                   <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.physicalSection}</h3>
+                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+                     <div><label className={labelClass}>{t.details.beds}</label><input type="number" name="beds" value={data.beds} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.baths}</label><input type="number" step="0.5" name="baths" value={data.baths} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.sqft}</label><input type="number" name="sqft" value={data.sqft} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.year || "Year"}</label><input type="number" name="yearBuilt" value={data.yearBuilt} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.lotSize}</label><input type="number" name="lotSize" value={data.lotSize} onChange={handleChange} className={inputClass} /></div>
+                     <div><label className={labelClass}>{t.details.garage}</label><input type="number" name="garage" value={data.garage} onChange={handleChange} className={inputClass} /></div>
                    </div>
+
+                   {/* Renderizado condicional Renta vs Venta */}
+                   {data.strategySelected === 'rent' ? (
+                     <>
+                       <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.rentSection}</h3>
+                       <div className="mb-4">
+                         <label className={labelClass}>{t.details.monthlyRent}</label>
+                         <input type="number" name="monthlyRent" value={data.monthlyRent} onChange={handleChange} className={inputClass} />
+                       </div>
+                     </>
+                   ) : (
+                     <>
+                       <h3 className="text-xs text-[#f8ed1a] font-bold uppercase mb-2 border-b border-gray-700 pb-1">{t.details.saleSection}</h3>
+                       <div className="grid grid-cols-2 gap-4 mb-4">
+                         <div className="col-span-2">
+                           <label className={labelClass}>{t.details.price}</label>
+                           <input type="number" name="askingPrice" value={data.askingPrice} onChange={handleChange} className={inputClass} />
+                         </div>
+                         <div><label className={labelClass}>{t.details.downPayment}</label><input type="number" name="downPayment" value={data.downPayment} onChange={handleChange} className={inputClass} /></div>
+                         <div><label className={labelClass}>{t.details.interestRate}</label><input type="number" step="0.1" name="interestRate" value={data.interestRate} onChange={handleChange} className={inputClass} /></div>
+                         <div><label className={labelClass}>{t.details.taxes}</label><input type="number" name="taxes" value={data.taxes} onChange={handleChange} className={inputClass} /></div>
+                         <div><label className={labelClass}>{t.details.insurance}</label><input type="number" name="insurance" value={data.insurance} onChange={handleChange} className={inputClass} /></div>
+                       </div>
+                     </>
+                   )}
                  </>
                )}
 
-               <button className={btnPrimary} onClick={goNext}>{t.details.btn}</button>
+               {!isEditingDetails ? (
+                 <button className={btnPrimary} onClick={goNext}>{t.details.confirmBtn}</button>
+               ) : (
+                 <button className={btnPrimary} onClick={() => setIsEditingDetails(false)}>{t.details.saveBtn}</button>
+               )}
                <button className={btnBack} onClick={goBack}>{t.back}</button>
             </div>
           )}

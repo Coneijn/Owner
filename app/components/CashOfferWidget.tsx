@@ -14,6 +14,10 @@ interface DealInputs {
   sfDownPaymentFlat: number; 
   sfInterestRate: number;
   sfTermYears: number;
+  taxesAnnual: number;
+  insuranceAnnual: number;
+  adminFeeMonthly: number;
+  maintannaceMonthly: number;
 }
 
 interface CashOfferWidgetProps {
@@ -54,6 +58,8 @@ const i18n = {
     
     rentTitle: "Rentar", rentSub: "(Alquiler Tradicional)",
     rentDesc: "Conserva la propiedad, lidia con inquilinos y genera ingresos mensuales de alquiler.",
+    rentGrossLabel: "Ingreso Bruto Anual:",
+    rentExpensesLabel: "Gastos Anuales Estimados:",
     rentMonthlyLabel: "Renta Mensual Estimada:", rentAnnualLabel: "Ingreso Anual Bruto:",
     
     chooseBtn: "Elegir esta opción ->",
@@ -78,13 +84,13 @@ const i18n = {
     switchToMoney: "Switch to $", switchToPercent: "Switch to %",
     backedByComps: "Backed by {n} recent sales",
     rangeTitle: "Your Profit Potential",
-    rangeDesc: "As an owner, you have multiple ways to capitalize on your property. Be the bank, list it, sell for fast cash, or rent it out.",
+    rangeDesc: "As an owner, you have multiple ways to capitalize on your property. Become the bank, list it, sell for fast cash, or rent it out.",
     transparencyTitle: "🧠 How did we calculate this?",
     transparencyArv: "The After Repair Value (ARV) was estimated by analyzing {n} recently sold comparable properties.",
     transparencyRehab: "Repairs were estimated at {price}/SqFt based on your condition input, property size, and age.",
     
     // Opciones
-    sellerFinanceTitle: "Be The Bank", sellerFinanceSub: "(Seller Financing)",
+    sellerFinanceTitle: "Become The Bank", sellerFinanceSub: "(Seller Financing)",
     sellerFinanceDesc: "Sell on terms. Receive a down payment today and generate monthly income without dealing with tenants.",
     downPaymentReceivedLabel: "Down Payment:", monthlyIncomeLabel: "Monthly Income (P&I):", termLabel: "Term:", termValue: "{years} yrs at {rate}%", totalYieldLabel: "Total Yield:",
     
@@ -98,6 +104,8 @@ const i18n = {
     
     rentTitle: "Rent It Out", rentSub: "(Traditional Rental)",
     rentDesc: "Keep the property, deal with tenants, and generate monthly rental income.",
+    rentGrossLabel: "Gross Annual Income:",
+    rentExpensesLabel: "Estimated Annual Expenses:",
     rentMonthlyLabel: "Estimated Monthly Rent:", rentAnnualLabel: "Gross Annual Income:",
     
     chooseBtn: "Choose this option ->",
@@ -170,24 +178,36 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
     sfDownPaymentFlat: 25000,
     sfInterestRate: 6.5,
     sfTermYears: 30,
+    taxesAnnual: 3000,
+    insuranceAnnual: 1200,
+    adminFeeMonthly: 150,
+    maintannaceMonthly: 100
   });
 
   const [strategies, setStrategies] = useState({
     cashBuyer: { offer: 0 },
     fixAndList: { grossSale: 0, costToSell: 0, netProfit: 0 },
     sellerFinance: { salePrice: 0, downPayment: 0, monthlyIncome: 0, totalYield: 0 },
-    rent: { monthly: 0, annual: 0 }
+    rent: { monthly: 0, netMonthly : 0,annual: 0 }
   });
 
   const handleInputChange = (field: keyof DealInputs, value: string) => {
     setInputs(prev => ({ ...prev, [field]: Number(value) || 0 }));
   };
+   useEffect(() => {
+      if (propertyDetails?.sqft) {
+        const factorNivel=conditionScale*10;
+        const newRehabCost=propertyDetails.sqft*factorNivel;
+        setInputs(prev => ({ ...prev, rehabCosts: newRehabCost }));
+      }
+    }, [conditionScale, propertyDetails?.sqft]);
 
   useEffect(() => {
     const calc = () => {
       const { 
         arv, rehabCosts, estimatedRent, investorDiscountPercent, realtorFeePercent,
-        sfPricePremiumPercent, sfDownPaymentPercent, sfDownPaymentFlat, sfInterestRate, sfTermYears
+        sfPricePremiumPercent, sfDownPaymentPercent, sfDownPaymentFlat, sfInterestRate, sfTermYears,
+        taxesAnnual, insuranceAnnual, adminFeeMonthly, maintannaceMonthly
       } = inputs;
 
       const cashOfferValue = (arv * ((100 - investorDiscountPercent) / 100)) - rehabCosts;
@@ -208,14 +228,17 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
       } else if (sfLoanAmount > 0) {
         sfMonthlyIncome = sfLoanAmount / numPayments; 
       }
-
+      
+      const rentDeductionsMonthly = (taxesAnnual / 12) + (insuranceAnnual / 12) + adminFeeMonthly + maintannaceMonthly;
+      const netMonthlyRent = estimatedRent - rentDeductionsMonthly;
       setStrategies({
         cashBuyer: { offer: finalCashOffer },
         fixAndList: { grossSale: arv, costToSell: rehabCosts + realtorFee, netProfit: fixListNet },
         sellerFinance: { salePrice: sfPrice, downPayment: sfDownPayment, monthlyIncome: sfMonthlyIncome, totalYield: sfDownPayment + (sfMonthlyIncome * numPayments) },
-        rent: { monthly: estimatedRent, annual: estimatedRent * 12 }
+        rent: { monthly: estimatedRent, netMonthly: netMonthlyRent, annual: netMonthlyRent * 12 }
       });
     };
+
     calc();
   }, [inputs, isDpPercent]);
 
@@ -241,7 +264,10 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
         arv: data.arv || prev.arv,
         rehabCosts: data.repairCosts !== undefined ? data.repairCosts : prev.rehabCosts,
         estimatedRent: data.estimatedRent || prev.estimatedRent,
-        sfDownPaymentFlat: (data.arv || prev.arv) * (prev.sfDownPaymentPercent / 100)
+        sfDownPaymentFlat: (data.arv || prev.arv) * (prev.sfDownPaymentPercent / 100),
+        taxesAnnual: data.annualTaxes !== undefined ? data.annualTaxes : prev.taxesAnnual,
+        insuranceAnnual: data.insuranceAnnual !== undefined ? data.insuranceAnnual : prev.insuranceAnnual
+
       }));
     } catch (err: any) {
       setError(err.message || 'Error de conexión.');
@@ -365,16 +391,6 @@ return (
       {propertyDetails && (
         <div className="animate-fadeIn relative z-10">
           
-          <div className="py-8 px-6 text-center bg-gradient-to-b from-white/5 to-transparent border-b border-white/10">
-            <p className="text-gray-400 uppercase tracking-widest text-sm font-semibold mb-2">{t.rangeTitle}</p>
-            {/* NUEVO: Rango de Precios Gigante */}
-            <div className="text-5xl md:text-6xl font-black text-[#c6ea21] mb-6 drop-shadow-md tracking-tighter">
-              {formatMoney(strategies.cashBuyer.offer)} - {formatMoney(strategies.sellerFinance.totalYield)}
-            </div>
-            <p className="text-gray-400 mt-2 max-w-2xl mx-auto text-sm leading-relaxed">
-              {t.rangeDesc}
-            </p>
-          </div>
           {/* "¿Cómo calculamos esto?" */}
             <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner">
               <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
@@ -393,6 +409,45 @@ return (
               </ul>
             </div>
           
+                  {/* AJUSTES AVANZADOS (Se actualizó para incluir input de renta) */}
+          <div className="border-t border-white/10">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
+            >
+              <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
+              <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
+            </button>
+            
+            {showSettings && (
+              <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCondition}</h4>
+                  <InputGroup label={t.arvInput} value={inputs.arv} onChange={(v) => handleInputChange('arv', v)} />
+                  <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
+                  <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
+                </div>
+                {/* ... (Las secciones de costos y bancos se mantienen igual que tu código original) */}
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
+                  <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
+                  <InputGroup label={t.realtorInput} value={inputs.realtorFeePercent} onChange={(v) => handleInputChange('realtorFeePercent', v)} />
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
+                  <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
+                  {/* ... (Input del down payment) */}
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionReturns}</h4>
+                  <InputGroup label={t.interestInput} value={inputs.sfInterestRate} onChange={(v) => handleInputChange('sfInterestRate', v)} />
+                  <InputGroup label={t.termInput} value={inputs.sfTermYears} onChange={(v) => handleInputChange('sfTermYears', v)} />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* GRID DE 4 COLUMNAS CON EL NUEVO ORDEN */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
@@ -404,14 +459,16 @@ return (
                 <span className="text-2xl">🏦</span>
                 <h3 className="text-lg font-bold text-white">{t.sellerFinanceTitle} <br/><span className="text-xs text-gray-400 font-normal">{t.sellerFinanceSub}</span></h3>
               </div>
-              <div className="text-3xl font-black text-[#529e14] mb-2">
-                {formatMoney(strategies.sellerFinance.totalYield)}
+
+              <div className="text-4xl font-black text-[#529e14] mb-2">
+                {formatMoney(strategies.sellerFinance.monthlyIncome)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
               </div>
+
               <p className="text-xs text-gray-400 mb-6 flex-grow">{t.sellerFinanceDesc}</p>
               <ul className="space-y-3 text-sm text-gray-300 mb-6">
                 <li className="flex justify-between"><span>{t.downPaymentReceivedLabel}</span> <span className="text-blue-400">{formatMoney(strategies.sellerFinance.downPayment)}</span></li>
                 <li className="flex justify-between"><span>{t.monthlyIncomeLabel}</span> <span className="text-[#529e14]">+{formatMoney(strategies.sellerFinance.monthlyIncome)}/mo</span></li>
-                <li className="flex justify-between"><span>{t.termLabel}</span> <span>{t.termValue.replace('{years}', inputs.sfTermYears.toString()).replace('{rate}', inputs.sfInterestRate.toString())}</span></li>
+                <li className="flex justify-between text-xs font-bold pt-2 border-t border-white/10"><span>{t.totalYieldLabel}</span> <span className="text-white">{formatMoney(strategies.sellerFinance.totalYield)}</span></li>
               </ul>
               <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold rounded-lg transition-colors mt-auto">
                 {t.chooseBtn}
@@ -464,11 +521,16 @@ return (
                 <span className="text-2xl">🔑</span>
                 <h3 className="text-lg font-bold text-white">{t.rentTitle} <br/><span className="text-xs text-gray-400 font-normal">{t.rentSub}</span></h3>
               </div>
+
               <div className="text-3xl font-black text-white mb-2 group-hover:text-purple-400 transition-colors">
-                {formatMoney(strategies.rent.monthly)}<span className="text-lg text-gray-500 font-normal">/mo</span>
+                {formatMoney(strategies.rent.netMonthly)}<span className="text-lg text-gray-500 font-normal">/mo</span>
               </div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">Flujo de Caja Neto</p>
               <p className="text-xs text-gray-400 mb-6 flex-grow">{t.rentDesc}</p>
+             
               <ul className="space-y-3 text-sm text-gray-300 mb-6">
+                <li className="flex justify-between"><span>{t.rentGrossLabel}</span> <span>{formatMoney(strategies.rent.monthly)}</span></li>
+                <li className="flex justify-between text-red-400/90"><span>{t.rentExpensesLabel}</span> <span>-{formatMoney(strategies.rent.monthly - strategies.rent.netMonthly)}</span></li>
                 <li className="flex justify-between pt-3 border-t border-white/10 font-semibold text-purple-400">
                   <span>{t.rentAnnualLabel}</span> <span>{formatMoney(strategies.rent.annual)}</span>
                 </li>
@@ -480,45 +542,7 @@ return (
 
           </div>
 
-          {/* AJUSTES AVANZADOS (Se actualizó para incluir input de renta) */}
-          <div className="border-t border-white/10">
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
-            >
-              <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
-              <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
-            </button>
-            
-            {showSettings && (
-              <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCondition}</h4>
-                  <InputGroup label={t.arvInput} value={inputs.arv} onChange={(v) => handleInputChange('arv', v)} />
-                  <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
-                  <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
-                </div>
-                {/* ... (Las secciones de costos y bancos se mantienen igual que tu código original) */}
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
-                  <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
-                  <InputGroup label={t.realtorInput} value={inputs.realtorFeePercent} onChange={(v) => handleInputChange('realtorFeePercent', v)} />
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
-                  <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
-                  {/* ... (Input del down payment) */}
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionReturns}</h4>
-                  <InputGroup label={t.interestInput} value={inputs.sfInterestRate} onChange={(v) => handleInputChange('sfInterestRate', v)} />
-                  <InputGroup label={t.termInput} value={inputs.sfTermYears} onChange={(v) => handleInputChange('sfTermYears', v)} />
-                </div>
-              </div>
-            )}
-          </div>
+          
         </div>
       )}
 

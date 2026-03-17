@@ -501,6 +501,11 @@ export async function createDraftPropertyFromFunnel(data: any) {
     const isRent = data.strategySelected === 'rent';
     const isSale = !isRent; // Por defecto lo tratamos como venta si es Seller Finance, Cash, etc.
 
+    const draftFeatures :string[] = [];
+    if (data.garage && Number(data.garage) > 0) {
+       draftFeatures.push(`Garage: ${data.garage}`);
+    }
+
     const draftProperty = await prisma.property.create({
       data: {
         slug,
@@ -525,7 +530,8 @@ export async function createDraftPropertyFromFunnel(data: any) {
         bathrooms: data.baths ? Number(data.baths) : 0,
         sqft: data.sqft ? Number(data.sqft) : 0,
         yearBuilt: data.yearBuilt ? Number(data.yearBuilt) : new Date().getFullYear(),
-        
+        lotSize: data.lotSize ? Number(data.lotSize) : 0, // Aprovechamos para guardar el lote
+        features: draftFeatures, // Guardamos el array que contiene el garaje
         // Datos Financieros (Condicionales)
         price: isSale && data.askingPrice ? Number(data.askingPrice) : null,
         downPayment: isSale && data.downPayment ? Number(data.downPayment) : null,
