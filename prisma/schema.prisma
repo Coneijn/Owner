@@ -27,6 +27,8 @@ model User {
   // Relaciones de Perfiles
   sellerProfile       SellerProfile?
   agentProfile        AgentProfile?  // <-- NUEVO: Relación con el Agente
+
+  buyerProfile        BuyerProfile?  // <-- NUEVO: Relación con el Comprador
 }
 
 model SellerProfile {
@@ -40,7 +42,7 @@ model SellerProfile {
   sellerName  String?  // Nombre a mostrar públicamente
   sellerImage String?  // Avatar público
   sellerType  String   @default("OWNER")
-  
+  phone String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -161,6 +163,7 @@ model Property {
   buyerCredit        String?
   buyerFinancing     String?
   marketingMaterials MarketingMaterial[]
+  contracts Contract[]
 }
 
 //Usado por el agente
@@ -299,6 +302,92 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
+
+
+// --- NUEVO: Perfil del Cliente (Comprador o Inquilino) ---
+model BuyerProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String?  @unique
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Datos del cliente (Cabecera del CSV)
+  firstName   String
+  lastName    String
+  phone       String?
+  // El email ya vive en el modelo User principal
+
+  // Relación con sus contratos de propiedades
+  contracts   Contract[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// --- NUEVO: Términos del Préstamo o Renta (Cabecera y Resumen del CSV) ---
+model Contract {
+  id              String   @id @default(cuid())
+  
+  // Relaciones
+  propertyId      String
+  property        Property @relation(fields: [propertyId], references: [id])
+  buyerProfileId  String
+  buyer           BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+
+  // Tipo de contrato
+  type            ContractType @default(LOAN) 
+
+  // Datos Financieros (Términos iniciales)
+  totalAmount     Decimal  @db.Decimal(12, 2) // Valor total de la propiedad/préstamo
+  downPayment     Decimal  @db.Decimal(12, 2) // Enganche inicial
+  principalAmount Decimal  @db.Decimal(12, 2) // Capital original a financiar
+  interestRate    Decimal? @db.Decimal(5, 2)  // Tasa de interés (ej. 8.5)
+  termInYears     Int?     // Plazo en años (ej. 15 o 30)
+  startDate       DateTime // Fecha de inicio del contrato
+
+  // Cuotas Fijas Mensuales Adicionales (Escrow/Servicios)
+  monthlyTaxes     Decimal? @db.Decimal(10, 2)
+  monthlyInsurance Decimal? @db.Decimal(10, 2)
+  monthlyServFee   Decimal? @db.Decimal(10, 2) // Tarifa de servicio
+
+  isActive        Boolean  @default(true)
+
+  // Historial de amortización
+  payments        Payment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// --- NUEVO: Tabla de Amortización (Las filas detalladas de tus CSV) ---
+model Payment {
+  id            String   @id @default(cuid())
+  
+  contractId    String
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  paymentDate   DateTime // Fecha en la que toca el pago o se realizó
+  
+  // Desglose del pago mensual
+  totalDue      Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes en total
+  principal     Decimal  @db.Decimal(10, 2) // Cuánto va a capital
+  interest      Decimal  @db.Decimal(10, 2) // Cuánto va a intereses
+  taxes         Decimal? @db.Decimal(10, 2) // Impuestos de este mes
+  insurance     Decimal? @db.Decimal(10, 2) // Seguro de este mes
+  serviceFee    Decimal? @db.Decimal(10, 2) // Tarifa de servicio de este mes
+  lateFee       Decimal? @db.Decimal(10, 2) @default(0) // Penalizaciones por atraso
+  
+  // Saldo restante DESPUÉS de este pago
+  remainingBalance Decimal @db.Decimal(12, 2) 
+
+  // Control de estado
+  status        PaymentStatus @default(PENDING) 
+  paidAt        DateTime?     // Fecha real en que el cliente pagó
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
 // 7. Enums
 enum Role {
   ADMIN
@@ -312,4 +401,16 @@ enum PropertyStatus {
   SOLD
   DRAFT
   COMING_SOON
+}
+// --- NUEVOS ENUMS ---
+enum ContractType {
+  LOAN
+  LEASE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  LATE
+  PARTIAL
 }

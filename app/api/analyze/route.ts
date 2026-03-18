@@ -67,11 +67,13 @@ function calculateTopTierARV(comparables: any[], subjectSqft: number, fallbackPr
   return Math.round(avgTopPricePerSqft * subjectSqft);
 }
 
-// Calcula la Renta Promedio usando comparables directos
 function calculateAverageRent(comparables: any[], fallbackRent: number) {
-  if (!comparables || comparables.length === 0) return fallbackRent;
+  if (!Array.isArray(comparables) || comparables.length === 0) return fallbackRent;
 
-  const validRents = comparables.filter(c => c.price > 0).map(c => c.price);
+  const validRents = comparables
+    .map(c => Number(c?.price)) 
+    .filter(price => !isNaN(price) && price > 0); 
+
   if (validRents.length === 0) return fallbackRent;
 
   const totalRent = validRents.reduce((acc, curr) => acc + curr, 0);
@@ -80,8 +82,7 @@ function calculateAverageRent(comparables: any[], fallbackRent: number) {
 
 export async function POST(req: Request) {
   try {
-    // Extraemos la dirección y la nueva escala de condición del body
-    // Por defecto asume 3 si el frontend no la envía
+    
     const { address, conditionScale = 3 } = await req.json();
     
     if (!address) {
@@ -117,23 +118,18 @@ export async function POST(req: Request) {
     // 2. Procesar datos físicos de la propiedad
     const record = Array.isArray(propData) ? propData[0] : (propData.property || propData.properties?.[0] || {});
     
-    const sqft = record.squareFootage || 1500;
-    const yearBuilt = record.yearBuilt || 0;
+    const sqft = Number(record.squareFootage) || 1500;
+    const yearBuilt = Number(record.yearBuilt) || 0;
     const propertyType = record.propertyType || "Single Family";
-    const bedrooms = record.bedrooms || 3;
-    const bathrooms = record.bathrooms || 2;
+    const bedrooms = Number(record.bedrooms) || 3;
+    const bathrooms = Number(record.bathrooms) || 2;
     
-    const lotSize = record.lotSize || 0;
-    const garage = record.garageSpaces || 0;
+    const lotSize = Number(record.lotSize) || 0;
+    const garage = Number(record.garageSpaces) || 0;
 
-    //const annualTaxes = record.propertyTaxes || 0;
-    //const taxesMonthly = annualTaxes > 0 ? Math.round(annualTaxes / 12) : 250;
-
-    // 3. Extraer Valores Base de AVM
-    const baseAvmPrice = avmData.price || 0;
-    const baseAvmRent = rentData.rent || 0;
-
-    // 4. Calcular Valores Mejorados usando Comparables
+    const baseAvmPrice = Number(avmData.price) || 0;
+    const baseAvmRent = Number(rentData.rent) || 0;
+    
     const salesComps = avmData.comparables || [];
     const rentComps = rentData.comparables || [];
 
@@ -142,7 +138,7 @@ export async function POST(req: Request) {
 
 
     // 5. LÓGICA DE IMPUESTOS Y SEGUROS (Requisito del Ticket)
-    let annualTaxes = record.propertyTaxes || 0;
+    let annualTaxes = Number(record.propertyTaxes) || 0;
 
     // Fallback de Impuestos: Si no hay datos, usar el 2% del precio de venta estimado (ARV)
     if (annualTaxes === 0 && arv > 0) {
@@ -151,14 +147,14 @@ export async function POST(req: Request) {
     const taxesMonthly = Math.round(annualTaxes / 12);
 
     // Fallback de Seguros: Si no hay, estimamos un 0.5% del ARV anual por defecto
-    let insuranceAnnual = record.propertyInsurance || 0;
+    let insuranceAnnual = Number(record.propertyInsurance) || 0;
     if (insuranceAnnual === 0 && arv > 0) {
       insuranceAnnual = arv * 0.005;
     }
 
     // 5. Calcular costos de reparación y estado de la propiedad usando la NUEVA escala
     const repairs = calculateRepairs(sqft, yearBuilt, propertyType, validCondition);
-    const lastSalePrice = record.lastSalePrice || null;
+    const lastSalePrice = Number(record.lastSalePrice) || null;
     const isDistressed = (lastSalePrice && arv > 0 && lastSalePrice < arv * 0.65) || (yearBuilt > 0 && yearBuilt < 1978);
 
     // 6. Retornar al frontend
