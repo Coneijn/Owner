@@ -11,12 +11,11 @@ import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
 import MapLegend from '../components/MapLegend';  
 import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
-import CashOfferWidget from '../components/CashOfferWidget';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Aplicar',
+  title: 'Apply',
   description: 'Inicia tu proceso de compra o renta directa.',
 };
 
@@ -89,7 +88,7 @@ export default async function SellersPage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
+  const lang = (searchParams?.lang === 'es' ? 'es' : 'en') as 'es' | 'en';
   const t = DICTIONARY[lang];
   
   const formUrl = lang === 'en' ? FORM_URLS.en : FORM_URLS.es;

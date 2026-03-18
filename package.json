@@ -15,6 +15,7 @@
     "@react-google-maps/api": "^2.20.8",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
+    "chartjs": "^0.3.24",
     "dotenv": "^17.2.3",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
