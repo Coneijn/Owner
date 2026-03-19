@@ -11,11 +11,11 @@ import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
 import MapLegend from '../components/MapLegend';  
 import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
-import CashOfferWidget from '../components/CashOfferWidget';
+
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Aplicar',
+  title: 'Apply',
   description: 'Inicia tu proceso de compra o renta directa.',
 };
 
@@ -26,75 +26,20 @@ const FORM_URLS = {
 
 // 1. Traemos la data de los Zip Codes para sumar los compradores
 const SELLER_DATA: Record<string, number> = {
-  "38115": 82,
-  "38118": 64,
-  "38122": 61,
-  "38116": 45,
-  "38141": 45,
-  "38125": 36,
-  "38111": 27,
-  "38135": 28,
-  "38128": 18,
-  "38117": 16,
-  "38133": 16,
-  "38120": 14,
-  "38134": 12,
-  "38127": 10,
-  "38119": 9,
-  "38107": 8,
-  "38108": 7,
-  "38126": 6,
-  "38109": 5,
-  "38018": 4,
-  "38114": 4,
-  "38016": 4,
-  "38305": 3,
-  "38654": 3,
-  "38112": 3,
-  "38103": 2,
-  "38138": 2,
-  "38104": 2,
-  "38671": 2,
-  "38017": 2,
-  "38053": 2,
-  "38637": 2,
-  "38106": 2,
-  "38058": 1,
-  "38060": 1,
-  "38002": 1,
-  "35221": 1,
-  "55448": 1,
-  "10102": 1,
-  "33133": 1,
-  "28610": 1,
-  "74115": 1,
-  "32809": 1,
-  "28075": 1,
-  "34142": 1,
-  "28671": 1,
-  "37804": 1,
-  "75061": 1,
-  "95407": 1,
-  "52501": 1,
-  "37311": 1,
-  "68850": 1,
-  "10028": 1,
-  "37210": 1,
-  "37814": 1,
-  "37402": 1,
-  "38166": 1,
-  "38237": 1,
-  "38611": 1,
-  "38632": 1,
-  "38651": 1,
-  "30125": 1,
-  "37211": 1,
-  "38012": 1,
-  "54143": 1,
-  "37130": 1,
-  "18800": 1,
-  "38668": 1,
-  "38066": 1
+  "38115": 82, "38118": 64, "38122": 61, "38116": 45, "38141": 45,
+  "38125": 36, "38111": 27, "38135": 28, "38128": 18, "38117": 16,
+  "38133": 16, "38120": 14, "38134": 12, "38127": 10, "38119": 9,
+  "38107": 8, "38108": 7, "38126": 6, "38109": 5, "38018": 4,
+  "38114": 4, "38016": 4, "38305": 3, "38654": 3, "38112": 3,
+  "38103": 2, "38138": 2, "38104": 2, "38671": 2, "38017": 2,
+  "38053": 2, "38637": 2, "38106": 2, "38058": 1, "38060": 1,
+  "38002": 1, "35221": 1, "55448": 1, "10102": 1, "33133": 1,
+  "28610": 1, "74115": 1, "32809": 1, "28075": 1, "34142": 1,
+  "28671": 1, "37804": 1, "75061": 1, "95407": 1, "52501": 1,
+  "37311": 1, "68850": 1, "10028": 1, "37210": 1, "37814": 1,
+  "37402": 1, "38166": 1, "38237": 1, "38611": 1, "38632": 1,
+  "38651": 1, "30125": 1, "37211": 1, "38012": 1, "54143": 1,
+  "37130": 1, "18800": 1, "38668": 1, "38066": 1
 };
 
 // Sumamos todos los valores del objeto
@@ -143,7 +88,7 @@ export default async function SellersPage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
+  const lang = (searchParams?.lang === 'es' ? 'es' : 'en') as 'es' | 'en';
   const t = DICTIONARY[lang];
   
   const formUrl = lang === 'en' ? FORM_URLS.en : FORM_URLS.es;
@@ -229,18 +174,13 @@ export default async function SellersPage(props: {
       
       <Header lang={lang} />
 
-      <div className="mb-8">
-          <CashOfferWidget lang={lang}/>
-
-      </div>
+      
 
       <SellerFunnelWrapper lang={lang} />
       <ProblemsWeSolve lang={lang} /> 
 
       {/* Se pasa el array de items traducidos al Marquee */}
       <Marquee items={t.marqueeItems} />
-
-      
 
       {/* SECCIÓN SUPERIOR (Hero + Métricas integradas) */}
       <section className="relative bg-gradient-to-b from-gray-900 to-[#1a1a1a] pt-8 pb-8 px-4 border-b border-gray-800">

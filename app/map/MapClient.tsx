@@ -159,7 +159,7 @@ const sellerData: Record<string, number> = {
   "38668": 1,
   "38066": 1
 };
-const libraries: ("visualization")[] = ["visualization"];
+const libraries: ("places" | "visualization")[] = ["places", "visualization"];
 // Estilos oscuros limpios para el mapa
 const cleanMapStyles = [
   { elementType: "geometry", stylers: [{ color: "#0a0f1c" }] },

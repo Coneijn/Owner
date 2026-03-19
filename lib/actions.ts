@@ -492,3 +492,96 @@ export async function updateSellerProfile(id: string, prevState: any, formData: 
   revalidatePath('/admin/sellers');
   return { success: true }; // ✅ DEVOLVER ÉXITO
 }
+// 1. CREAR EL BORRADOR INICIAL (Sin fotos)
+export async function createDraftPropertyFromFunnel(data: any) {
+  try {
+    const slug = `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    
+    // Discernir si es renta o venta basado en el widget
+    const isRent = data.strategySelected === 'rent';
+    const isSale = !isRent; // Por defecto lo tratamos como venta si es Seller Finance, Cash, etc.
+
+    const draftFeatures :string[] = [];
+    if (data.garage && Number(data.garage) > 0) {
+       draftFeatures.push(`Garage: ${data.garage}`);
+    }
+
+    const draftProperty = await prisma.property.create({
+      data: {
+        slug,
+        status: PropertyStatus.DRAFT,
+        isOffMarket: true,
+        isForSale: isSale,
+        isForRent: isRent,
+        titleEn: `Draft: ${data.street || 'Pending Address'}`,
+        titleEs: `Borrador: ${data.street || 'Dirección Pendiente'}`,
+        descriptionEn: data.description || 'Draft property created from the seller funnel.',
+        descriptionEs: data.description || 'Propiedad en borrador creada desde el embudo de vendedores.',
+        
+        // Datos de Ubicación Actualizados
+        address: data.street || 'Dirección pendiente',
+        city: data.city || 'Ciudad pendiente',
+        state: data.state || 'Estado pendiente',
+        zipCode: data.zip || '00000',
+        phoneNumber: data.phone || data.phoneNumber || '', 
+        
+        // Campos Físicos
+        bedrooms: data.beds ? Number(data.beds) : 0,
+        bathrooms: data.baths ? Number(data.baths) : 0,
+        sqft: data.sqft ? Number(data.sqft) : 0,
+        yearBuilt: data.yearBuilt ? Number(data.yearBuilt) : new Date().getFullYear(),
+        lotSize: data.lotSize ? Number(data.lotSize) : 0, // Aprovechamos para guardar el lote
+        features: draftFeatures, // Guardamos el array que contiene el garaje
+        // Datos Financieros (Condicionales)
+        price: isSale && data.askingPrice ? Number(data.askingPrice) : null,
+        downPayment: isSale && data.downPayment ? Number(data.downPayment) : null,
+        interestRate: isSale && data.interestRate ? Number(data.interestRate) : null,
+        taxes: isSale && data.taxes ? Number(data.taxes) : null,
+        insurance: isSale && data.insurance ? Number(data.insurance) : null,
+        monthlyRent: isRent && data.monthlyRent ? Number(data.monthlyRent) : null,
+
+        mainImage: "", 
+        showingNotes: `CONTACTO LEAD:\nNombre: ${data.firstName} ${data.lastName}\nTel: ${data.phone}\nEmail: ${data.email}\nEstrategia Elegida: ${data.strategySelected || 'N/A'}`,
+      }
+    });
+
+    return { success: true, propertyId: draftProperty.id };
+  } catch (error) {
+    console.error("Error creating draft property:", error);
+    return { success: false, message: "No se pudo guardar el borrador en la BD." };
+  }
+}
+// 2. ACTUALIZAR EL BORRADOR CON FOTOS Y LOCKBOX
+export async function updateDraftPropertyMedia(propertyId: string, photos: any[], lockboxCode: string) {
+  try {
+    const mainImageUrl = photos && photos.length > 0 ? photos[0].url : "";
+    const galleryUrls = photos && photos.length > 1 ? photos.slice(1).map((p: any) => p.url) : [];
+
+    const imagesToCreate = photos.map((img: any, index: number) => ({
+        url: img.url,
+        altText: '',
+        title: '',
+        caption: '',
+        description: '',
+        isMain: index === 0,
+        order: index
+    }));
+
+    await prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        lockboxCode: lockboxCode || null,
+        mainImage: mainImageUrl,
+        galleryImages: galleryUrls,
+        images: {
+            create: imagesToCreate
+        }
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating draft property media:", error);
+    return { success: false, message: "No se pudieron actualizar las fotos del borrador." };
+  }
+}
