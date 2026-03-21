@@ -1,0 +1,416 @@
+// 1. Configuración del Generador y la Fuente de Datos
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 2. Modelo de Usuario 
+// Busca tu modelo User y actualízalo así:
+model User {
+  id                  String   @id @default(cuid())
+  name                String?
+  email               String   @unique
+  password            String // Hash del password
+  role                Role     @default(ADMIN)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // Seguridad y Onboarding
+  twoFactorSecret     String? 
+  isTwoFactorEnabled  Boolean  @default(false)
+  forcePasswordChange Boolean  @default(true) // <-- NUEVO: Para el flujo de onboarding
+  auditLogs           AuditLog[]
+  // Relaciones de Perfiles
+  sellerProfile       SellerProfile?
+  agentProfile        AgentProfile?  // <-- NUEVO: Relación con el Agente
+
+  buyerProfile        BuyerProfile?  // <-- NUEVO: Relación con el Comprador
+}
+
+model SellerProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Datos públicos del vendedor
+  sellerName  String?  // Nombre a mostrar públicamente
+  sellerImage String?  // Avatar público
+  sellerType  String   @default("OWNER")
+  phone String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relación 1-a-Muchos con las propiedades
+  properties  Property[]
+}
+// NUEVO MODELO: Perfil para Agentes que refieren clientes
+model AgentProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String?  @unique
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Datos del agente
+  agentName   String?
+  agentPhone  String?
+  agentImage  String?
+  company     String?  // Opcional, por si trabajan para una agencia
+  
+  // Notas internas sobre comisiones o acuerdos
+  commissionNotes String? @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+// 3. Modelo de Propiedad 
+model Property {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- Gestión Interna y Estado ---
+  slug        String         @unique
+  status      PropertyStatus @default(AVAILABLE)
+  isFeatured  Boolean        @default(false)
+  // Para ocultar propiedades del catálogo público
+  isOffMarket Boolean        @default(false)
+
+  // --- Contenido Bilingüe ---
+  // Títulos
+  titleEn       String
+  titleEs       String
+  // Descripciones 
+  descriptionEn String @db.Text
+  descriptionEs String @db.Text
+
+  // --- Datos Financieros (Venta) ---
+  isForSale    Boolean @default(true)
+  price        Decimal? @db.Decimal(10, 2) 
+
+  previousPrice Decimal? @db.Decimal(10, 2)
+  lastPriceChangeAt DateTime?
+
+  downPayment  Decimal? @db.Decimal(10, 2) 
+  interestRate Decimal? @db.Decimal(5, 2) 
+  taxes        Decimal? @db.Decimal(10, 2) 
+  insurance    Decimal? @db.Decimal(10, 2)
+
+  // --- Datos Financieros (Renta / Lease) [NUEVO] ---
+  isForRent       Boolean  @default(false)
+  monthlyRent     Decimal? @db.Decimal(10, 2)
+  securityDeposit Decimal? @db.Decimal(10, 2)
+
+  // --- Ubicación y Contacto ---
+  address      String
+  city         String
+  state        String
+  zipCode      String
+  phoneNumber  String?
+  calendarLink String?
+  
+  // CAMPOS DE UBICACIÓN 
+  latitude      Float?
+  longitude     Float?
+  lockboxCode   String?
+  lockboxAccesses LockboxAccess[] // Relación con los magic links generados
+  availableDate DateTime?
+
+  // --- Especificaciones Técnicas ---
+  bedrooms  Int
+  bathrooms Float
+  sqft      Int
+  lotSize   Int?
+  yearBuilt Int?
+
+  // --- Multimedia ---
+  mainImage     String
+  galleryImages String[]
+  videoUrl      String?         @default("")
+  images        PropertyImage[]
+
+  // --- SEO de la Página (Meta Tags) ---
+  seoTitleEn       String?
+  seoDescriptionEn String? @db.Text
+  seoTitleEs       String?
+  seoDescriptionEs String? @db.Text
+  focusKeywordEn String?
+  focusKeywordEs String?
+  // --- Características Extra ---
+  features String[]
+
+  // --- Sección "Conoce a tu Vendedor" ---
+  showSeller  Boolean @default(false)
+  sellerProfileId String?
+  sellerProfile   SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: SetNull)
+
+  //contenido para agentes 
+  emoji              String?
+  condition          String?
+  commissionPct      Decimal? @db.Decimal(5, 2)
+  commissionAmt      Decimal? @db.Decimal(10, 2)
+  commissionNote     String?  @db.Text
+  showingSteps       String[]
+  showingNotes       String?  @db.Text
+  buyerTags          String[]
+  buyerIncome        String?
+  buyerCredit        String?
+  buyerFinancing     String?
+  marketingMaterials MarketingMaterial[]
+  contracts Contract[]
+}
+
+//Usado por el agente
+model MarketingMaterial {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title      String
+  body       String   @db.Text
+  script     String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// 4. Modelo de Blog Post (Actualizado)
+model Post {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slug        String   @unique
+  isPublished Boolean  @default(false)
+
+  // Contenido Bilingüe
+  titleEn   String
+  titleEs   String
+  contentEn String @db.Text // Puede ser Markdown o HTML
+  contentEs String @db.Text
+
+  // Multimedia Principal
+  mainImage String?
+
+  // --- Imágenes Inline del Post [NUEVO] ---
+  postImages PostImage[]
+
+  // --- Sección de Autor / Bio por Post [NUEVO] ---
+  authorName  String?
+  authorImage String?
+  authorBioEn String? @db.Text
+  authorBioEs String? @db.Text
+
+  // --- SEO Avanzado [ACTUALIZADO] ---
+  seoTitleEn     String?
+  seoDescEn      String?
+  focusKeywordEn String? // Keyword principal EN
+
+  seoTitleEs     String?
+  seoDescEs      String?
+  focusKeywordEs String? // Keyword principal ES
+  isCaseStudy Boolean @default(false) // <-- NUEVO: Para el blog de casos de estudio
+}
+
+// 5. Modelo de Imágenes para el Blog [NUEVO]
+model PostImage {
+  id      String  @id @default(cuid())
+  url     String
+  altText String?
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+// NUEVO MODELO: Registro de Auditoría Centralizado (Para Accesos y Cambios en Plataforma)
+model AuditLog {
+  id           String   @id @default(cuid())
+  
+  // 1. QUÉ pasó
+  action       String   // Ej: "MAGIC_LINK_GENERATED", "PROPERTY_UPDATED", "PROPERTY_DELETED"
+  entityType   String?  // Ej: "LOCKBOX", "PROPERTY", "SELLER_PROFILE"
+  entityId     String?  // El ID del registro que fue modificado o creado
+  
+  // 2. QUIÉN lo hizo (Actor Interno: Admin / Seller)
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // 3. QUIÉN lo hizo (Actor Externo: Cliente desde GHL)
+  contactPhone String?
+  contactName  String?
+  
+  // 4. CONTEXTO (Datos fijos por si la propiedad o el usuario son eliminados en el futuro)
+  propertyId   String?  // Relación suave (solo el ID como texto)
+  address      String?  
+  details      String?  @db.Text // Aquí puedes guardar qué campos cambiaron (en formato JSON o texto)
+  
+  createdAt    DateTime @default(now())
+}
+// NUEVO MODELO: Sesión temporal segura para la vista del Dropdown
+model SelectionSession {
+  id           String   @id @default(cuid())
+  token        String   @unique // Token corto para la URL (ej. misitio.com/seleccionar/abc-123)
+  
+  // Datos del solicitante guardados de forma segura (No van en la URL)
+  contactPhone String   // Aquí sí lo hacemos obligatorio
+  contactName  String?
+  
+  // Control de tiempo y uso
+  expiresAt    DateTime // Le puedes dar más tiempo, ej. 30 minutos o 1 hora
+  isUsed       Boolean  @default(false) // Se marca true cuando eligen la casa
+  
+  createdAt    DateTime @default(now())
+}
+// NUEVO MODELO: Sistema de Magic Links para Códigos de Lockbox
+model LockboxAccess {
+  id          String   @id @default(cuid())
+  token       String   @unique // El hash único para la URL (ej. misitio.com/access/ab12cd34)
+  
+  // Relación con la propiedad
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // Datos del solicitante (Viene de GHL)
+  contactName  String?
+  contactPhone String? 
+  
+  // Control de tiempo y uso
+  expiresAt   DateTime // Se calculará como now() + 5 minutos al crearlo
+  isUsed      Boolean  @default(false) // Para invalidarlo si ya lo abrieron y se salieron
+  
+  createdAt   DateTime @default(now())
+}
+// 6. Modelo de Imágenes de Propiedades (Existente)
+model PropertyImage {
+  id  String @id @default(cuid())
+  url String
+
+  // Metadatos
+  altText     String?
+  title       String?
+  caption     String?
+  description String?
+
+  // Orden y Tipo
+  order  Int     @default(0)
+  isMain Boolean @default(false) // Para identificar la principal
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+
+
+// --- NUEVO: Perfil del Cliente (Comprador o Inquilino) ---
+model BuyerProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String?  @unique
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Datos del cliente (Cabecera del CSV)
+  firstName   String
+  lastName    String
+  phone       String?
+  // El email ya vive en el modelo User principal
+
+  // Relación con sus contratos de propiedades
+  contracts   Contract[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// --- NUEVO: Términos del Préstamo o Renta (Cabecera y Resumen del CSV) ---
+model Contract {
+  id              String   @id @default(cuid())
+  
+  // Relaciones
+  propertyId      String
+  property        Property @relation(fields: [propertyId], references: [id])
+  buyerProfileId  String
+  buyer           BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+
+  // Tipo de contrato
+  type            ContractType @default(LOAN) 
+
+  // Datos Financieros (Términos iniciales)
+  totalAmount     Decimal  @db.Decimal(12, 2) // Valor total de la propiedad/préstamo
+  downPayment     Decimal  @db.Decimal(12, 2) // Enganche inicial
+  principalAmount Decimal  @db.Decimal(12, 2) // Capital original a financiar
+  interestRate    Decimal? @db.Decimal(5, 2)  // Tasa de interés (ej. 8.5)
+  termInYears     Int?     // Plazo en años (ej. 15 o 30)
+  startDate       DateTime // Fecha de inicio del contrato
+
+  // Cuotas Fijas Mensuales Adicionales (Escrow/Servicios)
+  monthlyTaxes     Decimal? @db.Decimal(10, 2)
+  monthlyInsurance Decimal? @db.Decimal(10, 2)
+  monthlyServFee   Decimal? @db.Decimal(10, 2) // Tarifa de servicio
+
+  isActive        Boolean  @default(true)
+
+  // Historial de amortización
+  payments        Payment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// --- NUEVO: Tabla de Amortización (Las filas detalladas de tus CSV) ---
+model Payment {
+  id            String   @id @default(cuid())
+  
+  contractId    String
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  paymentDate   DateTime // Fecha en la que toca el pago o se realizó
+  
+  // Desglose del pago mensual
+  totalDue      Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes en total
+  principal     Decimal  @db.Decimal(10, 2) // Cuánto va a capital
+  interest      Decimal  @db.Decimal(10, 2) // Cuánto va a intereses
+  taxes         Decimal? @db.Decimal(10, 2) // Impuestos de este mes
+  insurance     Decimal? @db.Decimal(10, 2) // Seguro de este mes
+  serviceFee    Decimal? @db.Decimal(10, 2) // Tarifa de servicio de este mes
+  lateFee       Decimal? @db.Decimal(10, 2) @default(0) // Penalizaciones por atraso
+  
+  // Saldo restante DESPUÉS de este pago
+  remainingBalance Decimal @db.Decimal(12, 2) 
+
+  // Control de estado
+  status        PaymentStatus @default(PENDING) 
+  paidAt        DateTime?     // Fecha real en que el cliente pagó
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+// 7. Enums
+enum Role {
+  ADMIN
+  STAFF
+  USER
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  UNDER_CONTRACT
+  SOLD
+  DRAFT
+  COMING_SOON
+}
+// --- NUEVOS ENUMS ---
+enum ContractType {
+  LOAN
+  LEASE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  LATE
+  PARTIAL
+}

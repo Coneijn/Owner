@@ -1,0 +1,60 @@
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import Image from 'next/image';
+import Header from '@/app/components/Header'; // <--- 1. Importamos el Header
+
+export default async function BlogIndexPage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
+  const { lang } = await searchParams;
+  const currentLang = lang === 'en' ? 'en' : 'es';
+  
+  // Obtener solo posts publicados
+  const posts = await prisma.post.findMany({
+    where: { 
+      isPublished: true,
+      isCaseStudy: false // <-- AÑADIR ESTE FILTRO
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  return (
+    <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
+      
+      {/* 2. Usamos el componente Header con la página activa */}
+      <Header lang={currentLang} activePage="blog" />
+      
+      <main className="max-w-7xl mx-auto px-4 py-16">
+        <h1 className="text-5xl font-black text-[#f8ed1a] uppercase mb-10 text-center">
+          {currentLang === 'en' ? 'Latest News' : 'Últimas Noticias'}
+        </h1>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {posts.map(post => (
+            <Link key={post.id} href={`/blog/${post.slug}?lang=${currentLang}`} className="group">
+              <article className="bg-[#242424] rounded-xl overflow-hidden border border-gray-800 hover:border-[#f8ed1a] transition-all h-full flex flex-col">
+                <div className="relative h-48 w-full">
+                   {post.mainImage ? (
+                     <Image src={post.mainImage} alt="Cover" fill className="object-cover group-hover:scale-105 transition-transform" />
+                   ) : (
+                     <div className="w-full h-full bg-gray-800 flex items-center justify-center text-4xl">📰</div>
+                   )}
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  <h2 className="text-xl font-bold mb-2 uppercase text-white group-hover:text-[#f8ed1a]">
+                    {currentLang === 'en' ? post.titleEn : post.titleEs}
+                  </h2>
+                  <p className="text-gray-400 text-sm line-clamp-3 mb-4">
+                    {/* Vista previa simple del contenido */}
+                    {currentLang === 'en' ? post.contentEn.substring(0, 100) : post.contentEs.substring(0, 100)}...
+                  </p>
+                  <span className="mt-auto pt-4 text-[#529e14] font-bold text-sm uppercase flex items-center gap-2">
+                    {currentLang === 'en' ? 'Read More' : 'Leer Más'} <span>→</span>
+                  </span>
+                </div>
+              </article>
+            </Link>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
