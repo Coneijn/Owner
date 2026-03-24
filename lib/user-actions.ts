@@ -187,16 +187,16 @@ export async function setupTwoFactor() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { twoFactorSecret: true }
+    select: { twoFactorSecret: true, role: true }
   });
 
   let secret = user?.twoFactorSecret;
   let qrCodeUrl = '';
 
   if (secret) {
-    qrCodeUrl = await generateQrFromSecret(session.user.email, secret);
+    qrCodeUrl = await generateQrFromSecret(session.user.email, secret, user?.role);
   } else {
-    const generated = await generateTwoFactorSecret(session.user.email);
+    const generated = await generateTwoFactorSecret(session.user.email, user?.role);
     secret = generated.secret;
     qrCodeUrl = generated.qrCodeUrl;
 

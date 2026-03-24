@@ -8,12 +8,13 @@ authenticator.options = { window: 1 }; // Ventana de 1 para tolerar ligeros desa
 /**
  * Genera un secreto único para el usuario y la URL para el QR.
  * @param email Email del usuario para mostrar en la app Authy/Google Auth
+ * @param role Rol del usuario para identificar la cuenta (ej. ADMIN, SELLER)
  */
-export const generateTwoFactorSecret = async (email: string) => {
+export const generateTwoFactorSecret = async (email: string, role: string = 'USER') => {
   const secret = authenticator.generateSecret();
   
-  // El nombre de la app que aparecerá en Google Authenticator
-  const appName = 'Dueño a Dueño Admin'; 
+  // 👇 Construimos el nombre de la app dinámicamente usando el rol
+  const appName = `d2d ${role}`; 
   
   const otpauth = authenticator.keyuri(email, appName, secret);
   
@@ -27,14 +28,19 @@ export const generateTwoFactorSecret = async (email: string) => {
 };
 
 /**
+ * Genera un nuevo QR a partir de un secreto ya existente.
+ */
+export const generateQrFromSecret = async (email: string, secret: string, role: string = 'USER') => {
+    // 👇 Aplicamos el mismo cambio aquí
+    const appName = `d2d ${role}`; 
+    const otpauth = authenticator.keyuri(email, appName, secret);
+    
+    return await QRCode.toDataURL(otpauth);
+};
+
+/**
  * Verifica el token ingresado por el usuario contra su secreto guardado.
  */
-// lib/otp.ts
-export const generateQrFromSecret = async (email: string, secret: string) => {
-    const appName = 'Dueño a Dueño Admin'; 
-    const otpauth = authenticator.keyuri(email, appName, secret);
-    return await QRCode.toDataURL(otpauth);
-  };
 export const verifyTwoFactorToken = (token: string, secret: string) => {
     try {
       // Imprime esto en tu terminal del servidor
@@ -55,4 +61,4 @@ export const verifyTwoFactorToken = (token: string, secret: string) => {
       console.error("Error verificando OTP:", error);
       return false;
     }
-  };
+};
