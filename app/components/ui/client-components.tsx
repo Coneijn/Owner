@@ -227,23 +227,44 @@ export function ChangePasswordForm() {
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   async function handleSubmit(formData: FormData) {
-    const result = await changePassword(formData);
-    if (result.error) {
-      setMessage({ text: result.error, type: 'error' });
-    } else if (result.success) {
-      setMessage({ text: 'Password updated successfully!', type: 'success' });
-      // Reset form logic if needed, usually managed by key or resetting form HTML
+    setMessage(null);
+    try {
+      const result = await changePassword(formData);
+      
+      if (result && result.error) {
+        setMessage({ text: result.error, type: 'error' });
+        const form = document.getElementById('change-password-form') as HTMLFormElement;
+        form?.reset();
+      } else if (result && result.success) {
+        setMessage({ text: 'Password updated successfully!', type: 'success' });
+        const form = document.getElementById('change-password-form') as HTMLFormElement;
+        form?.reset();
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      }
+    } catch (error: any) {
+      // Si Next.js nos está pidiendo recargar/redirigir, lo dejamos pasar
+      if (error?.message === 'NEXT_REDIRECT' || error?.digest?.includes('NEXT_REDIRECT')) {
+        throw error; 
+      }
+      
+      // Si es un fallo de verdad, entonces sí mostramos la alerta
+      setMessage({ text: 'Verify your passwords and try again. They must match.', type: 'error' });
       const form = document.getElementById('change-password-form') as HTMLFormElement;
       form?.reset();
-      //refrescar la pagina para que pueda entrar sin f5
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+    }
+  }
+
+  // Función para borrar la alerta de error en cuanto el usuario empiece a teclear de nuevo
+  function handleFormChange() {
+    if (message?.type === 'error') {
+      setMessage(null);
     }
   }
 
   return (
-    <form id="change-password-form" action={handleSubmit} className="space-y-4">
+    <form id="change-password-form" action={handleSubmit} onChange={handleFormChange} className="space-y-4">
       <div>
         <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Current Password</label>
         <input name="currentPassword" type="password" required className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#f8ed1a] outline-none transition-colors" />

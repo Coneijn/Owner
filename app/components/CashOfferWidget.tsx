@@ -2,7 +2,7 @@
 
 import { useState,useEffect,useRef } from 'react';
 import { useJsApiLoader, Autocomplete, GoogleMap, Marker,InfoWindow } from '@react-google-maps/api';
-
+import RehabConditionWheel from './RehabConditionWheel';
 interface DealInputs {
   arv: number;
   rehabCosts: number;
@@ -75,7 +75,12 @@ const i18n = {
     sectionCosts: "Costos de Venta", discountInput: "Descuento Inversionista %", realtorInput: "Comisión Realtor %",
     sectionBank: "Términos del Banco (Tú)", pricePremiumInput: "Precio de Venta (% del ARV)", downPaymentInput: "Enganche Requerido",
     sectionReturns: "Retornos Financieros", interestInput: "Tasa de Interés a Cobrar %", termInput: "Plazo del Préstamo (Años)",
-    compsTitle: "Propiedades Comparables"
+    compsTitle: "Propiedades Comparables",
+    selectCompsTitle: "Selecciona de 3 a 5 propiedades",
+    selectCompsDesc: "Usaremos el precio promedio por pie cuadrado de estas casas para afinar el valor de la tuya.",
+    selectedText: "Seleccionada",
+    selectText: "Elegir",
+    closeBtn: "Guardar y Calcular"
   },
   en: {
     title: "Discover Your Property's True Potential",
@@ -125,7 +130,12 @@ const i18n = {
     sectionCosts: "Selling Costs", discountInput: "Investor Discount %", realtorInput: "Realtor Fee %",
     sectionBank: "The Bank's Terms (You)", pricePremiumInput: "Sale Price (% of ARV)", downPaymentInput: "Required Down Payment",
     sectionReturns: "Financial Returns", interestInput: "Interest Rate %", termInput: "Loan Term (Years)",
-    compsTitle: "Comparable Properties"
+    compsTitle: "Comparable Properties",
+    selectCompsTitle: "Select 3 to 5 similar properties",
+    selectCompsDesc: "We will use the average price per square foot of these homes to fine-tune your home's value.",
+    selectedText: "Selected",
+    selectText: "Select",
+    closeBtn: "Save & Calculate"
   }
 };
 
@@ -150,6 +160,7 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
   const [parsedAddress, setParsedAddress] = useState({ street: '', city: '', state: '', zip: '', lat: 0, lng: 0 });
   const [mapFilter, setMapFilter] = useState<'available' | 'sold'>('available'); 
   const [selectedPin, setSelectedPin] = useState<any>(null);
+  const [selectedComps, setSelectedComps] = useState<any[]>([]);
 
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -219,6 +230,19 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
     }, [conditionScale, propertyDetails?.sqft]);
 
   useEffect(() => {
+    if (selectedComps.length > 0 && propertyDetails?.sqft) {
+      // Promedio del precio por pie cuadrado de las seleccionadas
+      const avgPpsf = selectedComps.reduce((sum, comp) => {
+        const sqft = comp.sqft || comp.squareFeet || 1; 
+        return sum + (comp.price / sqft);
+      }, 0) / selectedComps.length;
+      
+      const newArv = Math.round(avgPpsf * propertyDetails.sqft);
+      setInputs(prev => ({ ...prev, arv: newArv }));
+    }
+  }, [selectedComps, propertyDetails?.sqft]);
+
+  useEffect(() => {
     const calc = () => {
       const { 
         arv, rehabCosts, estimatedRent, investorDiscountPercent, realtorFeePercent,
@@ -276,16 +300,22 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error.');
 
-      setPropertyDetails(data);
+      // Filtrar las 5 más caras y pre-seleccionar las 3 primeras
+      const sortedComps = (data.recentSales || []).sort((a: any, b: any) => b.price - a.price).slice(0, 5);
+      const initialSelected = sortedComps.slice(0, 3);
+      
+      setPropertyDetails({ ...data, recentSales: sortedComps });
+      setSelectedComps(initialSelected);
 
       setInputs(prev => ({
         ...prev,
-        arv: data.arv || prev.arv,
+        // El ARV se actualizará solito en el useEffect basado en 'initialSelected'
+        arv: data.arv || prev.arv, 
         rehabCosts: data.repairCosts !== undefined ? data.repairCosts : prev.rehabCosts,
         estimatedRent: data.estimatedRent || prev.estimatedRent,
         //sfDownPaymentFlat: (data.arv || prev.arv) * (prev.sfDownPaymentPercent / 100),
-        taxesAnnual: data.annualTaxes !== undefined ? data.annualTaxes : prev.taxesAnnual,
-        insuranceAnnual: data.insuranceAnnual !== undefined ? data.insuranceAnnual : prev.insuranceAnnual
+        taxesAnnual: data.annualTaxes !== undefined ? parseFloat(Number(data.annualTaxes).toFixed(2)) : prev.taxesAnnual,
+        insuranceAnnual: data.insuranceAnnual !== undefined ? parseFloat(Number(data.insuranceAnnual).toFixed(2)) : prev.insuranceAnnual
 
       }));
     } catch (err: any) {
@@ -346,19 +376,16 @@ return (
           )}
           
           <div className="bg-black/20 p-4 rounded-lg border border-white/5">
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-semibold text-gray-300">{t.conditionLabel} <span className="text-[#529e14] font-bold text-lg">{conditionScale}</span></label>
+            <div className="mb-4">
+              <label className="text-sm font-semibold text-gray-300">
+                {t.conditionLabel} <span className="text-[#529e14] font-bold text-lg">{conditionScale}</span>
+              </label>
             </div>
-            <input 
-              type="range" min="0" max="5" step="1"
-              value={conditionScale}
-              onChange={(e) => setConditionScale(Number(e.target.value))}
-              className="w-full accent-[#529e14] cursor-pointer"
+            <RehabConditionWheel 
+              value={conditionScale} 
+              onChange={setConditionScale} 
+              lang={lang}
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-2 font-medium">
-              <span>{t.cond0}</span>
-              <span>{t.cond5}</span>
-            </div>
           </div>
           
           <button 
@@ -388,20 +415,76 @@ return (
                   📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}
                 </button>
 
-                {/* MODAL FLOTANTE DE COMPARABLES */}
+                {/* MODAL FLOTANTE DE COMPARABLES (FORMATO CARDS) */}
                 {showComps && (
-                  <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-[100] p-4 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">{t.compsTitle}</h4>
-                      <button onClick={() => setShowComps(false)} className="text-gray-500 hover:text-white">✕</button>
-                    </div>
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                      {propertyDetails.recentSales.map((comp: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-start gap-2 border-b border-white/5 pb-2 last:border-0">
-                          <span className="text-[11px] text-gray-300 leading-tight">{comp.address}</span>
-                          <span className="text-xs font-bold text-[#529e14] whitespace-nowrap">{formatMoney(comp.price)}</span>
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                      
+                      {/* HEADER MODAL */}
+                      <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1a1a1a] z-10 rounded-t-2xl">
+                        <div>
+                          <h3 className="text-xl font-black text-white">{t.selectCompsTitle}</h3>
+                          <p className="text-sm text-gray-400 mt-1">{t.selectCompsDesc}</p>
                         </div>
-                      ))}
+                        <button onClick={() => setShowComps(false)} className="text-gray-500 hover:text-white text-2xl font-bold">✕</button>
+                      </div>
+                      
+                      {/* GRID DE CARDS */}
+                      <div className="p-6 overflow-y-auto custom-scrollbar flex-grow">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {propertyDetails.recentSales.map((comp: any, idx: number) => {
+                            const isSelected = selectedComps.some(c => c.address === comp.address);
+                            const sqft = comp.sqft || comp.squareFeet || 1;
+                            const ppsf = comp.price / sqft;
+                            
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => {
+                                  if (isSelected) {
+                                    // Deseleccionar
+                                    setSelectedComps(selectedComps.filter(c => c.address !== comp.address));
+                                  } else {
+                                    // Seleccionar (Máximo 5)
+                                    if (selectedComps.length < 5) setSelectedComps([...selectedComps, comp]);
+                                  }
+                                }}
+                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col gap-2 ${isSelected ? 'border-[#529e14] bg-[#529e14]/10' : 'border-white/5 bg-black/40 hover:border-white/20'}`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs text-gray-300 font-medium leading-tight w-2/3">{comp.address}</span>
+                                  <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${isSelected ? 'bg-[#529e14] text-white' : 'bg-white/10 text-gray-400'}`}>
+                                    {isSelected ? '✓ ' + t.selectedText : '+ ' + t.selectText}
+                                  </span>
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-2xl font-black text-white">{formatMoney(comp.price)}</p>
+                                  <p className="text-xs text-[#529e14] font-bold mt-1">{formatMoney(ppsf)} / sqft</p>
+                                </div>
+                                <div className="flex gap-3 text-[11px] text-gray-500 mt-2 border-t border-white/5 pt-2">
+                                  <span>🛏️ {comp.bedrooms || '-'}</span>
+                                  <span>🚿 {comp.bathrooms || '-'}</span>
+                                  <span>📐 {sqft} sqft</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      {/* FOOTER MODAL */}
+                      <div className="p-6 border-t border-white/10 bg-black/20 flex justify-between items-center rounded-b-2xl">
+                        <span className="text-sm font-bold text-gray-300">
+                          {selectedComps.length} {lang === 'en' ? 'Selected' : 'Seleccionadas'}
+                        </span>
+                        <button 
+                          onClick={() => setShowComps(false)}
+                          className="bg-[#529e14] text-white px-8 py-3 rounded-lg font-black uppercase tracking-wide hover:bg-[#458510] transition-colors shadow-lg shadow-[#529e14]/20"
+                        >
+                          {t.closeBtn}
+                        </button>
+                      </div>
+
                     </div>
                   </div>
                 )}
@@ -699,9 +782,9 @@ return (
                 {t.transparencyTitle}
               </h4>
               <ul className="list-disc list-inside text-xs text-gray-400 space-y-2 leading-relaxed">
-                <li>
-                  {t.transparencyArv.replace('{n}', propertyDetails.recentSales?.length?.toString() || '0')}
-                </li>
+              <li>
+                {t.transparencyArv.replace('{n}', selectedComps.length.toString() || '0')}
+              </li>
                 <li>
                   {t.transparencyRehab.replace(
                     '{price}', 
