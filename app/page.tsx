@@ -228,7 +228,7 @@ export default async function MapPage(props: {
                 searchType={searchType}
             />
         </div>
-        <WhatsAppButton lang={lang} propertyName={contactName} />
+        <WhatsAppButton lang={lang} propertyName={contactName} position="left"/>
     </div>
   );
 }

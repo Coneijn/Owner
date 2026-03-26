@@ -28,9 +28,9 @@ export const { auth, signIn, signOut } = NextAuth({
           const user = await prisma.user.findUnique({ 
             where: { email },
             include: {
-              sellerProfile: true, // Traemos el perfil de vendedor si existe
-              // buyerProfile: true, // Descomenta esto en el futuro cuando agregues compradores
-              agentProfile: true, // Descomenta esto en el futuro cuando agregues agentes
+              sellerProfile: true, 
+              buyerProfile: true, 
+              agentProfile: true, 
             }
           });
           
@@ -63,7 +63,7 @@ export const { auth, signIn, signOut } = NextAuth({
           const userProfiles: string[] = [];
           
           if (user.sellerProfile) userProfiles.push('SELLER');
-          // if (user.buyerProfile) userProfiles.push('BUYER');
+          if (user.buyerProfile) userProfiles.push('BUYER');
            if (user.agentProfile) userProfiles.push('AGENT');
 
           // 3. Retornamos la información vital, inyectando el rol y los perfiles

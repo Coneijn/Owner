@@ -178,13 +178,17 @@ export async function POST(req: Request) {
       conditionScale: validCondition, // Devolvemos la escala usada para validación
       salesCompsCount: salesComps.length,
       rentCompsCount: rentComps.length,
+
       recentSales: salesComps
         .filter((c: any) => c.price > 0)
         .map((c: any) => ({
           address: c.formattedAddress || c.addressLine1 || 'Dirección no disponible',
-          price: c.price
+          price: c.price,
+          lat: Number(c.latitude) || 0,
+          lng: Number(c.longitude) || 0,
+          saleDate: c.removedDate || c.listedDate || null // <-- Usamos la fecha en que se vendió/quitó del mercado
         }))
-        .slice(0, 10) 
+        .slice(0, 10)
     });
 
   } catch (error) {

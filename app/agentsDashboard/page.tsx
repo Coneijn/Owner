@@ -5,11 +5,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth"; 
 
 import AgentDashboardClient from "./agent-dashboard-client";
+import { ChangePasswordForm, TwoFactorManager } from "../components/ui/client-components";
 
-// Importa aquí tus componentes de cliente para el onboarding
-// import ForcePasswordChangeClient from "@/components/onboarding/ForcePasswordChangeClient";
-// import Setup2FAClient from "@/components/onboarding/Setup2FAClient";
-// import CompleteAgentProfileClient from "@/components/onboarding/CompleteAgentProfileClient";
 
 export const metadata = {
   title: "Rep Portal — Owner To Dueño",
@@ -51,20 +48,38 @@ export default async function AgentDashboardPage() {
 
   // Renderizamos las vistas en orden estricto. El usuario no ve las propiedades hasta pasar esto.
   if (needsPasswordChange) {
-    // Reemplaza este div con tu componente real
-    return <div className="p-8 text-white">Componente: Obligar cambio de contraseña...</div>;
+    return (
+      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center p-4">
+         <div className="bg-[#1a1a1a] border border-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full">
+            <h2 className="text-[#f8ed1a] text-sm uppercase tracking-widest font-bold mb-2 text-center">
+                Paso 1: Seguridad
+            </h2>
+            <p className="text-gray-400 text-sm mb-6 text-center font-medium">
+                Por seguridad, debes crear una contraseña personal antes de ver tu contrato.
+            </p>
+            <ChangePasswordForm />
+         </div>
+      </div>
+    );
   }
 
   if (needs2FA) {
-    // Reemplaza este div con tu componente real
-    return <div className="p-8 text-white">Componente: Configurar Autenticación 2 Pasos...</div>;
+    return (
+      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center p-4">
+         <div className="bg-[#1a1a1a] border border-gray-800 p-8 rounded-xl shadow-2xl max-w-2xl w-full">
+            <h2 className="text-[#f8ed1a] text-sm uppercase tracking-widest font-bold mb-2 text-center">
+                Paso 2: Doble Factor (2FA)
+            </h2>
+            <p className="text-gray-400 text-sm mb-8 text-center font-medium">
+                Protege tu información financiera vinculando una aplicación de autenticación (como Google Authenticator).
+            </p>
+            <TwoFactorManager isEnabled={false} email={currentUser.email} />
+         </div>
+      </div>
+    );
   }
 
-  if (needsProfileCompletion) {
-    // Reemplaza este div con tu componente real pasándole el agentProfile
-    return <div className="p-8 text-white">Componente: Completar información del perfil de Agente...</div>;
-  }
-
+  
   // =========================================================================
   // 5. Flujo Normal: Si pasó todo el onboarding, cargamos su Dashboard
   // =========================================================================
@@ -122,7 +137,9 @@ export default async function AgentDashboardPage() {
 
   // Le pasamos las propiedades y opcionalmente los datos del agente al cliente
   return (
+    
     <AgentDashboardClient 
+    
       initialProps={serializedProps} 
       // Si en el futuro AgentDashboardClient necesita mostrar la foto del agente, 
       // puedes pasárselo así: agentData={currentUser.agentProfile}

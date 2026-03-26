@@ -1,3 +1,6 @@
+export function cn(...classes: (string | undefined | null | false)[]) {
+  return classes.filter(Boolean).join(" ");
+}
 export const DEFAULT_TERM_YEARS = 30;
 export const SERVICE_FEE = 39;
 

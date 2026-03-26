@@ -108,9 +108,18 @@ export async function createUser(formData: FormData) {
               sellerType: 'OWNER' // Por defecto lo asignamos como OWNER
             }
           }
-        })
+        }),
         // Si rawRole === 'admin', simplemente no se ejecuta ninguna de las dos 
         // y se crea un User normal con role: ADMIN.
+        ...(rawRole === 'buyer' && {
+          buyerProfile: {
+            create: {
+              firstName: name.trim().split(' ')[0] || 'buyer', // Toma la primera palabra
+              lastName: name.trim().split(' ').slice(1).join(' ') || ''
+            }
+          }
+        }),
+
       },
     });
   } catch (error) {
@@ -178,16 +187,16 @@ export async function setupTwoFactor() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { twoFactorSecret: true }
+    select: { twoFactorSecret: true, role: true }
   });
 
   let secret = user?.twoFactorSecret;
   let qrCodeUrl = '';
 
   if (secret) {
-    qrCodeUrl = await generateQrFromSecret(session.user.email, secret);
+    qrCodeUrl = await generateQrFromSecret(session.user.email, secret, user?.role);
   } else {
-    const generated = await generateTwoFactorSecret(session.user.email);
+    const generated = await generateTwoFactorSecret(session.user.email, user?.role);
     secret = generated.secret;
     qrCodeUrl = generated.qrCodeUrl;
 

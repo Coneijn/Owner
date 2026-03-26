@@ -39,7 +39,18 @@ function SubmitButton({ text, loadingText = 'Processing...', colorClass = 'bg-[#
 // ==========================================
 // 1. TWO FACTOR MANAGER (2FA)
 // ==========================================
-export function TwoFactorManager({ isEnabled, email }: { isEnabled: boolean; email: string }) {
+
+
+// Si tienes las funciones en otro archivo, asegúrate de importarlas
+// import { setupTwoFactor, confirmTwoFactor, disableTwoFactor } from './tus-servicios';
+
+interface TwoFactorManagerProps {
+  isEnabled: boolean;
+  email: string;
+  role: string; // <-- Nueva propiedad añadida
+}
+
+export function TwoFactorManager({ isEnabled, email, role }: TwoFactorManagerProps) {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [token, setToken] = useState('');
@@ -50,7 +61,8 @@ export function TwoFactorManager({ isEnabled, email }: { isEnabled: boolean; ema
     setLoading(true);
     setStatus(null);
     try {
-      const result = await setupTwoFactor();
+      // Si tu backend necesita saber el rol para generar el QR, podrías pasarlo aquí: setupTwoFactor(role)
+      const result = await setupTwoFactor(); 
       if (result.qrCodeUrl) {
         setQrCode(result.qrCodeUrl);
         setIsSetupMode(true);
@@ -70,7 +82,9 @@ export function TwoFactorManager({ isEnabled, email }: { isEnabled: boolean; ema
       if (result.success) {
         setStatus({ type: 'success', msg: '2FA Enabled Successfully!' });
         setIsSetupMode(false);
-        // Opcional: window.location.reload() si quieres forzar update inmediato visual
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
       } else {
         setStatus({ type: 'error', msg: result.error || 'Invalid code' });
       }
@@ -111,8 +125,14 @@ export function TwoFactorManager({ isEnabled, email }: { isEnabled: boolean; ema
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div>
-              <h3 className="text-white font-bold text-sm uppercase tracking-wide">2FA Active</h3>
-              <p className="text-gray-400 text-xs">Your account is secured with Two-Factor Authentication.</p>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wide flex items-center gap-2">
+                2FA Active
+                {/* Etiqueta dinámica con el rol del usuario */}
+                <span className="bg-gray-700 text-gray-200 text-[10px] px-2 py-0.5 rounded-full tracking-wider">
+                  {role}
+                </span>
+              </h3>
+              <p className="text-gray-400 text-xs">Your <span className="lowercase">{role}</span> account ({email}) is secured.</p>
             </div>
           </div>
         </div>
@@ -143,7 +163,7 @@ export function TwoFactorManager({ isEnabled, email }: { isEnabled: boolean; ema
           disabled={loading}
           className="bg-[#f8ed1a] hover:bg-yellow-400 text-[#1a1a1a] px-6 py-3 rounded font-black uppercase tracking-wide transition-all shadow-lg flex items-center gap-2"
         >
-          {loading ? 'Generating...' : '🛡️ Setup 2FA Now'}
+          {loading ? 'Generating...' : `🛡️ Setup 2FA For ${role}`}
         </button>
       ) : (
          <div className="bg-gray-900/50 p-6 rounded-lg border border-gray-700 animate-in fade-in">
@@ -200,7 +220,6 @@ export function TwoFactorManager({ isEnabled, email }: { isEnabled: boolean; ema
     </div>
   );
 }
-
 // ==========================================
 // 2. CHANGE PASSWORD FORM
 // ==========================================
@@ -208,19 +227,44 @@ export function ChangePasswordForm() {
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   async function handleSubmit(formData: FormData) {
-    const result = await changePassword(formData);
-    if (result.error) {
-      setMessage({ text: result.error, type: 'error' });
-    } else if (result.success) {
-      setMessage({ text: 'Password updated successfully!', type: 'success' });
-      // Reset form logic if needed, usually managed by key or resetting form HTML
+    setMessage(null);
+    try {
+      const result = await changePassword(formData);
+      
+      if (result && result.error) {
+        setMessage({ text: result.error, type: 'error' });
+        const form = document.getElementById('change-password-form') as HTMLFormElement;
+        form?.reset();
+      } else if (result && result.success) {
+        setMessage({ text: 'Password updated successfully!', type: 'success' });
+        const form = document.getElementById('change-password-form') as HTMLFormElement;
+        form?.reset();
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      }
+    } catch (error: any) {
+      // Si Next.js nos está pidiendo recargar/redirigir, lo dejamos pasar
+      if (error?.message === 'NEXT_REDIRECT' || error?.digest?.includes('NEXT_REDIRECT')) {
+        throw error; 
+      }
+      
+      // Si es un fallo de verdad, entonces sí mostramos la alerta
+      setMessage({ text: 'Verify your passwords and try again. They must match.', type: 'error' });
       const form = document.getElementById('change-password-form') as HTMLFormElement;
       form?.reset();
     }
   }
 
+  // Función para borrar la alerta de error en cuanto el usuario empiece a teclear de nuevo
+  function handleFormChange() {
+    if (message?.type === 'error') {
+      setMessage(null);
+    }
+  }
+
   return (
-    <form id="change-password-form" action={handleSubmit} className="space-y-4">
+    <form id="change-password-form" action={handleSubmit} onChange={handleFormChange} className="space-y-4">
       <div>
         <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Current Password</label>
         <input name="currentPassword" type="password" required className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#f8ed1a] outline-none transition-colors" />
@@ -277,6 +321,7 @@ export function CreateUserForm() {
             <option value="admin">Admin</option>
             <option value="seller">Seller</option>
             <option value="agent">Agent</option>
+            <option value="buyer">Buyer</option>
             </select>
         </div>
       </div>

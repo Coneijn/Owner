@@ -1,5 +1,5 @@
 "use client";
-
+import {signOut } from "@/auth";
 import React, { useState, useMemo } from 'react';
 import { Search, Home, Flame, Clock, DollarSign, X, ExternalLink, Info, Target, Megaphone, MapPin } from 'lucide-react';
 
@@ -45,6 +45,7 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
         <div className="text-xs font-bold tracking-widest uppercase text-gray-500">
           Local Rep: <strong className="text-white">Test</strong>
         </div>
+         
       </nav>
 
       <main className="max-w-7xl mx-auto p-4 sm:p-8">

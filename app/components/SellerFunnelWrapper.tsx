@@ -6,6 +6,7 @@ import CashOfferWidget from './CashOfferWidget'; // Importamos el nuevo widget
 
 interface WrapperProps {
   lang: 'es' | 'en';
+  allProperties?: any[]; 
 }
 
 const DICTIONARY = {
@@ -35,7 +36,7 @@ const DICTIONARY = {
   }
 };
 
-export default function SellerFunnelWrapper({ lang }: WrapperProps) {
+export default function SellerFunnelWrapper({ lang, allProperties }: WrapperProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefillData, setPrefillData] = useState<any>(null); // Estado para guardar la data del widget
   
@@ -55,32 +56,40 @@ export default function SellerFunnelWrapper({ lang }: WrapperProps) {
   return (
     <>
       <div className="text-center animate-in fade-in slide-in-from-bottom-2 duration-300 mb-8" >
+        {/* Icono Principal */}
         <div className="text-7xl md:text-8xl text-center mb-8 drop-shadow-lg">
           🏡
         </div>
         
-        <h1 className="text-5xl md:text-6xl font-black text-white m-0 mb-4 tracking-tight leading-tight">
-          {t.welcome.title}<br />
-          <span className="text-[#f8ed1a] drop-shadow-md">{t.welcome.titleHigh}</span>
+        {/* PARTE SUPERIOR DEL SÁNDWICH: Discover Your Options */}
+        <h1 className="text-5xl md:text-6xl font-black text-white m-0 mb-10 tracking-tight leading-tight">
+          {t.welcome.title}
         </h1>
         
-        <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-12">
-          {t.welcome.sub}
-        </p>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 max-w-4xl mx-auto">
-          {t.welcome.pts.map(([icon, title, sub], i) => (
-            <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 text-center shadow-lg">
-              <div className="text-4xl mb-3">{icon}</div>
-              <div className="text-sm md:text-base font-bold text-white uppercase tracking-wider">{title}</div>
-              <div className="text-xs md:text-sm text-gray-400 mt-2">{sub}</div>
-            </div>
-          ))}
+        {/* EL RELLENO DEL SÁNDWICH: El Widget de Cash Offer */}
+        <div className="max-w-6xl mx-auto text-left mb-16 relative z-30">
+          <CashOfferWidget lang={lang} onSelectOption={handleSelectOption} allProperties={allProperties}/>
         </div>
-        
-        {/* Aquí integramos el Widget de Ofertas como la puerta de entrada principal */}
-        <div className="max-w-6xl mx-auto text-left">
-          <CashOfferWidget lang={lang} onSelectOption={handleSelectOption} />
+
+        {/* PARTE INFERIOR DEL SÁNDWICH: Maximize Your Profit + Subtítulo + Puntos */}
+        <div className="mt-8">
+          <h2 className="text-5xl md:text-6xl font-black text-[#f8ed1a] drop-shadow-md m-0 mb-6 tracking-tight leading-tight">
+            {t.welcome.titleHigh}
+          </h2>
+          
+          <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-12">
+            {t.welcome.sub}
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 max-w-4xl mx-auto relative z-10">
+            {t.welcome.pts.map(([icon, title, sub], i) => (
+              <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 text-center shadow-lg">
+                <div className="text-4xl mb-3">{icon}</div>
+                <div className="text-sm md:text-base font-bold text-white uppercase tracking-wider">{title}</div>
+                <div className="text-xs md:text-sm text-gray-400 mt-2">{sub}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -89,7 +98,7 @@ export default function SellerFunnelWrapper({ lang }: WrapperProps) {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         lang={lang} 
-        prefillData={prefillData} // <-- Pasamos los datos recolectados
+        prefillData={prefillData} 
       />
     </>
   );

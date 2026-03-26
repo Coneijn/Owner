@@ -67,20 +67,7 @@ export default async function BlogPostPage(props: {
             dangerouslySetInnerHTML={{ __html: sanitizedContent }} 
           />
         </div>
-          {/* Sección del Autor */}
-{(post.authorName || post.authorImage) && (
-  <div className="mt-16 p-6 bg-gray-900 border border-gray-800 rounded-xl flex items-center gap-6">
-    {post.authorImage && (
-      <img src={post.authorImage} alt={post.authorName || 'Author'} className="w-20 h-20 rounded-full object-cover" />
-    )}
-    <div>
-      {post.authorName && <h4 className="text-xl font-bold text-[#f8ed1a]">{post.authorName}</h4>}
-      <p className="text-gray-400 mt-2">
-        {currentLang === 'en' ? post.authorBioEn : post.authorBioEs}
-      </p>
-    </div>
-  </div>
-)}
+
       </main>
 
       <footer className="bg-[#1a1a1a] text-white py-12 border-t border-gray-800 text-center mt-12">
