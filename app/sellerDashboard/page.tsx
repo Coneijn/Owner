@@ -62,18 +62,13 @@ export default async function DashboardVendedor() {
           <div className="space-y-10">
             {/* LÓGICA SECUENCIAL: Solo muestra el paso que toca */}
             
-            {needsPasswordChange ? (
-              <section className="bg-black/50 p-6 rounded-lg border border-gray-800">
-                <h2 className="text-xl font-bold text-white mb-4">Step 1: Change Temporary Password</h2>
-                <ChangePasswordForm />
-              </section>
-            
-            ) : needs2FA ? (
+            { needs2FA ? (
               <section className="bg-black/50 p-6 rounded-lg border border-gray-800">
                 <h2 className="text-xl font-bold text-white mb-4">Step 2: Setup Two-Factor Authentication (2FA)</h2>
                 <TwoFactorManager 
                   isEnabled={user.isTwoFactorEnabled} 
                   email={session.user.email} 
+                  role={user.role}
                 />
               </section>
             

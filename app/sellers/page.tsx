@@ -11,11 +11,12 @@ import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
 import MapLegend from '../components/MapLegend';  
 import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
+import CashOfferWidget from '../components/CashOfferWidget';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Apply',
+  title: 'Aplicar',
   description: 'Inicia tu proceso de compra o renta directa.',
 };
 
@@ -88,7 +89,7 @@ export default async function SellersPage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const lang = (searchParams?.lang === 'es' ? 'es' : 'en') as 'es' | 'en';
+  const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
   
   const formUrl = lang === 'en' ? FORM_URLS.en : FORM_URLS.es;
@@ -147,7 +148,24 @@ export default async function SellersPage(props: {
     isForSale: p.isForSale,
     isForRent: p.isForRent,
   }));
+  const rawAvailableProperties = await prisma.property.findMany({
+    where: { status: 'AVAILABLE' },
+    select: {
+      id: true,
+      latitude: true,
+      longitude: true,
+      isForSale: true,
+      isForRent: true,
+    }
+  });
 
+  const availableProperties = rawAvailableProperties.map(p => ({
+    id: p.id,
+    latitude: Number(p.latitude || 0),
+    longitude: Number(p.longitude || 0),
+    isForSale: p.isForSale,
+    isForRent: p.isForRent,
+  }));
   // 3. Cálculos de las métricas
   const downPaymentsCollected = soldProperties.reduce((acc, curr) => acc + curr.downPayment, 0);
   
@@ -176,7 +194,7 @@ export default async function SellersPage(props: {
 
       
 
-      <SellerFunnelWrapper lang={lang} />
+      <SellerFunnelWrapper lang={lang} allProperties={availableProperties} />
       <ProblemsWeSolve lang={lang} /> 
 
       {/* Se pasa el array de items traducidos al Marquee */}

@@ -359,7 +359,15 @@ model Contract {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+// --- NUEVO: Modelo para Enlaces de Primer Acceso / Magic Links ---
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String   // Guardaremos el email aquí
+  token      String   @unique
+  expires    DateTime
 
+  @@unique([identifier, token])
+}
 // --- NUEVO: Tabla de Amortización (Las filas detalladas de tus CSV) ---
 model Payment {
   id            String   @id @default(cuid())

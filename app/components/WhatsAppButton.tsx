@@ -2,7 +2,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export default function WhatsAppButton({ lang, propertyName }: { lang: string, propertyName: string }) {
+export default function WhatsAppButton({ 
+  lang, 
+  propertyName, 
+  position = 'right' 
+}: { 
+  lang: string, 
+  propertyName: string,
+  position?: 'left' | 'right'
+}) {
   const [isVisible, setIsVisible] = useState(true);
 
   const text = lang === 'en' ? 'Contact us' : 'Contáctanos';
@@ -19,16 +27,21 @@ export default function WhatsAppButton({ lang, propertyName }: { lang: string, p
     return () => clearTimeout(timer);
   }, []);
 
+
+  const positionClass = position === 'left' 
+    ? 'left-1 lg:left-[460px] flex-row-reverse' 
+    : 'right-4 md:right-6';
+    
+  const translateClass = position === 'left' ? '-translate-x-4' : 'translate-x-4';
+
   return (
-    /* 1. Añadimos la clase 'group' al contenedor principal */
-    <div className="fixed bottom-[100px] right-6 z-40 flex items-center gap-3 group">
+    <div className={`fixed bottom-[100px] md:bottom-[195px] z-[55] flex items-center gap-3 group ${positionClass} transition-all duration-300`}>
       
-      {/* 2. Añadimos clases 'group-hover' para forzar la visibilidad */}
       <span className={`
         bg-white/90 backdrop-blur text-[#1a1a1a] px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide 
         shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-200 pointer-events-none hidden sm:block
         transition-all duration-700 ease-in-out
-        ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'} 
+        ${isVisible ? 'opacity-100 translate-x-0' : `opacity-0 ${translateClass}`} 
         group-hover:opacity-100 group-hover:translate-x-0
       `}>
         {text}

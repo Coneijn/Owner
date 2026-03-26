@@ -14,17 +14,17 @@ export default async function SelectionPage({
     where: { token },
   });
 
-  // 2. Validaciones de Seguridad
+  // 2. Validaciones de Seguridad 
   if (!session) {
-    return notFound(); // Muestra la página 404 de Next.js
+    return notFound(); 
   }
 
   if (session.isUsed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white p-8 rounded-lg shadow text-center max-w-md">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Enlace Utilizado</h1>
-          <p className="text-gray-600">Este enlace ya fue usado para seleccionar una propiedad. Si necesitas ver otra, por favor solicita un nuevo acceso enviando un mensaje.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#1a1a1a] p-4">
+        <div className="bg-[#262626] border border-[#f8ed1a] p-8 rounded-lg shadow-lg text-center max-w-md">
+          <h1 className="text-2xl font-bold text-[#f8ed1a] mb-2">Enlace Utilizado / Link Used</h1>
+          <p className="text-gray-300">Este enlace ya fue usado para seleccionar una propiedad. / This link has already been used.</p>
         </div>
       </div>
     );
@@ -32,21 +32,31 @@ export default async function SelectionPage({
 
   if (session.expiresAt < new Date()) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white p-8 rounded-lg shadow text-center max-w-md">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Enlace Expirado</h1>
-          <p className="text-gray-600">Por seguridad, este enlace ha caducado. Por favor solicita uno nuevo.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#1a1a1a] p-4">
+        <div className="bg-[#262626] border border-[#f8ed1a] p-8 rounded-lg shadow-lg text-center max-w-md">
+          <h1 className="text-2xl font-bold text-[#f8ed1a] mb-2">Enlace Expirado / Link Expired</h1>
+          <p className="text-gray-300">Por seguridad, este enlace ha caducado. / For security reasons, this link has expired.</p>
         </div>
       </div>
     );
   }
 
-  // 3. Obtener las propiedades disponibles para el Dropdown
+  // 3. Obtener propiedades con status AVAILABLE y lockboxCode válido
   const properties = await prisma.property.findMany({
+    where: {
+      status: 'AVAILABLE',
+      lockboxCode: {
+        not: null, // Descartamos los valores nulos (String?)
+      },
+      NOT: {
+        lockboxCode: '', // Descartamos cadenas de texto vacías
+      }
+    },
     select: {
       id: true,
       address: true,
-      titleEs: true,
+      titleEs: true, // Ahora obligatorios en el select
+      titleEn: true, 
     },
     orderBy: {
       address: 'asc',
@@ -55,17 +65,14 @@ export default async function SelectionPage({
 
   // 4. Renderizar la vista principal
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <h1 className="text-center text-2xl font-bold mb-6 text-gray-800">
-          Hola {session.contactName || 'visitante'} 👋
-        </h1>
-        <p className="text-center text-gray-600 mb-6 text-sm">
-          Estás solicitando acceso para el número: <span className="font-semibold">{session.contactPhone}</span>
-        </p>
-        
-        {/* Pasamos el token de la sesión al formulario */}
-        <PropertyForm properties={properties} sessionToken={session.token} />
+        <PropertyForm 
+          properties={properties} 
+          sessionToken={session.token} 
+          contactName={session.contactName}
+          contactPhone={session.contactPhone}
+        />
       </div>
     </main>
   );

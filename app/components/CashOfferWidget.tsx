@@ -1,8 +1,8 @@
 'use client';
 
 import { useState,useEffect,useRef } from 'react';
-import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
-
+import { useJsApiLoader, Autocomplete, GoogleMap, Marker,InfoWindow } from '@react-google-maps/api';
+import RehabConditionWheel from './RehabConditionWheel';
 interface DealInputs {
   arv: number;
   rehabCosts: number;
@@ -22,7 +22,8 @@ interface DealInputs {
 
 interface CashOfferWidgetProps {
   lang?: 'es' | 'en';
-  onSelectOption?: (option: string, data: any) => void; // Preparado para conectar con el Modal
+  onSelectOption?: (option: string, data: any) => void; 
+  allProperties?: any[]; 
 }
 const libraries : ("places" | "visualization")[] = ["places", "visualization"]; // Necesario para el Autocomplete de Google Maps
 const i18n = {
@@ -74,7 +75,12 @@ const i18n = {
     sectionCosts: "Costos de Venta", discountInput: "Descuento Inversionista %", realtorInput: "Comisión Realtor %",
     sectionBank: "Términos del Banco (Tú)", pricePremiumInput: "Precio de Venta (% del ARV)", downPaymentInput: "Enganche Requerido",
     sectionReturns: "Retornos Financieros", interestInput: "Tasa de Interés a Cobrar %", termInput: "Plazo del Préstamo (Años)",
-    compsTitle: "Propiedades Comparables"
+    compsTitle: "Propiedades Comparables",
+    selectCompsTitle: "Selecciona de 3 a 5 propiedades",
+    selectCompsDesc: "Usaremos el precio promedio por pie cuadrado de estas casas para afinar el valor de la tuya.",
+    selectedText: "Seleccionada",
+    selectText: "Elegir",
+    closeBtn: "Guardar y Calcular"
   },
   en: {
     title: "Discover Your Property's True Potential",
@@ -124,11 +130,16 @@ const i18n = {
     sectionCosts: "Selling Costs", discountInput: "Investor Discount %", realtorInput: "Realtor Fee %",
     sectionBank: "The Bank's Terms (You)", pricePremiumInput: "Sale Price (% of ARV)", downPaymentInput: "Required Down Payment",
     sectionReturns: "Financial Returns", interestInput: "Interest Rate %", termInput: "Loan Term (Years)",
-    compsTitle: "Comparable Properties"
+    compsTitle: "Comparable Properties",
+    selectCompsTitle: "Select 3 to 5 similar properties",
+    selectCompsDesc: "We will use the average price per square foot of these homes to fine-tune your home's value.",
+    selectedText: "Selected",
+    selectText: "Select",
+    closeBtn: "Save & Calculate"
   }
 };
 
-export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOfferWidgetProps) {
+export default function CashOfferWidget({ lang = 'es', onSelectOption, allProperties }: CashOfferWidgetProps) {
   const t = i18n[lang];
   
   const [address, setAddress] = useState('');
@@ -138,7 +149,7 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
   const [showComps, setShowComps] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [propertyDetails, setPropertyDetails] = useState<any>(null);
-  const [isDpPercent, setIsDpPercent] = useState(true);
+  const [isDpPercent, setIsDpPercent] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -146,7 +157,10 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
     libraries: libraries 
   });
 
-  const [parsedAddress, setParsedAddress] = useState({ street: '', city: '', state: '', zip: '' });
+  const [parsedAddress, setParsedAddress] = useState({ street: '', city: '', state: '', zip: '', lat: 0, lng: 0 });
+  const [mapFilter, setMapFilter] = useState<'available' | 'sold'>('available'); 
+  const [selectedPin, setSelectedPin] = useState<any>(null);
+  const [selectedComps, setSelectedComps] = useState<any[]>([]);
 
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -155,7 +169,10 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
       if (place && place.formatted_address) {
         setAddress(place.formatted_address);
 
-        // NUEVO: Desglosar los componentes de la dirección de Google
+        // EXTRAEMOS LAS COORDENADAS AQUÍ:
+        const lat = place.geometry?.location?.lat() || 0;
+        const lng = place.geometry?.location?.lng() || 0;
+
         let streetNumber = ""; let route = ""; let newCity = ""; let newState = ""; let newZip = "";
         place.address_components?.forEach((component: google.maps.GeocoderAddressComponent) => {
             const types = component.types;
@@ -170,7 +187,9 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
             street: (streetNumber && route) ? `${streetNumber} ${route}` : place.name || place.formatted_address,
             city: newCity,
             state: newState,
-            zip: newZip
+            zip: newZip,
+            lat, 
+            lng  
         });
       }
     }
@@ -183,8 +202,8 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
     realtorFeePercent: 6,
     sfPricePremiumPercent: 100, 
     sfDownPaymentPercent: 10,
-    sfDownPaymentFlat: 25000,
-    sfInterestRate: 6.5,
+    sfDownPaymentFlat: 10000,
+    sfInterestRate: 12,
     sfTermYears: 30,
     taxesAnnual: 3000,
     insuranceAnnual: 1200,
@@ -209,6 +228,19 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
         setInputs(prev => ({ ...prev, rehabCosts: newRehabCost }));
       }
     }, [conditionScale, propertyDetails?.sqft]);
+
+  useEffect(() => {
+    if (selectedComps.length > 0 && propertyDetails?.sqft) {
+      // Promedio del precio por pie cuadrado de las seleccionadas
+      const avgPpsf = selectedComps.reduce((sum, comp) => {
+        const sqft = comp.sqft || comp.squareFeet || 1; 
+        return sum + (comp.price / sqft);
+      }, 0) / selectedComps.length;
+      
+      const newArv = Math.round(avgPpsf * propertyDetails.sqft);
+      setInputs(prev => ({ ...prev, arv: newArv }));
+    }
+  }, [selectedComps, propertyDetails?.sqft]);
 
   useEffect(() => {
     const calc = () => {
@@ -268,16 +300,22 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error.');
 
-      setPropertyDetails(data);
+      // Filtrar las 5 más caras y pre-seleccionar las 3 primeras
+      const sortedComps = (data.recentSales || []).sort((a: any, b: any) => b.price - a.price).slice(0, 5);
+      const initialSelected = sortedComps.slice(0, 3);
+      
+      setPropertyDetails({ ...data, recentSales: sortedComps });
+      setSelectedComps(initialSelected);
 
       setInputs(prev => ({
         ...prev,
-        arv: data.arv || prev.arv,
+        // El ARV se actualizará solito en el useEffect basado en 'initialSelected'
+        arv: data.arv || prev.arv, 
         rehabCosts: data.repairCosts !== undefined ? data.repairCosts : prev.rehabCosts,
         estimatedRent: data.estimatedRent || prev.estimatedRent,
-        sfDownPaymentFlat: (data.arv || prev.arv) * (prev.sfDownPaymentPercent / 100),
-        taxesAnnual: data.annualTaxes !== undefined ? data.annualTaxes : prev.taxesAnnual,
-        insuranceAnnual: data.insuranceAnnual !== undefined ? data.insuranceAnnual : prev.insuranceAnnual
+        //sfDownPaymentFlat: (data.arv || prev.arv) * (prev.sfDownPaymentPercent / 100),
+        taxesAnnual: data.annualTaxes !== undefined ? parseFloat(Number(data.annualTaxes).toFixed(2)) : prev.taxesAnnual,
+        insuranceAnnual: data.insuranceAnnual !== undefined ? parseFloat(Number(data.insuranceAnnual).toFixed(2)) : prev.insuranceAnnual
 
       }));
     } catch (err: any) {
@@ -297,7 +335,12 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption }: CashOff
   };
 
   const formatMoney = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
-
+console.log("PROPIEDADES RECIBIDAS EN EL WIDGET:", allProperties);
+console.log(
+  "Propiedades válidas para el mapa:", 
+  allProperties?.filter(p => p.latitude && p.longitude)
+);
+console.log("Comparables recibidos (Vendidas):", propertyDetails?.recentSales);
 return (
     <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden text-white">
       
@@ -333,19 +376,16 @@ return (
           )}
           
           <div className="bg-black/20 p-4 rounded-lg border border-white/5">
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-semibold text-gray-300">{t.conditionLabel} <span className="text-[#529e14] font-bold text-lg">{conditionScale}</span></label>
+            <div className="mb-4">
+              <label className="text-sm font-semibold text-gray-300">
+                {t.conditionLabel} <span className="text-[#529e14] font-bold text-lg">{conditionScale}</span>
+              </label>
             </div>
-            <input 
-              type="range" min="0" max="5" step="1"
-              value={conditionScale}
-              onChange={(e) => setConditionScale(Number(e.target.value))}
-              className="w-full accent-[#529e14] cursor-pointer"
+            <RehabConditionWheel 
+              value={conditionScale} 
+              onChange={setConditionScale} 
+              lang={lang}
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-2 font-medium">
-              <span>{t.cond0}</span>
-              <span>{t.cond5}</span>
-            </div>
           </div>
           
           <button 
@@ -375,20 +415,76 @@ return (
                   📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}
                 </button>
 
-                {/* MODAL FLOTANTE DE COMPARABLES */}
+                {/* MODAL FLOTANTE DE COMPARABLES (FORMATO CARDS) */}
                 {showComps && (
-                  <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-[100] p-4 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">{t.compsTitle}</h4>
-                      <button onClick={() => setShowComps(false)} className="text-gray-500 hover:text-white">✕</button>
-                    </div>
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                      {propertyDetails.recentSales.map((comp: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-start gap-2 border-b border-white/5 pb-2 last:border-0">
-                          <span className="text-[11px] text-gray-300 leading-tight">{comp.address}</span>
-                          <span className="text-xs font-bold text-[#529e14] whitespace-nowrap">{formatMoney(comp.price)}</span>
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                      
+                      {/* HEADER MODAL */}
+                      <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1a1a1a] z-10 rounded-t-2xl">
+                        <div>
+                          <h3 className="text-xl font-black text-white">{t.selectCompsTitle}</h3>
+                          <p className="text-sm text-gray-400 mt-1">{t.selectCompsDesc}</p>
                         </div>
-                      ))}
+                        <button onClick={() => setShowComps(false)} className="text-gray-500 hover:text-white text-2xl font-bold">✕</button>
+                      </div>
+                      
+                      {/* GRID DE CARDS */}
+                      <div className="p-6 overflow-y-auto custom-scrollbar flex-grow">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {propertyDetails.recentSales.map((comp: any, idx: number) => {
+                            const isSelected = selectedComps.some(c => c.address === comp.address);
+                            const sqft = comp.sqft || comp.squareFeet || 1;
+                            const ppsf = comp.price / sqft;
+                            
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => {
+                                  if (isSelected) {
+                                    // Deseleccionar
+                                    setSelectedComps(selectedComps.filter(c => c.address !== comp.address));
+                                  } else {
+                                    // Seleccionar (Máximo 5)
+                                    if (selectedComps.length < 5) setSelectedComps([...selectedComps, comp]);
+                                  }
+                                }}
+                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col gap-2 ${isSelected ? 'border-[#529e14] bg-[#529e14]/10' : 'border-white/5 bg-black/40 hover:border-white/20'}`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs text-gray-300 font-medium leading-tight w-2/3">{comp.address}</span>
+                                  <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${isSelected ? 'bg-[#529e14] text-white' : 'bg-white/10 text-gray-400'}`}>
+                                    {isSelected ? '✓ ' + t.selectedText : '+ ' + t.selectText}
+                                  </span>
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-2xl font-black text-white">{formatMoney(comp.price)}</p>
+                                  <p className="text-xs text-[#529e14] font-bold mt-1">{formatMoney(ppsf)} / sqft</p>
+                                </div>
+                                <div className="flex gap-3 text-[11px] text-gray-500 mt-2 border-t border-white/5 pt-2">
+                                  <span>🛏️ {comp.bedrooms || '-'}</span>
+                                  <span>🚿 {comp.bathrooms || '-'}</span>
+                                  <span>📐 {sqft} sqft</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      {/* FOOTER MODAL */}
+                      <div className="p-6 border-t border-white/10 bg-black/20 flex justify-between items-center rounded-b-2xl">
+                        <span className="text-sm font-bold text-gray-300">
+                          {selectedComps.length} {lang === 'en' ? 'Selected' : 'Seleccionadas'}
+                        </span>
+                        <button 
+                          onClick={() => setShowComps(false)}
+                          className="bg-[#529e14] text-white px-8 py-3 rounded-lg font-black uppercase tracking-wide hover:bg-[#458510] transition-colors shadow-lg shadow-[#529e14]/20"
+                        >
+                          {t.closeBtn}
+                        </button>
+                      </div>
+
                     </div>
                   </div>
                 )}
@@ -402,63 +498,138 @@ return (
       {propertyDetails && (
         <div className="animate-fadeIn relative z-10">
           
-          {/* "¿Cómo calculamos esto?" */}
-            <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner">
-              <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
-                {t.transparencyTitle}
-              </h4>
-              <ul className="list-disc list-inside text-xs text-gray-400 space-y-2 leading-relaxed">
-                <li>
-                  {t.transparencyArv.replace('{n}', propertyDetails.recentSales?.length?.toString() || '0')}
-                </li>
-                <li>
-                  {t.transparencyRehab.replace(
-                    '{price}', 
-                    formatMoney(inputs.rehabCosts / (propertyDetails.sqft || 1))
-                  )}
-                </li>
-              </ul>
-            </div>
           
-                  {/* AJUSTES AVANZADOS (Se actualizó para incluir input de renta) */}
-          <div className="border-t border-white/10">
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
-            >
-              <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
-              <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
-            </button>
-            
-            {showSettings && (
-              <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCondition}</h4>
-                  <InputGroup label={t.arvInput} value={inputs.arv} onChange={(v) => handleInputChange('arv', v)} />
-                  <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
-                  <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
-                </div>
-                {/* ... (Las secciones de costos y bancos se mantienen igual que tu código original) */}
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
-                  <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
-                  <InputGroup label={t.realtorInput} value={inputs.realtorFeePercent} onChange={(v) => handleInputChange('realtorFeePercent', v)} />
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
-                  <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
-                  {/* ... (Input del down payment) */}
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionReturns}</h4>
-                  <InputGroup label={t.interestInput} value={inputs.sfInterestRate} onChange={(v) => handleInputChange('sfInterestRate', v)} />
-                  <InputGroup label={t.termInput} value={inputs.sfTermYears} onChange={(v) => handleInputChange('sfTermYears', v)} />
+          
+                  
+            {parsedAddress.lat !== 0 && parsedAddress.lng !== 0 && (
+            <div className="border-t border-b border-white/10 bg-black/40">
+              {/* Controles del mapa */}
+              <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5">
+                <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                  📍 {lang === 'en' ? 'Location & Market Context' : 'Ubicación y Mercado'}
+                </h3>
+                <div className="flex bg-black/60 rounded-lg p-1 border border-white/10">
+                  <button 
+                    onClick={() => setMapFilter('available')}
+                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition-all border flex items-center justify-center gap-1.5 ${
+                      mapFilter === 'available' 
+                        ? 'bg-[#1a1a1a] border-gray-600 shadow-lg' 
+                        : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-300'
+                    }`}
+                  >
+                    {lang === 'en' ? (
+                      <>
+                        <img src="/frog-pin.png" alt="Sale" className="w-5 h-5 object-contain" />
+                        <span className={mapFilter === 'available' ? 'text-[#f8ed1a]' : ''}>For Sale</span>
+                        <span className={mapFilter === 'available' ? 'text-white mx-0.5' : 'mx-0.5'}>&</span>
+                        <img src="/frog-pin-renta.png" alt="Rent" className="w-5 h-5 object-contain" />
+                        <span className={mapFilter === 'available' ? 'text-blue-400' : ''}>Rent</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={mapFilter === 'available' ? 'text-white' : ''}>En</span>
+                        <img src="/frog-pin.png" alt="Sale" className="w-5 h-5 object-contain" />
+                        <span className={mapFilter === 'available' ? 'text-[#f8ed1a]' : ''}>Venta</span>
+                        <span className={mapFilter === 'available' ? 'text-white mx-0.5' : 'mx-0.5'}>y</span>
+                        <img src="/frog-pin-renta.png" alt="Rent" className="w-5 h-5 object-contain" />
+                        <span className={mapFilter === 'available' ? 'text-blue-400' : ''}>Renta</span>
+                      </>
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => setMapFilter('sold')}
+                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${mapFilter === 'sold' ? 'bg-[#529e14] text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    {lang === 'en' ? 'Recently Sold Properties In Your Area' : 'Vendidos en tu área'}
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Contenedor del Mapa de Google */}
+              <div className="w-full h-[350px] relative">
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={{ lat: parsedAddress.lat, lng: parsedAddress.lng }}
+                  zoom={14}
+                  options={{
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    gestureHandling: 'cooperative', 
+                    styles: [
+                      { elementType: "geometry", stylers: [{ color: "#0a0f1c" }] },
+                      { elementType: "labels.text.stroke", stylers: [{ color: "#0a0f1c" }] },
+                      { elementType: "labels.text.fill", stylers: [{ color: "#a0a0a0" }] },
+                      { featureType: "road", elementType: "geometry", stylers: [{ color: "#1f2937" }] },
+                      { featureType: "poi", stylers: [{ visibility: "off" }] }, 
+                      { featureType: "transit", stylers: [{ visibility: "off" }] }
+                    ]
+                  }}
+                >
+                  {/* PIN PRINCIPAL (La casa del Seller) - Siempre visible y centrado */}
+                  <Marker 
+                    position={{ lat: parsedAddress.lat, lng: parsedAddress.lng }}
+                    zIndex={999} // Asegura que siempre esté por encima de los demás
+                    icon={{
+                      url: '/sellers-frog-pin.png',
+                      scaledSize: new window.google.maps.Size(70, 70)
+                    }}
+                  />
+                  {mapFilter === 'sold' && propertyDetails?.recentSales?.map((comp: any, idx: number) => {
+                    if (!comp.lat || !comp.lng) return null; 
+                    return (
+                      <Marker 
+                        key={`sold-${idx}`}
+                        position={{ lat: comp.lat, lng: comp.lng }}
+                        icon={{
+                          url: '/frog-pin-vendida.png', 
+                          scaledSize: new window.google.maps.Size(40, 40)
+                        }}
+                        onClick={() => setSelectedPin(comp)} // <-- Acción de clic
+                      />
+                    );
+                  })}
+
+                  {/* El "Globo" flotante de información */}
+                  {selectedPin && (
+                    <InfoWindow
+                      position={{ lat: selectedPin.lat, lng: selectedPin.lng }}
+                      options={{ pixelOffset: new window.google.maps.Size(0, -40) }} // <-- Esto sube la ventana para no tapar el pin
+                      onCloseClick={() => setSelectedPin(null)}
+                    >
+                      <div className="p-2 text-[green] min-w-[150px] font-sans">
+                        <p className="font-bold text-xs mb-1 border-b border-gray-200 pb-1">{selectedPin.address}</p>
+                        <p className="text-[#529e14] font-black text-lg">{formatMoney(selectedPin.price)}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">
+                          {selectedPin.saleDate 
+                            ? `${lang === 'en' ? 'Sold' : 'Vendida'}: ${new Date(selectedPin.saleDate).toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` 
+                            : `${lang === 'en' ? 'Date unavailable' : 'Fecha no disponible'}`
+                          }
+                        </p>
+                      </div>
+                    </InfoWindow>
+                  )}
+                  {mapFilter === 'available' && allProperties?.map((prop: any, idx: number) => {
+                    // Tu esquema de Prisma usa "latitude" y "longitude"
+                    if (!prop.latitude || !prop.longitude) return null;
+                    const isRentOnly = !prop.isForSale && prop.isForRent;
+                    const pinIcon = isRentOnly ? '/frog-pin-renta.png' : '/frog-pin.png';
+
+                    return (
+                      <Marker 
+                        key={`prop-${prop.id || idx}`}
+                        position={{ lat: prop.latitude, lng: prop.longitude }}
+                        icon={{
+                          url: pinIcon, 
+                          scaledSize: new window.google.maps.Size(40, 40)
+                        }}
+                      />
+                    );
+                  })}
+
+                </GoogleMap>
+              </div>
+            </div>
+          )}
 
           {/* GRID DE 4 COLUMNAS CON EL NUEVO ORDEN */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
@@ -565,12 +736,71 @@ return (
             </div>
 
           </div>
+          <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none">
+              <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
+              <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
+            </button>
+          {/* AJUSTES AVANZADOS  */}
+          <div className="border-t border-white/10">
+            
+            {showSettings && (
+              <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCondition}</h4>
+                  <InputGroup label={t.arvInput} value={inputs.arv} onChange={(v) => handleInputChange('arv', v)} />
+                  <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
+                  <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
+                </div>
+                {/* ... (Las secciones de costos y bancos se mantienen igual que tu código original) */}
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
+                  <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
+                  <InputGroup label={t.realtorInput} value={inputs.realtorFeePercent} onChange={(v) => handleInputChange('realtorFeePercent', v)} />
+                </div>
 
-          
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
+                  <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
+                  {/* ... (Input del down payment) */}
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionReturns}</h4>
+                  <InputGroup label={t.interestInput} value={inputs.sfInterestRate} onChange={(v) => handleInputChange('sfInterestRate', v)} />
+                  <InputGroup label={t.termInput} value={inputs.sfTermYears} onChange={(v) => handleInputChange('sfTermYears', v)} />
+                </div>
+              </div>
+            )}
+            
+          </div>
+
+          {/* "¿Cómo calculamos esto?" */}
+            <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner">
+              <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
+                {t.transparencyTitle}
+              </h4>
+              <ul className="list-disc list-inside text-xs text-gray-400 space-y-2 leading-relaxed">
+              <li>
+                {t.transparencyArv.replace('{n}', selectedComps.length.toString() || '0')}
+              </li>
+                <li>
+                  {t.transparencyRehab.replace(
+                    '{price}', 
+                    formatMoney(inputs.rehabCosts / (propertyDetails.sqft || 1))
+                  )}
+                </li>
+              </ul>
+            </div>
+            
+
+
         </div>
       )}
 
     </div>
+    
   );
 }
 
