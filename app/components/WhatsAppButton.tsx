@@ -29,7 +29,7 @@ export default function WhatsAppButton({
 
 
   const positionClass = position === 'left' 
-    ? 'left-1 lg:left-[450px] flex-row-reverse' 
+    ? 'left-1 lg:left-[460px] flex-row-reverse' 
     : 'right-4 md:right-6';
     
   const translateClass = position === 'left' ? '-translate-x-4' : 'translate-x-4';

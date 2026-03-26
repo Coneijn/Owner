@@ -73,7 +73,8 @@ export default async function AgentDashboardPage() {
             <p className="text-gray-400 text-sm mb-8 text-center font-medium">
                 Protege tu información financiera vinculando una aplicación de autenticación (como Google Authenticator).
             </p>
-            <TwoFactorManager isEnabled={false} email={currentUser.email} />
+            <TwoFactorManager isEnabled={false} email={currentUser.email} 
+                  role={currentUser.role}/>
          </div>
       </div>
     );

@@ -15,7 +15,7 @@ export default async function UserSettingsPage() {
   // 1. Obtener datos del usuario ACTUAL para ver estado de 2FA
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { isTwoFactorEnabled: true, email: true }
+    select: { isTwoFactorEnabled: true, email: true, role:true }
   });
 
   // 2. Obtener todos los usuarios para la tabla
@@ -90,6 +90,7 @@ export default async function UserSettingsPage() {
                     <TwoFactorManager 
                         isEnabled={currentUser?.isTwoFactorEnabled || false} 
                         email={currentUser?.email || ''} 
+                        role={currentUser?.role || ''}
                     />
                 </div>
             </div>

@@ -32,7 +32,28 @@ export function calculateEstimatedPayment(
 
   return principalAndInterest + monthlyTaxes + monthlyInsurance + SERVICE_FEE;
 }
+export function normalizePhone(phone: string): string {
+  // Eliminar cualquier carácter que no sea un número (espacios, guiones, paréntesis)
+  const cleaned = phone.replace(/\D/g, '');
+  
+  // Si tiene 10 dígitos, asume que es de USA y agrega el +1
+  if (cleaned.length === 10) {
+    return `+1${cleaned}`;
+  }
+  
+  // Si ya incluye el 52 (12 dígitos)
+  if (cleaned.startsWith('52') && cleaned.length === 12) {
+    return `+${cleaned}`;
+  }
+  
+  // Si empieza con 1 (US/Canada) y tiene 11 dígitos
+  if (cleaned.startsWith('1') && cleaned.length === 11) {
+    return `+${cleaned}`;
+  }
 
+  // Fallback: solo agregar el + al inicio de los números limpios
+  return `+${cleaned}`;
+}
 export function formatMoney(amount: number | unknown) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
