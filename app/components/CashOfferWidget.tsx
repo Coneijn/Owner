@@ -74,7 +74,7 @@ selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afi
     
     chooseBtn: "Elegir esta opción ->",
     
-    fineTuneBtn: "⚙️ Ajustar los Números de mi Propiedad", hide: "▲ Ocultar", show: "▼ Mostrar Controles",
+    fineTuneBtn: "⚙️ Trabajar los Números Aquí", hide: "▲ Ocultar", show: "▼ Mostrar Controles",
     sectionCondition: "Condición Actual", arvInput: "Valor Remodelada (ARV $)", rehabInput: "Costo para Reparar ($)", rentInput: "Renta Mensual ($)",
     sectionCosts: "Costos de Venta", discountInput: "Descuento Inversionista %", realtorInput: "Comisión Realtor %",
     sectionBank: "Términos del Banco (Tú)", pricePremiumInput: "Precio de Venta (% del ARV)", downPaymentInput: "Enganche Requerido",
@@ -129,7 +129,7 @@ selectRentCompsDesc: "We will use the average monthly rent of these homes to fin
     
     chooseBtn: "Choose this option ->",
     
-    fineTuneBtn: "⚙️ Fine Tune My Property Numbers", hide: "▲ Hide", show: "▼ Show Controls",
+    fineTuneBtn: "⚙️ Work the Numbers Here", hide: "▲ Hide", show: "▼ Show Controls",
     sectionCondition: "Current Condition", arvInput: "After Repair Value (ARV $)", rehabInput: "Cost to Repair ($)", rentInput: "Monthly Rent ($)",
     sectionCosts: "Selling Costs", discountInput: "Investor Discount %", realtorInput: "Realtor Fee %",
     sectionBank: "The Bank's Terms (You)", pricePremiumInput: "Sale Price (% of ARV)", downPaymentInput: "Required Down Payment",
@@ -155,7 +155,8 @@ const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
 const [selectedComps, setSelectedComps] = useState<any[]>([]);
 const [selectedRentComps, setSelectedRentComps] = useState<any[]>([]); 
 const [showSettings, setShowSettings] = useState(false);
-  const [propertyDetails, setPropertyDetails] = useState<any>(null);
+const [propertyDetails, setPropertyDetails] = useState<any>(null);
+const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   
   // Nuevo estado para controlar porcentaje vs dinero en el enganche
   const [isDpPercent, setIsDpPercent] = useState(false); 
@@ -297,15 +298,17 @@ const [showSettings, setShowSettings] = useState(false);
     calc();
   }, [inputs, isDpPercent]);
 
-  const analyzeProperty = async () => {
+  const analyzeProperty = async (overrideCondition?: number) => {
     if (!address) return;
-    setLoading(true); setError(''); setPropertyDetails(null);
+    const currentCondition = overrideCondition !== undefined ? overrideCondition : conditionScale;
+    setLoading(true); setError('');
+    if (overrideCondition === undefined) setPropertyDetails(null);
     
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: address.trim(), conditionScale }),
+        body: JSON.stringify({ address: address.trim(), conditionScale: currentCondition }),
       });
 
       const data = await response.json();
@@ -351,56 +354,82 @@ const [showSettings, setShowSettings] = useState(false);
       <div className="p-6 border-b border-white/10 bg-white/5 relative z-20">
         <h2 className="text-xl font-bold mb-4 text-white">{t.title}</h2>
         
-        <div className="flex flex-col gap-4 mb-4">
-          {isLoaded ? (
-            <Autocomplete
-              onLoad={(auto) => (autocompleteRef.current = auto)}
-              onPlaceChanged={onPlaceChanged}
-              options={{
-                types: ["address"],
-                componentRestrictions: { country: "us" },
-              }}
-            >
+        {!propertyDetails && (
+          <div className="flex flex-col gap-4 mb-4">
+            {isLoaded ? (
+              <Autocomplete
+                onLoad={(auto) => (autocompleteRef.current = auto)}
+                onPlaceChanged={onPlaceChanged}
+                options={{
+                  types: ["address"],
+                  componentRestrictions: { country: "us" },
+                }}
+              >
+                <input 
+                  type="text" 
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={t.placeholder}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] text-white placeholder-gray-500 transition-all"
+                />
+              </Autocomplete>
+            ) : (
               <input 
                 type="text" 
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder={t.placeholder}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] text-white placeholder-gray-500 transition-all"
+                disabled
+                placeholder="Cargando mapa..."
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-gray-500 cursor-not-allowed transition-all"
               />
-            </Autocomplete>
-          ) : (
-            <input 
-              type="text" 
-              disabled
-              placeholder="Cargando mapa..."
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-gray-500 cursor-not-allowed transition-all"
-            />
-          )}
-          
-          <div className="bg-black/20 p-4 rounded-lg border border-white/5">
-            <div className="mb-4">
-              <label className="text-sm font-semibold text-gray-300">
-                {t.conditionLabel} <span className="text-[#529e14] font-bold text-lg">{conditionScale}</span>
-              </label>
-            </div>
-            <RehabConditionWheel 
-              value={conditionScale} 
-              onChange={setConditionScale} 
-              lang={lang}
-            />
+            )}
           </div>
-          
-          <button 
-            onClick={analyzeProperty}
-            disabled={loading}
-            className="w-full bg-[#529e14] text-[#0a0f1c] font-black uppercase tracking-wide px-8 py-4 rounded-lg hover:bg-[#459e10] disabled:opacity-50 transition-all shadow-lg shadow-[#529e14]/20"
+        )}
+
+        <div className={`bg-black/20 rounded-lg border border-white/5 transition-all mb-4 ${propertyDetails ? 'p-3 mt-4' : 'p-4'}`}>
+          <div 
+            className={`flex justify-between items-center ${propertyDetails ? 'cursor-pointer' : ''}`}
+            onClick={() => propertyDetails && setIsWheelExpanded(!isWheelExpanded)}
           >
-            {loading ? t.analyzing : t.analyzeBtn}
-          </button>
+            <label className={`text-sm font-semibold text-gray-300 ${propertyDetails ? 'cursor-pointer' : ''}`}>
+              {t.conditionLabel} <span className="text-[#529e14] font-bold text-lg">{conditionScale}</span>
+            </label>
+            {propertyDetails && (
+              <span className="text-gray-400 text-xs font-bold px-2 py-1 bg-white/5 rounded hover:text-white transition-colors">
+                {isWheelExpanded ? t.hide : '▼ Editar'}
+              </span>
+            )}
+          </div>
+
+          {(!propertyDetails || isWheelExpanded) && (
+            <div className="mt-4">
+              <RehabConditionWheel 
+                value={conditionScale} 
+                onChange={(newVal) => {
+                  setConditionScale(newVal);
+                  if (propertyDetails) {
+                    setIsWheelExpanded(false);
+                    analyzeProperty(newVal);
+                  }
+                }} 
+                lang={lang}
+              />
+            </div>
+          )}
         </div>
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {!propertyDetails && (
+          <div className="flex flex-col gap-4 mb-4">
+            <button 
+              onClick={() => analyzeProperty()}
+              disabled={loading}
+              className="relative w-full bg-[#529e14] text-[#0a0f1c] font-black uppercase tracking-wide px-8 py-4 rounded-lg hover:bg-[#459e10] disabled:opacity-50 transition-all shadow-lg shadow-[#529e14]/20 group"
+            >
+              {!loading && <span className="absolute inset-0 rounded-lg bg-[#529e14] animate-ping opacity-20 group-hover:hidden"></span>}
+              <span className="relative z-10">{loading ? t.analyzing : t.analyzeBtn}</span>
+            </button>
+          </div>
+        )}
+
+        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
         
         {propertyDetails && (
           <div className="mt-5 flex flex-nowrap overflow-x-auto items-center gap-3 text-sm text-gray-400 relative pb-2 custom-scrollbar">
@@ -413,21 +442,22 @@ const [showSettings, setShowSettings] = useState(false);
             </span>
 
             <span className="bg-red-600/20 border border-red-500/40 text-red-200 px-3 py-1 rounded-md flex flex-col items-center leading-tight">
-              <span className="font-bold text-xs">Lote: {propertyDetails.lotSize} SqFt</span>
+              <span className="font-bold text-xs">{lang === 'en' ? 'Lot:' : 'Lote:'} {propertyDetails.lotSize} SqFt</span>
               <span className="text-[9px]">Parking: {propertyDetails.garage}</span>
             </span>
 
             <span className="bg-red-600/20 border border-red-500/40 text-red-200 px-3 py-1 rounded-md flex flex-col items-center leading-tight">
               <span className="font-bold text-xs">Taxes</span>
-              <span className="text-[9px] uppercase">{propertyDetails.county} / {propertyDetails.city}</span>
+              <span className="text-[9px] uppercase">{formatMoney(inputs.taxesAnnual)} / {lang === 'en' ? 'yr' : 'año'}</span>
             </span>
             {/* BOTÓN DE COMPARABLES DE VENTA */}
             {propertyDetails.recentSales && propertyDetails.recentSales.length > 0 && (
               <button 
                 onClick={() => setActiveModal('sales')}
-                className="bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 transition-all font-bold"
+                className="relative overflow-hidden bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 hover:text-white hover:border-[#529e14]/60 hover:shadow-[0_0_15px_rgba(82,158,20,0.4)] transform hover:scale-105 transition-all duration-300 font-bold group before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full"
               >
-                📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}
+                <span className="absolute inset-0 rounded-md bg-[#529e14] animate-ping opacity-20 group-hover:hidden"></span>
+                <span className="relative z-10 flex items-center gap-2 pointer-events-none">📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}</span>
               </button>
             )}
 
@@ -435,9 +465,10 @@ const [showSettings, setShowSettings] = useState(false);
             {propertyDetails.recentRents && propertyDetails.recentRents.length > 0 && (
               <button 
                 onClick={() => setActiveModal('rent')}
-                className="bg-purple-600/10 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-purple-600/20 transition-all font-bold"
+                className="relative overflow-hidden bg-purple-600/10 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-purple-600/20 hover:text-white hover:border-purple-500/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transform hover:scale-105 transition-all duration-300 font-bold group before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full"
               >
-                🔑 {t.backedByRentComps.replace('{n}', propertyDetails.recentRents.length.toString())}
+                <span className="absolute inset-0 rounded-md bg-purple-600 animate-ping opacity-20 group-hover:hidden"></span>
+                <span className="relative z-10 flex items-center gap-2 pointer-events-none">🔑 {t.backedByRentComps.replace('{n}', propertyDetails.recentRents.length.toString())}</span>
               </button>
             )}
 
@@ -655,8 +686,65 @@ const [showSettings, setShowSettings] = useState(false);
             </div>
           )}
 
+          {/* BOTÓN Y PANEL DE AJUSTES AVANZADOS (MOVIDO ARRIBA) */}
+          <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
+          >
+            <span className="font-bold text-yellow-400">{t.fineTuneBtn}</span>
+            <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
+          </button>
+
+          <div className="border-t border-white/10">
+            {showSettings && (
+              <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCondition}</h4>
+                  <InputGroup label={t.arvInput} value={inputs.arv} onChange={(v) => handleInputChange('arv', v)} />
+                  <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
+                  <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
+                </div>
+                
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
+                  <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
+                  <InputGroup label={t.realtorInput} value={inputs.realtorFeePercent} onChange={(v) => handleInputChange('realtorFeePercent', v)} />
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
+                  <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
+                  
+                  <div className="flex flex-col">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-gray-400 uppercase font-semibold">{t.downPaymentInput}</label>
+                      <button 
+                        onClick={() => setIsDpPercent(!isDpPercent)}
+                        className="text-[10px] text-[#529e14] hover:text-white font-bold bg-white/5 px-2 py-0.5 rounded transition-colors"
+                      >
+                        {isDpPercent ? t.switchToMoney : t.switchToPercent}
+                      </button>
+                    </div>
+                    <input 
+                      type="number" 
+                      value={isDpPercent ? inputs.sfDownPaymentPercent : inputs.sfDownPaymentFlat} 
+                      onChange={(e) => handleInputChange(isDpPercent ? 'sfDownPaymentPercent' : 'sfDownPaymentFlat', e.target.value)}
+                      className="bg-black/40 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] transition-all w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionReturns}</h4>
+                  <InputGroup label={t.interestInput} value={inputs.sfInterestRate} onChange={(v) => handleInputChange('sfInterestRate', v)} />
+                  <InputGroup label={t.termInput} value={inputs.sfTermYears} onChange={(v) => handleInputChange('sfTermYears', v)} />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* GRID DE 4 COLUMNAS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x border-t border-white/10 divide-white/10">
             
             <div className="p-6 bg-black/20 hover:bg-white/5 transition-colors group flex flex-col relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#529e14]"></div>
@@ -788,65 +876,7 @@ const [showSettings, setShowSettings] = useState(false);
 
           </div>
 
-          <button 
-            onClick={() => setShowSettings(!showSettings)}
-            className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
-          >
-            <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
-            <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
-          </button>
-
-          {/* AJUSTES AVANZADOS */}
-          <div className="border-t border-white/10">
-            {showSettings && (
-              <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCondition}</h4>
-                  <InputGroup label={t.arvInput} value={inputs.arv} onChange={(v) => handleInputChange('arv', v)} />
-                  <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
-                  <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
-                </div>
-                
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
-                  <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
-                  <InputGroup label={t.realtorInput} value={inputs.realtorFeePercent} onChange={(v) => handleInputChange('realtorFeePercent', v)} />
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
-                  <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
-                  
-                  {/* CORRECCIÓN: Control del Enganche (Down Payment) con toggle $ / % */}
-                  <div className="flex flex-col">
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-[11px] text-gray-400 uppercase font-semibold">{t.downPaymentInput}</label>
-                      <button 
-                        onClick={() => setIsDpPercent(!isDpPercent)}
-                        className="text-[10px] text-[#529e14] hover:text-white font-bold bg-white/5 px-2 py-0.5 rounded transition-colors"
-                      >
-                        {isDpPercent ? t.switchToMoney : t.switchToPercent}
-                      </button>
-                    </div>
-                    <input 
-                      type="number" 
-                      value={isDpPercent ? inputs.sfDownPaymentPercent : inputs.sfDownPaymentFlat} 
-                      onChange={(e) => handleInputChange(isDpPercent ? 'sfDownPaymentPercent' : 'sfDownPaymentFlat', e.target.value)}
-                      className="bg-black/40 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] transition-all w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionReturns}</h4>
-                  <InputGroup label={t.interestInput} value={inputs.sfInterestRate} onChange={(v) => handleInputChange('sfInterestRate', v)} />
-                  <InputGroup label={t.termInput} value={inputs.sfTermYears} onChange={(v) => handleInputChange('sfTermYears', v)} />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* "¿Cómo calculamos esto?" */}
+         {/* "¿Cómo calculamos esto?" */}
           <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner mt-4">
             <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
               {t.transparencyTitle}
