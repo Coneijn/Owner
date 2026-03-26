@@ -1,8 +1,9 @@
 'use client';
 
-import { useState,useEffect,useRef } from 'react';
-import { useJsApiLoader, Autocomplete, GoogleMap, Marker,InfoWindow } from '@react-google-maps/api';
+import { useState, useEffect, useRef } from 'react';
+import { useJsApiLoader, Autocomplete, GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import RehabConditionWheel from './RehabConditionWheel';
+
 interface DealInputs {
   arv: number;
   rehabCosts: number;
@@ -14,6 +15,7 @@ interface DealInputs {
   sfDownPaymentFlat: number; 
   sfInterestRate: number;
   sfTermYears: number;
+  sfLoanServicingFee: number;
   taxesAnnual: number;
   insuranceAnnual: number;
   adminFeeMonthly: number;
@@ -25,7 +27,9 @@ interface CashOfferWidgetProps {
   onSelectOption?: (option: string, data: any) => void; 
   allProperties?: any[]; 
 }
-const libraries : ("places" | "visualization")[] = ["places", "visualization"]; // Necesario para el Autocomplete de Google Maps
+
+const libraries: ("places" | "visualization")[] = ["places", "visualization"];
+
 const i18n = {
   es: {
     title: "Descubre el Verdadero Potencial de tu Propiedad",
@@ -43,8 +47,9 @@ const i18n = {
     transparencyTitle: "🧠 ¿Cómo calculamos esto?",
     transparencyArv: "El Valor Remodelado (ARV) se estimó analizando {n} propiedades comparables vendidas recientemente.",
     transparencyRehab: "Las reparaciones se estimaron a {price}/SqFt basándonos en tu indicación de condición, tamaño y edad.",
-    
-    // Opciones
+    backedByRentComps: "Respaldado por {n} rentas",
+selectRentCompsTitle: "Selecciona propiedades en renta",
+selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afinar tu estimación.",
     sellerFinanceTitle: "Sé el Banco", sellerFinanceSub: "(Dueño a Dueño)",
     sellerFinanceDesc: "Vende a plazos. Recibe un pago inicial hoy y genera ingresos mensuales sin lidiar con inquilinos.",
     downPaymentReceivedLabel: "Pago Inicial:", monthlyIncomeLabel: "Ingreso Mensual (P&I):", termLabel: "Plazo:", termValue: "{years} años al {rate}%", totalYieldLabel: "Rendimiento Total:",
@@ -69,7 +74,6 @@ const i18n = {
     
     chooseBtn: "Elegir esta opción ->",
     
-    // Ajustes
     fineTuneBtn: "⚙️ Ajustar los Números de mi Propiedad", hide: "▲ Ocultar", show: "▼ Mostrar Controles",
     sectionCondition: "Condición Actual", arvInput: "Valor Remodelada (ARV $)", rehabInput: "Costo para Reparar ($)", rentInput: "Renta Mensual ($)",
     sectionCosts: "Costos de Venta", discountInput: "Descuento Inversionista %", realtorInput: "Comisión Realtor %",
@@ -77,7 +81,7 @@ const i18n = {
     sectionReturns: "Retornos Financieros", interestInput: "Tasa de Interés a Cobrar %", termInput: "Plazo del Préstamo (Años)",
     compsTitle: "Propiedades Comparables",
     selectCompsTitle: "Selecciona de 3 a 5 propiedades",
-    selectCompsDesc: "Usaremos el precio promedio por pie cuadrado de estas casas para afinar el valor de la tuya.",
+    selectCompsDesc: "Usaremos el precio de venta promedio de estas casas para afinar el valor de la tuya.",
     selectedText: "Seleccionada",
     selectText: "Elegir",
     closeBtn: "Guardar y Calcular"
@@ -98,8 +102,9 @@ const i18n = {
     transparencyTitle: "🧠 How did we calculate this?",
     transparencyArv: "The After Repair Value (ARV) was estimated by analyzing {n} recently sold comparable properties.",
     transparencyRehab: "Repairs were estimated at {price}/SqFt based on your condition input, property size, and age.",
-    
-    // Opciones
+    backedByRentComps: "Backed by {n} recent rents",
+selectRentCompsTitle: "Select similar rental properties",
+selectRentCompsDesc: "We will use the average monthly rent of these homes to fine-tune your estimate.",
     sellerFinanceTitle: "Become The Bank", sellerFinanceSub: "(Seller Financing)",
     sellerFinanceDesc: "Sell on terms. Receive a down payment today and generate monthly income without dealing with tenants.",
     downPaymentReceivedLabel: "Down Payment:", monthlyIncomeLabel: "Monthly Income (P&I):", termLabel: "Term:", termValue: "{years} yrs at {rate}%", totalYieldLabel: "Total Yield:",
@@ -124,7 +129,6 @@ const i18n = {
     
     chooseBtn: "Choose this option ->",
     
-    // Ajustes
     fineTuneBtn: "⚙️ Fine Tune My Property Numbers", hide: "▲ Hide", show: "▼ Show Controls",
     sectionCondition: "Current Condition", arvInput: "After Repair Value (ARV $)", rehabInput: "Cost to Repair ($)", rentInput: "Monthly Rent ($)",
     sectionCosts: "Selling Costs", discountInput: "Investor Discount %", realtorInput: "Realtor Fee %",
@@ -132,7 +136,7 @@ const i18n = {
     sectionReturns: "Financial Returns", interestInput: "Interest Rate %", termInput: "Loan Term (Years)",
     compsTitle: "Comparable Properties",
     selectCompsTitle: "Select 3 to 5 similar properties",
-    selectCompsDesc: "We will use the average price per square foot of these homes to fine-tune your home's value.",
+    selectCompsDesc: "We will use the average sale price of these homes to fine-tune your home's value.",
     selectedText: "Selected",
     selectText: "Select",
     closeBtn: "Save & Calculate"
@@ -143,13 +147,19 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
   const t = i18n[lang];
   
   const [address, setAddress] = useState('');
-  const [conditionScale, setConditionScale] = useState(3); // Estado para la escala 0-5
+  const [conditionScale, setConditionScale] = useState(3);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showComps, setShowComps] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+// Reemplazar showComps por activeModal
+const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
+const [selectedComps, setSelectedComps] = useState<any[]>([]);
+const [selectedRentComps, setSelectedRentComps] = useState<any[]>([]); 
+const [showSettings, setShowSettings] = useState(false);
   const [propertyDetails, setPropertyDetails] = useState<any>(null);
-  const [isDpPercent, setIsDpPercent] = useState(false);
+  
+  // Nuevo estado para controlar porcentaje vs dinero en el enganche
+  const [isDpPercent, setIsDpPercent] = useState(false); 
+  
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -160,7 +170,6 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
   const [parsedAddress, setParsedAddress] = useState({ street: '', city: '', state: '', zip: '', lat: 0, lng: 0 });
   const [mapFilter, setMapFilter] = useState<'available' | 'sold'>('available'); 
   const [selectedPin, setSelectedPin] = useState<any>(null);
-  const [selectedComps, setSelectedComps] = useState<any[]>([]);
 
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -169,7 +178,6 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
       if (place && place.formatted_address) {
         setAddress(place.formatted_address);
 
-        // EXTRAEMOS LAS COORDENADAS AQUÍ:
         const lat = place.geometry?.location?.lat() || 0;
         const lng = place.geometry?.location?.lng() || 0;
 
@@ -194,6 +202,7 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
       }
     }
   };
+
   const [inputs, setInputs] = useState<DealInputs>({
     arv: 250000,
     rehabCosts: 25000,
@@ -205,6 +214,7 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
     sfDownPaymentFlat: 10000,
     sfInterestRate: 12,
     sfTermYears: 30,
+    sfLoanServicingFee: 39,
     taxesAnnual: 3000,
     insuranceAnnual: 1200,
     adminFeeMonthly: 150,
@@ -214,33 +224,29 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
   const [strategies, setStrategies] = useState({
     cashBuyer: { offer: 0 },
     fixAndList: { grossSale: 0, costToSell: 0, netProfit: 0 },
-    sellerFinance: { salePrice: 0, downPayment: 0, monthlyIncome: 0, totalYield: 0 },
-    rent: { monthly: 0, netMonthly : 0,annual: 0 }
+    sellerFinance: { salePrice: 0, downPayment: 0, monthlyIncome: 0, totalYield: 0, taxesMonthly: 0, insuranceMonthly: 0, servicingFee: 39, totalMonthlyPayment: 0 },
+    rent: { monthly: 0, netMonthly : 0, annual: 0 }
   });
 
   const handleInputChange = (field: keyof DealInputs, value: string) => {
     setInputs(prev => ({ ...prev, [field]: Number(value) || 0 }));
   };
-   useEffect(() => {
-      if (propertyDetails?.sqft) {
-        const factorNivel=conditionScale*10;
-        const newRehabCost=propertyDetails.sqft*factorNivel;
-        setInputs(prev => ({ ...prev, rehabCosts: newRehabCost }));
-      }
-    }, [conditionScale, propertyDetails?.sqft]);
 
+  // Actualizar ARV cuando cambian las ventas seleccionadas
   useEffect(() => {
-    if (selectedComps.length > 0 && propertyDetails?.sqft) {
-      // Promedio del precio por pie cuadrado de las seleccionadas
-      const avgPpsf = selectedComps.reduce((sum, comp) => {
-        const sqft = comp.sqft || comp.squareFeet || 1; 
-        return sum + (comp.price / sqft);
-      }, 0) / selectedComps.length;
-      
-      const newArv = Math.round(avgPpsf * propertyDetails.sqft);
-      setInputs(prev => ({ ...prev, arv: newArv }));
+    if (selectedComps.length > 0) {
+      const avgPrice = selectedComps.reduce((sum, comp) => sum + comp.price, 0) / selectedComps.length;
+      setInputs(prev => ({ ...prev, arv: Math.round(avgPrice) }));
     }
-  }, [selectedComps, propertyDetails?.sqft]);
+  }, [selectedComps]);
+
+  // 👇 NUEVO: Actualizar Renta cuando cambian las rentas seleccionadas 👇
+  useEffect(() => {
+    if (selectedRentComps.length > 0) {
+      const avgRent = selectedRentComps.reduce((sum, comp) => sum + comp.price, 0) / selectedRentComps.length;
+      setInputs(prev => ({ ...prev, estimatedRent: Math.round(avgRent) }));
+    }
+  }, [selectedRentComps]);
 
   useEffect(() => {
     const calc = () => {
@@ -260,7 +266,7 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
       const sfDownPayment = isDpPercent ? sfPrice * (sfDownPaymentPercent / 100) : sfDownPaymentFlat;
       const sfLoanAmount = sfPrice - sfDownPayment;
       
-     const monthlyRate = (sfInterestRate / 100) / 12;
+      const monthlyRate = (sfInterestRate / 100) / 12;
       const numPayments = sfTermYears * 12;
       let sfMonthlyIncome = 0;
       
@@ -271,13 +277,19 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
           sfMonthlyIncome = sfLoanAmount / numPayments; 
         }
       }
-      
+      const sfTaxesMonthly = taxesAnnual / 12;
+      const sfInsuranceMonthly = insuranceAnnual / 12;
+      const sfTotalMonthlyPayment = sfMonthlyIncome + sfTaxesMonthly + sfInsuranceMonthly + inputs.sfLoanServicingFee;
       const rentDeductionsMonthly = (taxesAnnual / 12) + (insuranceAnnual / 12) + adminFeeMonthly + maintannaceMonthly;
       const netMonthlyRent = estimatedRent - rentDeductionsMonthly;
+      
       setStrategies({
         cashBuyer: { offer: finalCashOffer },
         fixAndList: { grossSale: arv, costToSell: rehabCosts + realtorFee, netProfit: fixListNet },
-        sellerFinance: { salePrice: sfPrice, downPayment: sfDownPayment, monthlyIncome: sfMonthlyIncome, totalYield: sfDownPayment + (sfMonthlyIncome * numPayments) },
+        sellerFinance: { salePrice: sfPrice, downPayment: sfDownPayment, monthlyIncome: sfMonthlyIncome, totalYield: sfDownPayment + (sfMonthlyIncome * numPayments), taxesMonthly: sfTaxesMonthly,
+          insuranceMonthly: sfInsuranceMonthly,
+          servicingFee: inputs.sfLoanServicingFee,
+          totalMonthlyPayment: sfTotalMonthlyPayment},
         rent: { monthly: estimatedRent, netMonthly: netMonthlyRent, annual: netMonthlyRent * 12 }
       });
     };
@@ -290,7 +302,6 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
     setLoading(true); setError(''); setPropertyDetails(null);
     
     try {
-      // Enviamos address y conditionScale al endpoint
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -300,23 +311,21 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error.');
 
-      // Filtrar las 5 más caras y pre-seleccionar las 3 primeras
       const sortedComps = (data.recentSales || []).sort((a: any, b: any) => b.price - a.price).slice(0, 5);
       const initialSelected = sortedComps.slice(0, 3);
-      
+      const sortedRents = (data.recentRents || []).sort((a: any, b: any) => b.price - a.price).slice(0, 5);
+      const initialSelectedRents = sortedRents.slice(0, 3);
       setPropertyDetails({ ...data, recentSales: sortedComps });
       setSelectedComps(initialSelected);
+      setSelectedRentComps(initialSelectedRents);
 
       setInputs(prev => ({
         ...prev,
-        // El ARV se actualizará solito en el useEffect basado en 'initialSelected'
         arv: data.arv || prev.arv, 
         rehabCosts: data.repairCosts !== undefined ? data.repairCosts : prev.rehabCosts,
         estimatedRent: data.estimatedRent || prev.estimatedRent,
-        //sfDownPaymentFlat: (data.arv || prev.arv) * (prev.sfDownPaymentPercent / 100),
         taxesAnnual: data.annualTaxes !== undefined ? parseFloat(Number(data.annualTaxes).toFixed(2)) : prev.taxesAnnual,
         insuranceAnnual: data.insuranceAnnual !== undefined ? parseFloat(Number(data.insuranceAnnual).toFixed(2)) : prev.insuranceAnnual
-
       }));
     } catch (err: any) {
       setError(err.message || 'Error de conexión.');
@@ -327,7 +336,6 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
 
   const handleSelect = (strategyName: string) => {
     if (onSelectOption) {
-      // NUEVO: Pasamos el parsedAddress al modal
       onSelectOption(strategyName, { address, parsedAddress, propertyDetails, inputs, strategies });
     } else {
       console.log(`Seleccionaste: ${strategyName}`, { address, propertyDetails, inputs, strategies });
@@ -335,13 +343,8 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
   };
 
   const formatMoney = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
-console.log("PROPIEDADES RECIBIDAS EN EL WIDGET:", allProperties);
-console.log(
-  "Propiedades válidas para el mapa:", 
-  allProperties?.filter(p => p.latitude && p.longitude)
-);
-console.log("Comparables recibidos (Vendidas):", propertyDetails?.recentSales);
-return (
+
+  return (
     <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden text-white">
       
       {/* HEADER BUSCADOR Y SLIDER DE CONDICIÓN */}
@@ -355,7 +358,7 @@ return (
               onPlaceChanged={onPlaceChanged}
               options={{
                 types: ["address"],
-                componentRestrictions: { country: "us" }, // Limitar a USA si aplica
+                componentRestrictions: { country: "us" },
               }}
             >
               <input 
@@ -400,96 +403,124 @@ return (
         {error && <p className="text-red-400 text-sm">{error}</p>}
         
         {propertyDetails && (
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-gray-400 relative">
+          <div className="mt-5 flex flex-nowrap overflow-x-auto items-center gap-3 text-sm text-gray-400 relative pb-2 custom-scrollbar">
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">🛏️ {propertyDetails.bedrooms} {t.beds}</span>
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">🚿 {propertyDetails.bathrooms} {t.baths}</span>
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">📐 {propertyDetails.sqft} {t.sqft}</span>
-            
-            {/* BOTÓN DE COMPARABLES */}
+            <span className="bg-red-600/20 border border-red-500/40 text-red-200 px-3 py-1 rounded-md flex flex-col items-center leading-tight">
+              <span className="font-bold text-xs">{propertyDetails.ownerName}</span>
+              <span className="text-[9px]">Últ. Venta: {propertyDetails.lastSalePrice ? formatMoney(propertyDetails.lastSalePrice) : 'N/A'}</span>
+            </span>
+
+            <span className="bg-red-600/20 border border-red-500/40 text-red-200 px-3 py-1 rounded-md flex flex-col items-center leading-tight">
+              <span className="font-bold text-xs">Lote: {propertyDetails.lotSize} SqFt</span>
+              <span className="text-[9px]">Parking: {propertyDetails.garage}</span>
+            </span>
+
+            <span className="bg-red-600/20 border border-red-500/40 text-red-200 px-3 py-1 rounded-md flex flex-col items-center leading-tight">
+              <span className="font-bold text-xs">Taxes</span>
+              <span className="text-[9px] uppercase">{propertyDetails.county} / {propertyDetails.city}</span>
+            </span>
+            {/* BOTÓN DE COMPARABLES DE VENTA */}
             {propertyDetails.recentSales && propertyDetails.recentSales.length > 0 && (
-              <div className="relative">
-                <button 
-                  onClick={() => setShowComps(!showComps)}
-                  className="bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 transition-all font-bold"
-                >
-                  📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}
-                </button>
-
-                {/* MODAL FLOTANTE DE COMPARABLES (FORMATO CARDS) */}
-                {showComps && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-                    <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-                      
-                      {/* HEADER MODAL */}
-                      <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1a1a1a] z-10 rounded-t-2xl">
-                        <div>
-                          <h3 className="text-xl font-black text-white">{t.selectCompsTitle}</h3>
-                          <p className="text-sm text-gray-400 mt-1">{t.selectCompsDesc}</p>
-                        </div>
-                        <button onClick={() => setShowComps(false)} className="text-gray-500 hover:text-white text-2xl font-bold">✕</button>
-                      </div>
-                      
-                      {/* GRID DE CARDS */}
-                      <div className="p-6 overflow-y-auto custom-scrollbar flex-grow">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {propertyDetails.recentSales.map((comp: any, idx: number) => {
-                            const isSelected = selectedComps.some(c => c.address === comp.address);
-                            const sqft = comp.sqft || comp.squareFeet || 1;
-                            const ppsf = comp.price / sqft;
-                            
-                            return (
-                              <div 
-                                key={idx} 
-                                onClick={() => {
-                                  if (isSelected) {
-                                    // Deseleccionar
-                                    setSelectedComps(selectedComps.filter(c => c.address !== comp.address));
-                                  } else {
-                                    // Seleccionar (Máximo 5)
-                                    if (selectedComps.length < 5) setSelectedComps([...selectedComps, comp]);
-                                  }
-                                }}
-                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col gap-2 ${isSelected ? 'border-[#529e14] bg-[#529e14]/10' : 'border-white/5 bg-black/40 hover:border-white/20'}`}
-                              >
-                                <div className="flex justify-between items-start">
-                                  <span className="text-xs text-gray-300 font-medium leading-tight w-2/3">{comp.address}</span>
-                                  <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${isSelected ? 'bg-[#529e14] text-white' : 'bg-white/10 text-gray-400'}`}>
-                                    {isSelected ? '✓ ' + t.selectedText : '+ ' + t.selectText}
-                                  </span>
-                                </div>
-                                <div className="mt-2">
-                                  <p className="text-2xl font-black text-white">{formatMoney(comp.price)}</p>
-                                  <p className="text-xs text-[#529e14] font-bold mt-1">{formatMoney(ppsf)} / sqft</p>
-                                </div>
-                                <div className="flex gap-3 text-[11px] text-gray-500 mt-2 border-t border-white/5 pt-2">
-                                  <span>🛏️ {comp.bedrooms || '-'}</span>
-                                  <span>🚿 {comp.bathrooms || '-'}</span>
-                                  <span>📐 {sqft} sqft</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      
-                      {/* FOOTER MODAL */}
-                      <div className="p-6 border-t border-white/10 bg-black/20 flex justify-between items-center rounded-b-2xl">
-                        <span className="text-sm font-bold text-gray-300">
-                          {selectedComps.length} {lang === 'en' ? 'Selected' : 'Seleccionadas'}
-                        </span>
-                        <button 
-                          onClick={() => setShowComps(false)}
-                          className="bg-[#529e14] text-white px-8 py-3 rounded-lg font-black uppercase tracking-wide hover:bg-[#458510] transition-colors shadow-lg shadow-[#529e14]/20"
-                        >
-                          {t.closeBtn}
-                        </button>
-                      </div>
-
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button 
+                onClick={() => setActiveModal('sales')}
+                className="bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 transition-all font-bold"
+              >
+                📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}
+              </button>
             )}
+
+            {/* BOTÓN DE COMPARABLES DE RENTA */}
+            {propertyDetails.recentRents && propertyDetails.recentRents.length > 0 && (
+              <button 
+                onClick={() => setActiveModal('rent')}
+                className="bg-purple-600/10 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-purple-600/20 transition-all font-bold"
+              >
+                🔑 {t.backedByRentComps.replace('{n}', propertyDetails.recentRents.length.toString())}
+              </button>
+            )}
+
+            {/* MODAL DINÁMICO (Ventas o Rentas) */}
+            {activeModal && (() => {
+              const isSales = activeModal === 'sales';
+              const modalTitle = isSales ? t.selectCompsTitle : t.selectRentCompsTitle;
+              const modalDesc = isSales ? t.selectCompsDesc : t.selectRentCompsDesc;
+              const compsList = isSales ? propertyDetails.recentSales : propertyDetails.recentRents;
+              const selectedList = isSales ? selectedComps : selectedRentComps;
+              const setSelected = isSales ? setSelectedComps : setSelectedRentComps;
+              const themeColor = isSales ? '#529e14' : '#a855f7'; // Verde para ventas, Morado para rentas
+
+              return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+                  <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    
+                    <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1a1a1a] z-10 rounded-t-2xl">
+                      <div>
+                        <h3 className="text-xl font-black text-white">{modalTitle}</h3>
+                        <p className="text-sm text-gray-400 mt-1">{modalDesc}</p>
+                      </div>
+                      <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-white text-2xl font-bold">✕</button>
+                    </div>
+                    
+                    <div className="p-6 overflow-y-auto custom-scrollbar flex-grow">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {compsList.map((comp: any, idx: number) => {
+                          const isSelected = selectedList.some(c => c.address === comp.address);
+                          const sqft = comp.sqft || 1;
+                          const ppsf = comp.price / sqft;
+                          
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelected(selectedList.filter(c => c.address !== comp.address));
+                                } else {
+                                  if (selectedList.length < 5) setSelected([...selectedList, comp]);
+                                }
+                              }}
+                              className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col gap-2 bg-black/40`}
+                              style={{ borderColor: isSelected ? themeColor : 'rgba(255,255,255,0.05)', backgroundColor: isSelected ? `${themeColor}1A` : undefined }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <span className="text-xs text-gray-300 font-medium leading-tight w-2/3">{comp.address}</span>
+                                <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${isSelected ? 'text-white' : 'bg-white/10 text-gray-400'}`} style={{ backgroundColor: isSelected ? themeColor : undefined }}>
+                                  {isSelected ? '✓ ' + t.selectedText : '+ ' + t.selectText}
+                                </span>
+                              </div>
+                              <div className="mt-2">
+                                <p className="text-2xl font-black text-white">{formatMoney(comp.price)}{!isSales && <span className="text-sm text-gray-400">/mo</span>}</p>
+                                {isSales && <p className="text-xs font-bold mt-1" style={{ color: themeColor }}>{formatMoney(ppsf)} / sqft</p>}
+                              </div>
+                              <div className="flex gap-3 text-[11px] text-gray-500 mt-2 border-t border-white/5 pt-2">
+                                <span>🛏️ {comp.bedrooms || '-'}</span>
+                                <span>🚿 {comp.bathrooms || '-'}</span>
+                                <span>📐 {sqft > 1 ? sqft : '-'} sqft</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 border-t border-white/10 bg-black/20 flex justify-between items-center rounded-b-2xl">
+                      <span className="text-sm font-bold text-gray-300">
+                        {selectedList.length} {lang === 'en' ? 'Selected' : 'Seleccionadas'}
+                      </span>
+                      <button 
+                        onClick={() => setActiveModal(null)}
+                        className="text-white px-8 py-3 rounded-lg font-black uppercase tracking-wide transition-colors"
+                        style={{ backgroundColor: themeColor, boxShadow: `0 10px 15px -3px ${themeColor}33` }}
+                      >
+                        {t.closeBtn}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -498,12 +529,9 @@ return (
       {propertyDetails && (
         <div className="animate-fadeIn relative z-10">
           
-          
-          
-                  
-            {parsedAddress.lat !== 0 && parsedAddress.lng !== 0 && (
+          {/* CORRECCIÓN: Validación isLoaded para el mapa */}
+          {isLoaded && parsedAddress.lat !== 0 && parsedAddress.lng !== 0 && (
             <div className="border-t border-b border-white/10 bg-black/40">
-              {/* Controles del mapa */}
               <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5">
                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
                   📍 {lang === 'en' ? 'Location & Market Context' : 'Ubicación y Mercado'}
@@ -545,7 +573,6 @@ return (
                 </div>
               </div>
 
-              {/* Contenedor del Mapa de Google */}
               <div className="w-full h-[350px] relative">
                 <GoogleMap
                   mapContainerStyle={{ width: '100%', height: '100%' }}
@@ -565,10 +592,9 @@ return (
                     ]
                   }}
                 >
-                  {/* PIN PRINCIPAL (La casa del Seller) - Siempre visible y centrado */}
                   <Marker 
                     position={{ lat: parsedAddress.lat, lng: parsedAddress.lng }}
-                    zIndex={999} // Asegura que siempre esté por encima de los demás
+                    zIndex={999}
                     icon={{
                       url: '/sellers-frog-pin.png',
                       scaledSize: new window.google.maps.Size(70, 70)
@@ -584,16 +610,15 @@ return (
                           url: '/frog-pin-vendida.png', 
                           scaledSize: new window.google.maps.Size(40, 40)
                         }}
-                        onClick={() => setSelectedPin(comp)} // <-- Acción de clic
+                        onClick={() => setSelectedPin(comp)} 
                       />
                     );
                   })}
 
-                  {/* El "Globo" flotante de información */}
                   {selectedPin && (
                     <InfoWindow
                       position={{ lat: selectedPin.lat, lng: selectedPin.lng }}
-                      options={{ pixelOffset: new window.google.maps.Size(0, -40) }} // <-- Esto sube la ventana para no tapar el pin
+                      options={{ pixelOffset: new window.google.maps.Size(0, -40) }} 
                       onCloseClick={() => setSelectedPin(null)}
                     >
                       <div className="p-2 text-[green] min-w-[150px] font-sans">
@@ -609,7 +634,6 @@ return (
                     </InfoWindow>
                   )}
                   {mapFilter === 'available' && allProperties?.map((prop: any, idx: number) => {
-                    // Tu esquema de Prisma usa "latitude" y "longitude"
                     if (!prop.latitude || !prop.longitude) return null;
                     const isRentOnly = !prop.isForSale && prop.isForRent;
                     const pinIcon = isRentOnly ? '/frog-pin-renta.png' : '/frog-pin.png';
@@ -631,10 +655,9 @@ return (
             </div>
           )}
 
-          {/* GRID DE 4 COLUMNAS CON EL NUEVO ORDEN */}
+          {/* GRID DE 4 COLUMNAS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
             
-            {/* OPCION 1: SELLER FINANCE */}
             <div className="p-6 bg-black/20 hover:bg-white/5 transition-colors group flex flex-col relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#529e14]"></div>
               <div className="flex items-center gap-3 mb-8">
@@ -642,26 +665,59 @@ return (
                 <h3 className="text-lg font-bold text-white">{t.sellerFinanceTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.sellerFinanceSub}</span></h3>
               </div>
 
-              <div className="text-4xl leading-relaxed font-black text-[#529e14] mb-2">
+              <div className="text-3xl leading-relaxed font-black text-[#529e14] mb-2">
                 {formatMoney(strategies.sellerFinance.monthlyIncome)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
               </div>
 
-              <p className="text-xs leading-relaxed text-gray-400 mb-8 flex-grow">{t.sellerFinanceDesc}</p>
-              <ul className="space-y-6 text-[18px] text-gray-300 mb-8">
-                <li className="flex justify-between"><span>{t.downPaymentReceivedLabel}</span> <span className="text-blue-400">{formatMoney(strategies.sellerFinance.downPayment)}</span></li>
-                <li className="flex justify-between"><span>{t.monthlyIncomeLabel}</span> <span className="text-[#529e14]">+{formatMoney(strategies.sellerFinance.monthlyIncome)}/mo</span></li>
-                <li className="flex justify-between text-[20px] font-bold pt-2 border-t border-white/10"><span>{t.totalYieldLabel}</span> <span className="text-white">{formatMoney(strategies.sellerFinance.totalYield)}</span></li>
+              <p className="text-xs leading-relaxed text-gray-400 mb-6 flex-grow">{t.sellerFinanceDesc}</p>
+              
+              <ul className="space-y-2 text-[15px] text-gray-300 mb-6">
+                {/* ENGANCHE */}
+                <li className="flex justify-between mb-3 text-sm">
+                  <span>{t.downPaymentReceivedLabel}</span> 
+                  <span className="text-blue-400">{formatMoney(strategies.sellerFinance.downPayment)}</span>
+                </li>
+                
+                {/* CABECERA: PAGO TOTAL DEL COMPRADOR */}
+                <li className="flex justify-between text-gray-300 border-t border-white/10 pt-2">
+                  <span>{lang === 'es' ? 'Pago del Comprador:' : 'Total Buyer Payment:'}</span> 
+                  <span className="font-bold text-white">{formatMoney(strategies.sellerFinance.totalMonthlyPayment)}/mo</span>
+                </li>
+                
+                {/* DESGLOSE DEL PAGO MENSUAL */}
+                <li className="flex justify-between text-[11px] text-gray-500 pl-2">
+                  <span>• P&I</span> 
+                  <span className="text-[#529e14] font-bold">+{formatMoney(strategies.sellerFinance.monthlyIncome)}</span>
+                </li>
+                <li className="flex justify-between text-[11px] text-gray-500 pl-2">
+                  <span>• {lang === 'es' ? 'Impuestos (Est.)' : 'Taxes (Est.)'}</span> 
+                  <span>+{formatMoney(strategies.sellerFinance.taxesMonthly)}</span>
+                </li>
+                <li className="flex justify-between text-[11px] text-gray-500 pl-2">
+                  <span>• {lang === 'es' ? 'Seguro (Est.)' : 'Insurance (Est.)'}</span> 
+                  <span>+{formatMoney(strategies.sellerFinance.insuranceMonthly)}</span>
+                </li>
+                <li className="flex justify-between text-[11px] text-gray-500 pl-2 pb-2">
+                  <span>• {lang === 'es' ? 'Tarifa (Fee)' : 'Servicing Fee'}</span> 
+                  <span>+{formatMoney(strategies.sellerFinance.servicingFee)}</span>
+                </li>
+
+                {/* YIELD / RENDIMIENTO TOTAL */}
+                <li className="flex justify-between pt-3 border-t border-white/10 font-bold text-[18px]">
+                  <span>{t.totalYieldLabel}</span> 
+                  <span className="text-white">{formatMoney(strategies.sellerFinance.totalYield)}</span>
+                </li>
               </ul>
+
               <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold rounded-lg transition-colors mt-auto">
                 {t.chooseBtn}
               </button>
             </div>
 
-            {/* OPCION 2: FIX & LIST */}
             <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
               <div className="flex items-center gap-3 mb-8">
                 <span className="text-2xl">🔨</span>
-                <h3 className="text-lg  leading-relaxed font-bold text-white">{t.fixListTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.fixListSub}</span></h3>
+                <h3 className="text-lg leading-relaxed font-bold text-white">{t.fixListTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.fixListSub}</span></h3>
               </div>
               <div className="text-3xl font-black text-white mb-2 group-hover:text-blue-400 transition-colors">
                 {formatMoney(strategies.fixAndList.netProfit)}
@@ -677,7 +733,6 @@ return (
               </button>
             </div>
 
-            {/* OPCION 3: CASH BUYER */}
             <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
               <div className="flex items-center gap-3 mb-8">
                 <span className="text-2xl">⚡</span>
@@ -697,7 +752,6 @@ return (
               </button>
             </div>
 
-            {/* OPCION 4: RENT (NUEVO) */}
             <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-2xl">🔑</span>
@@ -713,19 +767,16 @@ return (
               <ul className="space-y-2 text-sm text-gray-300 mb-6">
                 <li className="flex justify-between mb-3"><span>{t.rentGrossLabel}</span> <span>{formatMoney(strategies.rent.monthly)}</span></li>
                 
-                {/* Cabecera de Gastos */}
                 <li className="flex justify-between text-red-400/90 border-t border-white/10 pt-2">
                   <span>{t.rentExpensesLabel}</span> 
                   <span className="font-bold">-{formatMoney(strategies.rent.monthly - strategies.rent.netMonthly)}</span>
                 </li>
                 
-                {/* Desglose de Gastos */}
                 <li className="flex justify-between text-[11px] text-gray-500 pl-2"><span>{t.rentTaxesLabel}</span> <span>-{formatMoney(inputs.taxesAnnual / 12)}</span></li>
                 <li className="flex justify-between text-[11px] text-gray-500 pl-2"><span>{t.rentInsuranceLabel}</span> <span>-{formatMoney(inputs.insuranceAnnual / 12)}</span></li>
                 <li className="flex justify-between text-[11px] text-gray-500 pl-2"><span>{t.rentAdminLabel}</span> <span>-{formatMoney(inputs.adminFeeMonthly)}</span></li>
                 <li className="flex justify-between text-[11px] text-gray-500 pl-2 pb-2"><span>{t.rentMaintLabel}</span> <span>-{formatMoney(inputs.maintannaceMonthly)}</span></li>
 
-                {/* Total Anual Neto */}
                 <li className="flex justify-between pt-3 border-t border-white/10 font-semibold text-purple-400">
                   <span>{t.rentAnnualLabel}</span> <span>{formatMoney(strategies.rent.annual)}</span>
                 </li>
@@ -736,15 +787,17 @@ return (
             </div>
 
           </div>
+
           <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none">
-              <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
-              <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
-            </button>
-          {/* AJUSTES AVANZADOS  */}
+            onClick={() => setShowSettings(!showSettings)}
+            className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
+          >
+            <span className="font-bold text-gray-300">{t.fineTuneBtn}</span>
+            <span className="text-gray-400">{showSettings ? t.hide : t.show}</span>
+          </button>
+
+          {/* AJUSTES AVANZADOS */}
           <div className="border-t border-white/10">
-            
             {showSettings && (
               <div className="p-6 bg-black/20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
                 <div className="space-y-4">
@@ -753,7 +806,7 @@ return (
                   <InputGroup label={t.rehabInput} value={inputs.rehabCosts} onChange={(v) => handleInputChange('rehabCosts', v)} />
                   <InputGroup label={t.rentInput} value={inputs.estimatedRent} onChange={(v) => handleInputChange('estimatedRent', v)} />
                 </div>
-                {/* ... (Las secciones de costos y bancos se mantienen igual que tu código original) */}
+                
                 <div className="space-y-4">
                   <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionCosts}</h4>
                   <InputGroup label={t.discountInput} value={inputs.investorDiscountPercent} onChange={(v) => handleInputChange('investorDiscountPercent', v)} />
@@ -763,7 +816,25 @@ return (
                 <div className="space-y-4">
                   <h4 className="text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-white/10 pb-2">{t.sectionBank}</h4>
                   <InputGroup label={t.pricePremiumInput} value={inputs.sfPricePremiumPercent} onChange={(v) => handleInputChange('sfPricePremiumPercent', v)} />
-                  {/* ... (Input del down payment) */}
+                  
+                  {/* CORRECCIÓN: Control del Enganche (Down Payment) con toggle $ / % */}
+                  <div className="flex flex-col">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-gray-400 uppercase font-semibold">{t.downPaymentInput}</label>
+                      <button 
+                        onClick={() => setIsDpPercent(!isDpPercent)}
+                        className="text-[10px] text-[#529e14] hover:text-white font-bold bg-white/5 px-2 py-0.5 rounded transition-colors"
+                      >
+                        {isDpPercent ? t.switchToMoney : t.switchToPercent}
+                      </button>
+                    </div>
+                    <input 
+                      type="number" 
+                      value={isDpPercent ? inputs.sfDownPaymentPercent : inputs.sfDownPaymentFlat} 
+                      onChange={(e) => handleInputChange(isDpPercent ? 'sfDownPaymentPercent' : 'sfDownPaymentFlat', e.target.value)}
+                      className="bg-black/40 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#529e14] focus:ring-1 focus:ring-[#529e14] transition-all w-full"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -773,34 +844,29 @@ return (
                 </div>
               </div>
             )}
-            
           </div>
 
           {/* "¿Cómo calculamos esto?" */}
-            <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner">
-              <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
-                {t.transparencyTitle}
-              </h4>
-              <ul className="list-disc list-inside text-xs text-gray-400 space-y-2 leading-relaxed">
+          <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner mt-4">
+            <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
+              {t.transparencyTitle}
+            </h4>
+            <ul className="list-disc list-inside text-xs text-gray-400 space-y-2 leading-relaxed">
               <li>
                 {t.transparencyArv.replace('{n}', selectedComps.length.toString() || '0')}
               </li>
-                <li>
-                  {t.transparencyRehab.replace(
-                    '{price}', 
-                    formatMoney(inputs.rehabCosts / (propertyDetails.sqft || 1))
-                  )}
-                </li>
-              </ul>
-            </div>
-            
-
+              <li>
+                {t.transparencyRehab.replace(
+                  '{price}', 
+                  formatMoney(inputs.rehabCosts / (propertyDetails.sqft || 1))
+                )}
+              </li>
+            </ul>
+          </div>
 
         </div>
       )}
-
     </div>
-    
   );
 }
 

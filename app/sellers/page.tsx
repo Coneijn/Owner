@@ -89,7 +89,7 @@ export default async function SellersPage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
+  const lang = (searchParams?.lang === 'es' ? 'es' : 'en') as 'en' | 'es';
   const t = DICTIONARY[lang];
   
   const formUrl = lang === 'en' ? FORM_URLS.en : FORM_URLS.es;

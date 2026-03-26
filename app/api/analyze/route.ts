@@ -39,31 +39,42 @@ function calculateRepairs(sqft: number, yearBuilt: number, propertyType: string,
   };
 }
 
-// Calcula el ARV basado en los mejores comparables (Casas Remodeladas)
-function calculateTopTierARV(comparables: any[], subjectSqft: number, fallbackPrice: number) {
+// Añadimos subjectType como parámetro
+function calculateTopTierARV(comparables: any[], subjectSqft: number, fallbackPrice: number, subjectType: string) {
   if (!comparables || comparables.length === 0 || subjectSqft === 0) return fallbackPrice;
 
-  // Filtrar comps válidos y calcular precio por pie cuadrado
-  const validComps = comparables
-    .filter(c => c.price > 0 && c.squareFootage > 0)
+  // 1. Establecer límites de tamaño (Ej: +/- 20% de los pies cuadrados objetivo)
+  const minSqft = subjectSqft * 0.8;
+  const maxSqft = subjectSqft * 1.2;
+
+  // 2. Filtrar por tamaño similar y tipo de propiedad (opcional pero muy recomendado)
+  let validComps = comparables
+    .filter(c => 
+      c.price > 0 && 
+      c.squareFootage > 0 &&
+      c.squareFootage >= minSqft && 
+      c.squareFootage <= maxSqft
+      // && c.propertyType === subjectType // Descomenta esto si el API te devuelve propertyType en los comps
+    )
     .map(c => ({
       ...c,
       pricePerSqft: c.price / c.squareFootage
     }));
 
+  // Si el filtro de tamaño fue muy estricto y nos quedamos sin comps, 
+  // podríamos relajarlo o simplemente usar el fallback.
   if (validComps.length === 0) return fallbackPrice;
 
-  // Ordenar de mayor a menor precio por pie cuadrado
+  // 3. Ahora sí, ordenar de mayor a menor precio por pie cuadrado
   validComps.sort((a, b) => b.pricePerSqft - a.pricePerSqft);
 
-  // Tomar el Top 25% de los comparables (o máximo los 3 mejores)
+  // 4. Tomar el Top 25% (máximo 3)
   const topCount = Math.max(1, Math.min(3, Math.ceil(validComps.length * 0.25)));
   const topComps = validComps.slice(0, topCount);
 
-  // Promediar el precio por pie cuadrado del Top Tier
+  // 5. Promediar y calcular
   const avgTopPricePerSqft = topComps.reduce((acc, curr) => acc + curr.pricePerSqft, 0) / topComps.length;
 
-  // Multiplicar por los pies cuadrados de la propiedad objetivo
   return Math.round(avgTopPricePerSqft * subjectSqft);
 }
 
@@ -123,7 +134,10 @@ export async function POST(req: Request) {
     const propertyType = record.propertyType || "Single Family";
     const bedrooms = Number(record.bedrooms) || 3;
     const bathrooms = Number(record.bathrooms) || 2;
-    
+    const ownerName = record.owner?.names?.[0] || 'Desconocido';
+    const lastSaleDate = record.lastSaleDate ? new Date(record.lastSaleDate).toLocaleDateString() : 'N/A';
+    const county = record.county || 'Condado N/A';
+    const city = record.city || 'Ciudad N/A';
     const lotSize = Number(record.lotSize) || 0;
     const garage = Number(record.garageSpaces) || 0;
 
@@ -133,8 +147,8 @@ export async function POST(req: Request) {
     const salesComps = avmData.comparables || [];
     const rentComps = rentData.comparables || [];
 
-    const arv = calculateTopTierARV(salesComps, sqft, baseAvmPrice);
-    const estimatedRent = calculateAverageRent(rentComps, baseAvmRent);
+const arv = calculateTopTierARV(salesComps, sqft, baseAvmPrice, propertyType);    
+const estimatedRent = calculateAverageRent(rentComps, baseAvmRent);
 
 
     // 5. LÓGICA DE IMPUESTOS Y SEGUROS (Requisito del Ticket)
@@ -175,6 +189,11 @@ export async function POST(req: Request) {
       annualTaxes,
       insuranceAnnual,
       isDistressed,
+      ownerName,
+      lastSaleDate,
+      lastSalePrice,
+      county,
+      city,
       conditionScale: validCondition, // Devolvemos la escala usada para validación
       salesCompsCount: salesComps.length,
       rentCompsCount: rentComps.length,
@@ -186,7 +205,23 @@ export async function POST(req: Request) {
           price: c.price,
           lat: Number(c.latitude) || 0,
           lng: Number(c.longitude) || 0,
-          saleDate: c.removedDate || c.listedDate || null // <-- Usamos la fecha en que se vendió/quitó del mercado
+          saleDate: c.removedDate || c.listedDate || null,
+          bedrooms: c.bedrooms || null, 
+          bathrooms: c.bathrooms || null,
+          sqft: c.squareFootage || c.squareFeet || 0 // ¡Aquí estaba el missing link!
+        }))
+        .slice(0, 10),
+        recentRents: rentComps
+        .filter((c: any) => c.price > 0)
+        .map((c: any) => ({
+          address: c.formattedAddress || c.addressLine1 || 'Dirección no disponible',
+          price: c.price,
+          lat: Number(c.latitude) || 0,
+          lng: Number(c.longitude) || 0,
+          listedDate: c.listedDate || null,
+          bedrooms: c.bedrooms || null,
+          bathrooms: c.bathrooms || null,
+          sqft: c.squareFootage || c.squareFeet || 0
         }))
         .slice(0, 10)
     });
