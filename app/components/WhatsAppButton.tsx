@@ -27,7 +27,6 @@ export default function WhatsAppButton({
     return () => clearTimeout(timer);
   }, []);
 
-
   const positionClass = position === 'left' 
     ? 'left-1 lg:left-[460px] flex-row-reverse' 
     : 'right-4 md:right-6';
@@ -35,7 +34,7 @@ export default function WhatsAppButton({
   const translateClass = position === 'left' ? '-translate-x-4' : 'translate-x-4';
 
   return (
-    <div className={`fixed bottom-[100px] md:bottom-[195px] z-[55] flex items-center gap-3 group ${positionClass} transition-all duration-300`}>
+    <div className={`fixed bottom-[220px] md:bottom-[220px] z-[55] flex items-center gap-3 group ${positionClass} transition-all duration-300`}>
       
       <span className={`
         bg-white/90 backdrop-blur text-[#1a1a1a] px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide 

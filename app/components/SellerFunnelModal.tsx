@@ -266,8 +266,8 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
                    <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm mb-6">
                      <div><span className="text-gray-500 block text-xs uppercase">{t.details.beds}</span> <span className="text-white font-bold">{data.beds || '-'}</span></div>
                      <div><span className="text-gray-500 block text-xs uppercase">{t.details.baths}</span> <span className="text-white font-bold">{data.baths || '-'}</span></div>
-                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.sqft}</span> <span className="text-white font-bold">{data.sqft || '-'}</span></div>
-                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.lotSize}</span> <span className="text-white font-bold">{data.lotSize || '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.sqft}</span> <span className="text-white font-bold">{data.sqft ? Number(data.sqft).toLocaleString('en-US') : '-'}</span></div>
+                     <div><span className="text-gray-500 block text-xs uppercase">{t.details.lotSize}</span> <span className="text-white font-bold">{data.lotSize ? Number(data.lotSize).toLocaleString('en-US') : '-'}</span></div>
                      <div><span className="text-gray-500 block text-xs uppercase">{t.details.garage}</span> <span className="text-white font-bold">{data.garage || '-'}</span></div>
                      <div><span className="text-gray-500 block text-xs uppercase">{t.details.year || "Year"}</span> <span className="text-white font-bold">{data.yearBuilt || '-'}</span></div>
                    </div>
@@ -277,11 +277,11 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
                    </h3>
                    <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm">
                      {data.strategySelected === 'rent' ? (
-                       <div><span className="text-gray-500 block text-xs uppercase">{t.details.monthlyRent}</span> <span className="text-white font-bold">${data.monthlyRent || '-'}</span></div>
+                       <div><span className="text-gray-500 block text-xs uppercase">{t.details.monthlyRent}</span> <span className="text-white font-bold">${data.monthlyRent ? Number(data.monthlyRent).toLocaleString('en-US') : '-'}</span></div>
                      ) : (
                        <>
-                         <div className="col-span-2"><span className="text-gray-500 block text-xs uppercase">{t.details.price}</span> <span className="text-white font-bold">${data.askingPrice || '-'}</span></div>
-                         <div><span className="text-gray-500 block text-xs uppercase">{t.details.downPayment}</span> <span className="text-white font-bold">${data.downPayment || '-'}</span></div>
+                         <div className="col-span-2"><span className="text-gray-500 block text-xs uppercase">{t.details.price}</span> <span className="text-white font-bold">${data.askingPrice ? Number(data.askingPrice).toLocaleString('en-US') : '-'}</span></div>
+                         <div><span className="text-gray-500 block text-xs uppercase">{t.details.downPayment}</span> <span className="text-white font-bold">${data.downPayment ? Number(data.downPayment).toLocaleString('en-US') : '-'}</span></div>
                          <div><span className="text-gray-500 block text-xs uppercase">{t.details.interestRate}</span> <span className="text-white font-bold">{data.interestRate || '-'}%</span></div>
                        </>
                      )}

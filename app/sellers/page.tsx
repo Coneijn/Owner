@@ -190,9 +190,7 @@ export default async function SellersPage(props: {
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
       
-      <Header lang={lang} />
-
-      
+      <Header lang={lang} activePage="sellers" />
 
       <SellerFunnelWrapper lang={lang} allProperties={availableProperties} />
       <ProblemsWeSolve lang={lang} /> 

@@ -350,6 +350,15 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   return (
     <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden text-white">
       
+      <style>{`
+        @keyframes ping-custom {
+          75%, 100% { transform: scale(1.35); opacity: 0; }
+        }
+        .animate-ping-custom {
+          animation: ping-custom 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+      `}</style>
+
       {/* HEADER BUSCADOR Y SLIDER DE CONDICIÓN */}
       <div className="p-6 border-b border-white/10 bg-white/5 relative z-20">
         <h2 className="text-xl font-bold mb-4 text-white">{t.title}</h2>
@@ -432,7 +441,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
         {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
         
         {propertyDetails && (
-          <div className="mt-5 flex flex-nowrap overflow-x-auto items-center gap-3 text-sm text-gray-400 relative pb-2 custom-scrollbar">
+          <div className="mt-5 flex flex-nowrap overflow-x-auto items-center gap-3 text-sm text-gray-400 relative py-4 px-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">🛏️ {propertyDetails.bedrooms} {t.beds}</span>
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">🚿 {propertyDetails.bathrooms} {t.baths}</span>
             <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-md">📐 {propertyDetails.sqft} {t.sqft}</span>
@@ -454,9 +463,9 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
             {propertyDetails.recentSales && propertyDetails.recentSales.length > 0 && (
               <button 
                 onClick={() => setActiveModal('sales')}
-                className="relative overflow-hidden bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 hover:text-white hover:border-[#529e14]/60 hover:shadow-[0_0_15px_rgba(82,158,20,0.4)] transform hover:scale-105 transition-all duration-300 font-bold group before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full"
+                className="relative bg-[#529e14]/10 border border-[#529e14]/30 text-[#529e14] px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-[#529e14]/20 hover:text-white hover:border-[#529e14]/60 hover:shadow-[0_0_15px_rgba(82,158,20,0.4)] transform hover:scale-105 transition-all duration-300 font-bold group"
               >
-                <span className="absolute inset-0 rounded-md bg-[#529e14] animate-ping opacity-20 group-hover:hidden"></span>
+                <span className="absolute inset-0 rounded-md bg-[#529e14] animate-ping-custom opacity-40"></span>
                 <span className="relative z-10 flex items-center gap-2 pointer-events-none">📊 {t.backedByComps.replace('{n}', propertyDetails.recentSales.length.toString())}</span>
               </button>
             )}
@@ -465,9 +474,12 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
             {propertyDetails.recentRents && propertyDetails.recentRents.length > 0 && (
               <button 
                 onClick={() => setActiveModal('rent')}
-                className="relative overflow-hidden bg-purple-600/10 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-purple-600/20 hover:text-white hover:border-purple-500/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transform hover:scale-105 transition-all duration-300 font-bold group before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full"
+                className="relative bg-purple-600/10 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-md flex items-center gap-2 hover:bg-purple-600/20 hover:text-white hover:border-purple-500/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transform hover:scale-105 transition-all duration-300 font-bold group"
               >
-                <span className="absolute inset-0 rounded-md bg-purple-600 animate-ping opacity-20 group-hover:hidden"></span>
+                <span 
+                  className="absolute inset-0 rounded-md bg-purple-600 animate-ping-custom opacity-40"
+                  style={{ animationDelay: '0.75s' }}
+                ></span>
                 <span className="relative z-10 flex items-center gap-2 pointer-events-none">🔑 {t.backedByRentComps.replace('{n}', propertyDetails.recentRents.length.toString())}</span>
               </button>
             )}

@@ -7,8 +7,8 @@ import LanguageSwitch from './LanguageSwitch';
 import MapFloatingButtons from '@/app/map/ui/MapFloatingButtons';
 
 const HEADER_TEXTS = {
-  es: { home: "Inicio", properties: "Propiedades", about: "Nosotros", blog: "Blog", caseStudies: "Casos de Estudio", contact: "Contacto", login: "Login" },
-  en: { home: "Home", properties: "Properties", about: "About Us", blog: "Blog", caseStudies: "Case Studies", contact: "Contact", login: "Login" }
+  es: { home: "Inicio", properties: "Propiedades", sellers: "Vendedores", about: "Nosotros", blog: "Blog", caseStudies: "Casos de Estudio", contact: "Contacto", login: "Login" },
+  en: { home: "Home", properties: "Properties", sellers: "Sellers", about: "About Us", blog: "Blog", caseStudies: "Case Studies", contact: "Contact", login: "Login" }
 };
 
 interface HeaderProps {
@@ -43,6 +43,7 @@ export default function Header({ lang, activePage }: HeaderProps) {
                 <nav className="hidden lg:flex gap-6 text-sm">
                     <Link href={`/?lang=${lang}`} className={getLinkClass('home')}>{t.home}</Link>
                     <Link href={`/properties?lang=${lang}`} className={getLinkClass('properties')}>{t.properties}</Link>
+                    <Link href={`/sellers?lang=${lang}`} className={getLinkClass('sellers')}>{t.sellers}</Link>
                     <Link href={`/about-us?lang=${lang}`} className={getLinkClass('about')}>{t.about}</Link>
                     <Link href={`/blog?lang=${lang}`} className={getLinkClass('blog')}>{t.blog}</Link> 
                     <Link href={`/case-studies?lang=${lang}`} className={getLinkClass('case-studies')}>{t.caseStudies}</Link>
@@ -84,6 +85,7 @@ export default function Header({ lang, activePage }: HeaderProps) {
             <nav className="flex flex-col items-center gap-6 text-xl">
                 <Link href={`/?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('home')}>{t.home}</Link>
                 <Link href={`/properties?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('properties')}>{t.properties}</Link>
+                <Link href={`/sellers?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('sellers')}>{t.sellers}</Link>
                 <Link href={`/about-us?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('about')}>{t.about}</Link>
                 <Link href={`/blog?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('blog')}>{t.blog}</Link>
                 <Link href={`/case-studies?lang=${lang}`} onClick={() => setIsMobileMenuOpen(false)} className={getLinkClass('case-studies')}>{t.caseStudies}</Link>
