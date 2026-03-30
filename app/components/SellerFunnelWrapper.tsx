@@ -12,24 +12,24 @@ interface WrapperProps {
 const DICTIONARY = {
   es: {
     welcome: { 
-      title: "Descubre tus Opciones.", 
-      titleHigh: "Maximiza tu Ganancia.", 
+      title: <>Descubre tu Flujo de Caja.<br />Maximiza tus Ganancias.<br />Relájate y Cobra.</>, 
+      titleHigh: "", 
       sub: "Ingresa tu dirección para ver estimaciones reales. Ya sea que quieras ser el banco, vender rápido en efectivo, remodelar o rentar. Tú decides, nosotros te conectamos.", 
       pts: [
         ["📊", "Analiza tu casa", "Datos en tiempo real"], 
-        ["🤝", "Elige tu estrategia", "4 opciones diferentes"], 
+        ["🤝", "Anuncia tu casa", "4 opciones diferentes"], 
         ["💰", "Maximiza tu dinero", "Tú tienes el control"]
       ] 
     }
   },
   en: {
     welcome: { 
-      title: "Discover Your Options.", 
-      titleHigh: "Maximize Your Profit.", 
+      title: <>Discover Your Cashflow.<br />Maximize Profits.<br />Sit Back & Collect.</>, 
+      titleHigh: "", 
       sub: "Enter your address to see real estimates. Whether you want to be the bank, sell for fast cash, fix & list, or rent it out. You decide, we connect you.", 
       pts: [
         ["📊", "Analyze your home", "Real-time data"], 
-        ["🤝", "Choose your strategy", "4 different options"], 
+        ["🤝", "List your home", "4 different options"], 
         ["💰", "Maximize your money", "You are in control"]
       ] 
     }
@@ -61,8 +61,8 @@ export default function SellerFunnelWrapper({ lang, allProperties }: WrapperProp
           🏡
         </div>
         
-        {/* PARTE SUPERIOR DEL SÁNDWICH: Discover Your Options */}
-        <h1 className="text-5xl md:text-6xl font-black text-white m-0 mb-10 tracking-tight leading-tight">
+        {/* PARTE SUPERIOR DEL SÁNDWICH: Título principal fusionado */}
+        <h1 className="text-5xl md:text-6xl font-black text-[#f8ed1a] drop-shadow-md m-0 mb-10 tracking-tight leading-tight">
           {t.welcome.title}
         </h1>
         

@@ -71,6 +71,7 @@ selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afi
     rentAdminLabel: "• Administración",
     rentMaintLabel: "• Mantenimiento",
     rentMonthlyLabel: "Renta Mensual Estimada:", rentAnnualLabel: "Flujo de Caja Anual Neto:",
+    netCashflowLabel: "Flujo de Caja Neto",
     
     chooseBtn: "Elegir esta opción ->",
     
@@ -126,6 +127,7 @@ selectRentCompsDesc: "We will use the average monthly rent of these homes to fin
     rentAdminLabel: "• Property Mgmt",
     rentMaintLabel: "• Maintenance",
     rentMonthlyLabel: "Estimated Monthly Rent:", rentAnnualLabel: "Net Annual Cashflow:",
+    netCashflowLabel: "Net Cashflow",
     
     chooseBtn: "Choose this option ->",
     
@@ -766,22 +768,20 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               </div>
 
               <div className="text-3xl leading-relaxed font-black text-[#529e14] mb-2">
-                {formatMoney(strategies.sellerFinance.monthlyIncome)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
+                {formatMoney(strategies.sellerFinance.totalMonthlyPayment)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
               </div>
+
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
+                {lang === 'es' ? 'Pago Total del Comprador' : 'Total Buyer Payment'}
+              </p>
 
               <p className="text-xs leading-relaxed text-gray-400 mb-6 flex-grow">{t.sellerFinanceDesc}</p>
               
               <ul className="space-y-2 text-[15px] text-gray-300 mb-6">
                 {/* ENGANCHE */}
-                <li className="flex justify-between mb-3 text-sm">
+                <li className="flex justify-between mb-3 text-sm border-b border-white/10 pb-2">
                   <span>{t.downPaymentReceivedLabel}</span> 
-                  <span className="text-blue-400">{formatMoney(strategies.sellerFinance.downPayment)}</span>
-                </li>
-                
-                {/* CABECERA: PAGO TOTAL DEL COMPRADOR */}
-                <li className="flex justify-between text-gray-300 border-t border-white/10 pt-2">
-                  <span>{lang === 'es' ? 'Pago del Comprador:' : 'Total Buyer Payment:'}</span> 
-                  <span className="font-bold text-white">{formatMoney(strategies.sellerFinance.totalMonthlyPayment)}/mo</span>
+                  <span className="text-blue-400 font-bold">{formatMoney(strategies.sellerFinance.downPayment)}</span>
                 </li>
                 
                 {/* DESGLOSE DEL PAGO MENSUAL */}
@@ -859,15 +859,18 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               </div>
 
               <div className="text-3xl font-black text-white mb-2 group-hover:text-purple-400 transition-colors">
-                {formatMoney(strategies.rent.netMonthly)}<span className="text-lg text-gray-500 font-normal">/mo</span>
+                {formatMoney(strategies.rent.monthly)}<span className="text-lg text-gray-500 font-normal">/mo</span>
               </div>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">Flujo de Caja Neto</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">{t.rentGrossLabel.replace(':', '')}</p>
               <p className="text-xs text-gray-400 mb-6 flex-grow">{t.rentDesc}</p>
              
               <ul className="space-y-2 text-sm text-gray-300 mb-6">
-                <li className="flex justify-between mb-3"><span>{t.rentGrossLabel}</span> <span>{formatMoney(strategies.rent.monthly)}</span></li>
+                <li className="flex justify-between mb-3 border-b border-white/10 pb-2">
+                  <span className="font-semibold text-purple-400">{t.netCashflowLabel}</span> 
+                  <span className="font-bold text-white">{formatMoney(strategies.rent.netMonthly)}</span>
+                </li>
                 
-                <li className="flex justify-between text-red-400/90 border-t border-white/10 pt-2">
+                <li className="flex justify-between text-red-400/90 pt-1">
                   <span>{t.rentExpensesLabel}</span> 
                   <span className="font-bold">-{formatMoney(strategies.rent.monthly - strategies.rent.netMonthly)}</span>
                 </li>
