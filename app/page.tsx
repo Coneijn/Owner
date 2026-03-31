@@ -228,7 +228,11 @@ export default async function MapPage(props: {
                 searchType={searchType}
             />
         </div>
-        <WhatsAppButton lang={lang} propertyName={contactName} position="left"/>
+        
+        {/* Este es el WhatsApp original (Solo en escritorio) */}
+        <div className="hidden lg:block">
+            <WhatsAppButton lang={lang} propertyName={contactName} position="left"/>
+        </div>
     </div>
   );
 }

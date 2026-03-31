@@ -274,7 +274,7 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
       </div>
       
       <FilterModal isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
-      <div className="hidden lg:block">
+      <div className="block">
           <MapFloatingButtons lang={lang} />
       </div>
 
