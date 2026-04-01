@@ -1,7 +1,7 @@
 import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { redirect } from 'next/navigation'; // <-- Importación
+import { redirect } from 'next/navigation';
 import DashboardVendedorClient from './dashboard-seller-client';
 
 import { 
@@ -32,20 +32,17 @@ export default async function DashboardVendedor() {
 
   const sellerProfile = user?.sellerProfile;
 
-  // 👇 Validación simplificada con redirección
   if (!sellerProfile) {
     redirect('/'); 
   }
 
   // ==========================================
-  // 2. EVALUACIÓN DE PRIMER LOGIN (ONBOARDING SECUENCIAL)
+  // 2. EVALUACIÓN DE PRIMER LOGIN (ONBOARDING)
   // ==========================================
   
   const needsPasswordChange = user.forcePasswordChange === true; 
-  
   const needs2FA = !user.isTwoFactorEnabled; 
   const needsProfileCompletion = !sellerProfile.sellerImage; 
-  
   const isFirstLogin = needs2FA || needsProfileCompletion;
 
   if (isFirstLogin) {
@@ -60,8 +57,6 @@ export default async function DashboardVendedor() {
           </p>
 
           <div className="space-y-10">
-            {/* LÓGICA SECUENCIAL: Solo muestra el paso que toca */}
-            
             { needs2FA ? (
               <section className="bg-black/50 p-6 rounded-lg border border-gray-800">
                 <h2 className="text-xl font-bold text-white mb-4">Step 2: Setup Two-Factor Authentication (2FA)</h2>
@@ -103,14 +98,12 @@ export default async function DashboardVendedor() {
   // ==========================================
   // 3. FLUJO NORMAL: DASHBOARD (PORTAFOLIO)
   // ==========================================
+  
+  // A) Propiedades del Vendedor
   const rawProperties = await prisma.property.findMany({
-    where: {
-      sellerProfileId: sellerProfile.id 
-    },
+    where: { sellerProfileId: sellerProfile.id },
     orderBy: { createdAt: 'desc' },
-    include: {
-      sellerProfile: true, 
-    }
+    include: { sellerProfile: true }
   });
 
   const properties = rawProperties.map((p) => {
@@ -130,20 +123,51 @@ export default async function DashboardVendedor() {
     };
   });
 
-  // --- NUEVAS MÉTRICAS DEL PORTAFOLIO (SIN LOANS) ---
+  // B) Contratos (Créditos/Rentas) SOLO de este vendedor
+  const rawContracts = await prisma.contract.findMany({
+    where: { property: { sellerProfileId: sellerProfile.id } },
+    include: { property: true, buyer: true },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const contracts = rawContracts.map((c) => ({
+    ...c,
+    totalAmount: c.totalAmount ? Number(c.totalAmount) : 0,
+    downPayment: c.downPayment ? Number(c.downPayment) : 0,
+    principalAmount: c.principalAmount ? Number(c.principalAmount) : 0,
+    interestRate: c.interestRate ? Number(c.interestRate) : null,
+    monthlyTaxes: c.monthlyTaxes ? Number(c.monthlyTaxes) : null,
+    monthlyInsurance: c.monthlyInsurance ? Number(c.monthlyInsurance) : null,
+    monthlyServFee: c.monthlyServFee ? Number(c.monthlyServFee) : null,
+    property: c.property ? {
+      ...c.property,
+      price: c.property.price ? Number(c.property.price) : 0,
+      previousPrice: c.property.previousPrice ? Number(c.property.previousPrice) : null,
+      downPayment: c.property.downPayment ? Number(c.property.downPayment) : 0,
+      interestRate: c.property.interestRate ? Number(c.property.interestRate) : 0,
+      taxes: c.property.taxes ? Number(c.property.taxes) : 0,
+      insurance: c.property.insurance ? Number(c.property.insurance) : 0,
+      monthlyRent: c.property.monthlyRent ? Number(c.property.monthlyRent) : 0,
+      securityDeposit: c.property.securityDeposit ? Number(c.property.securityDeposit) : null,
+      commissionPct: c.property.commissionPct ? Number(c.property.commissionPct) : null,
+      commissionAmt: c.property.commissionAmt ? Number(c.property.commissionAmt) : null,
+    } : null
+  }));
+
+  // Métricas
   const totalProperties = properties.length;
   const availableProperties = properties.filter(p => p.status === 'AVAILABLE').length;
   const pendingProperties = properties.filter(p => p.status === 'UNDER_CONTRACT').length;
   const soldProperties = properties.filter(p => p.status === 'SOLD').length;
-  
-  // Valor total del portafolio sumando los precios de todas las propiedades
   const portfolioValue = properties.reduce((acc, p) => acc + (p.price || 0), 0);
+
+  // SANITIZACIÓN FINAL ANTIFALLOS: Elimina fechas y decimales ocultos para Next.js
+  const safeProperties = JSON.parse(JSON.stringify(properties));
+  const safeContracts = JSON.parse(JSON.stringify(contracts));
 
   return (
     <div className="min-h-screen bg-[#111111] text-white p-4 md:p-10 font-sans">
       <main className="max-w-7xl mx-auto">
-        
-        {/* CABECERA ESTILO PORTAL */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 border-b border-gray-800 pb-8">
           <div>
             <h2 className="text-[#f8ed1a] uppercase tracking-widest text-xs font-bold mb-2">
@@ -152,7 +176,6 @@ export default async function DashboardVendedor() {
             <h1 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight">
               {sellerProfile.sellerName}'s <span className="text-gray-500">Portfolio</span>
             </h1>
-            {/* DESCRIPCIÓN ACTUALIZADA */}
             <p className="text-gray-400 font-medium">
               Manage your properties and monitor your real estate portfolio.
             </p>
@@ -169,7 +192,6 @@ export default async function DashboardVendedor() {
           </div>
         </header>
 
-        {/* MÉTRICAS (ACTUALIZADAS SIN PRÉSTAMOS) */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
           <StatCard title="Total Properties" value={totalProperties} />
           <StatCard title="Available" value={availableProperties} color="text-[#529e14]" />
@@ -178,15 +200,13 @@ export default async function DashboardVendedor() {
           <StatCard title="Portfolio Value" value={formatMoney(portfolioValue)} color="text-white" />
         </div>
 
-        {/* TABLAS Y PESTAÑAS (COMPONENTE CLIENTE) */}
-        <DashboardVendedorClient properties={properties} />
-
+        {/* COMPONENTE CLIENTE CON DATOS SEGUROS */}
+        <DashboardVendedorClient properties={safeProperties} contracts={safeContracts} />
       </main>
     </div>
   );
 }
 
-// Tarjeta de estadística simplificada para encajar 5 en una fila
 function StatCard({ title, value, color = 'text-white' }: any) {
     return (
         <div className="bg-[#1a1a1a] shadow-lg rounded-xl border border-gray-800 p-5 relative group hover:border-gray-700 transition-colors">
