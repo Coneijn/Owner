@@ -26,6 +26,9 @@ export default async function CreditsManagerPage() {
     downPayment: contract.downPayment.toString(),
     principalAmount: contract.principalAmount.toString(),
     interestRate: contract.interestRate?.toString() || null,
+    monthlyTaxes: contract.monthlyTaxes?.toString() || null,
+    monthlyInsurance: contract.monthlyInsurance?.toString() || null,
+    monthlyServFee: contract.monthlyServFee?.toString() || null,
     startDate: contract.startDate.toISOString(),
     createdAt: contract.createdAt.toISOString(),
     updatedAt: contract.updatedAt.toISOString(),
@@ -58,10 +61,6 @@ export default async function CreditsManagerPage() {
             >
               Back
             </Link>
-            {/* Botón para importar CSV, esto lo conectaremos luego al Action */}
-             <button className="bg-[#529e14] hover:bg-[#458510] text-white px-6 py-3 rounded-lg text-sm font-bold uppercase tracking-wide shadow-lg transition-all flex items-center gap-2">
-              Import CSV
-            </button>
           </div>
         </div>
 

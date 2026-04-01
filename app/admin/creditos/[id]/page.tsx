@@ -4,15 +4,16 @@ import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ContractDetailPage({ params }: { params: { id: string } }) {
+export default async function ContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   // Consultamos el contrato con todas sus relaciones, incluyendo los pagos (Payment)
   const contract = await prisma.contract.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: {
       buyer: true,
       property: true,
       payments: {
-        orderBy: { dueDate: 'asc' } // Ordenamos los pagos por fecha de vencimiento
+        orderBy: { paymentDate: 'asc' } // Ordenamos los pagos por fecha de vencimiento
       }
     }
   });
@@ -124,8 +125,8 @@ export default async function ContractDetailPage({ params }: { params: { id: str
                     return (
                       <tr key={payment.id} className="hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-4 font-mono text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4 font-medium text-white">{formatDate(payment.dueDate)}</td>
-                        <td className="px-6 py-4 text-right text-[#f8ed1a] font-bold">{formatMoney(payment.amount)}</td>
+                        <td className="px-6 py-4 font-medium text-white">{formatDate(payment.paymentDate)}</td>
+                        <td className="px-6 py-4 text-right text-[#f8ed1a] font-bold">{formatMoney(payment.totalDue)}</td>
                         <td className="px-6 py-4 text-right">{formatMoney(payment.principal)}</td>
                         <td className="px-6 py-4 text-right">{formatMoney(payment.interest)}</td>
                         <td className="px-6 py-4 text-right text-xs text-gray-500">{formatMoney(extraFees)}</td>

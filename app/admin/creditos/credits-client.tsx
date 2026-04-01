@@ -45,7 +45,7 @@ export default function CreditsClient({ contracts }: { contracts: Contract[] }) 
             {contracts.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500 italic">
-                  No contracts found. Import a CSV to get started.
+                  No contracts found. 
                 </td>
               </tr>
             )}
@@ -75,7 +75,7 @@ export default function CreditsClient({ contracts }: { contracts: Contract[] }) 
                 {/* AMOUNT & TYPE */}
                 <td className="px-6 py-4">
                   <div className="text-[#f8ed1a] font-bold text-base">
-                    ${Number(contract.totalAmount).toLocaleString()}
+                    ${Number(contract.totalAmount).toLocaleString('en-US')}
                   </div>
                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase ${
                     contract.type === 'LOAN' ? 'bg-blue-900/50 text-blue-400' : 'bg-purple-900/50 text-purple-400'

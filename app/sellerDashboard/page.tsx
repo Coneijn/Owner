@@ -46,7 +46,7 @@ export default async function DashboardVendedor() {
   const needs2FA = !user.isTwoFactorEnabled; 
   const needsProfileCompletion = !sellerProfile.sellerImage; 
   
-  const isFirstLogin = needsPasswordChange || needs2FA || needsProfileCompletion;
+  const isFirstLogin = needs2FA || needsProfileCompletion;
 
   if (isFirstLogin) {
     return (
