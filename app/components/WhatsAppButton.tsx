@@ -40,7 +40,7 @@ export default function WhatsAppButton({
   // En escritorio (md:), si es 'right' baja a 100px, si es 'left' sube a 195px.
   const verticalClass = isRight 
     ? 'bottom-[100px] md:bottom-[100px]' 
-    : 'bottom-[100px] md:bottom-[195px]';
+    : 'bottom-[100px] md:bottom-[200px]';
 
   const horizontalClass = isRight 
     ? 'right-4 md:right-6' 
