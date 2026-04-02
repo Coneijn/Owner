@@ -1,57 +1,72 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+
+interface WhatsAppButtonProps {
+  lang: string;
+  propertyName: string;
+  position?: 'left' | 'right';
+}
+
+const DICTIONARY: Record<string, { label: string; template: string }> = {
+  en: { label: 'Contact us', template: "Hi, I'm interested in the property: " },
+  es: { label: 'Contáctanos', template: 'Hola, me interesa la propiedad: ' }
+};
 
 export default function WhatsAppButton({ 
   lang, 
   propertyName, 
   position = 'right' 
-}: { 
-  lang: string, 
-  propertyName: string,
-  position?: 'left' | 'right'
-}) {
-  const [isVisible, setIsVisible] = useState(true);
+}: WhatsAppButtonProps) {
+  const [isLabelVisible, setIsLabelVisible] = useState(true);
 
-  const text = lang === 'en' ? 'Contact us' : 'Contáctanos';
-  const message = lang === 'en' 
-    ? `Hi, I'm interested in the property: ${propertyName}` 
-    : `Hola, me interesa la propiedad: ${propertyName}`;
-    
-  const waUrl = `https://wa.me/19016604115?text=${encodeURIComponent(message)}`;
+  const content = DICTIONARY[lang] || DICTIONARY.en;
+  
+  const waUrl = useMemo(() => {
+    const message = `${content.template}${propertyName}`;
+    return `https://wa.me/19016604115?text=${encodeURIComponent(message)}`;
+  }, [propertyName, content]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-    }, 3000);
+    const timer = setTimeout(() => setIsLabelVisible(false), 3000);
     return () => clearTimeout(timer);
   }, []);
 
+  // LÓGICA DE POSICIONAMIENTO
+  const isRight = position === 'right';
 
-  const positionClass = position === 'left' 
-    ? 'left-1 lg:left-[450px] flex-row-reverse' 
-    : 'right-4 md:right-6';
+  // Ajustamos el bottom: 
+  // En móvil ambos quedan en 100px.
+  // En escritorio (md:), si es 'right' baja a 100px, si es 'left' sube a 195px.
+  const verticalClass = isRight 
+    ? 'bottom-[100px] md:bottom-[100px]' 
+    : 'bottom-[100px] md:bottom-[195px]';
+
+  const horizontalClass = isRight 
+    ? 'right-4 md:right-6' 
+    : 'left-4 lg:left-[450px] flex-row-reverse';
     
-  const translateClass = position === 'left' ? '-translate-x-4' : 'translate-x-4';
+  const translateClass = isRight ? 'translate-x-4' : '-translate-x-4';
 
   return (
-    <div className={`fixed bottom-[100px] md:bottom-[195px] z-[55] flex items-center gap-3 group ${positionClass} transition-all duration-300`}>
+    <div className={`fixed ${verticalClass} ${horizontalClass} z-[55] flex items-center gap-3 group transition-all duration-300`}>
       
       <span className={`
         bg-white/90 backdrop-blur text-[#1a1a1a] px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide 
         shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-200 pointer-events-none hidden sm:block
         transition-all duration-700 ease-in-out
-        ${isVisible ? 'opacity-100 translate-x-0' : `opacity-0 ${translateClass}`} 
+        ${isLabelVisible ? 'opacity-100 translate-x-0' : `opacity-0 ${translateClass}`} 
         group-hover:opacity-100 group-hover:translate-x-0
       `}>
-        {text}
+        {content.label}
       </span>
       
       <Link 
         href={waUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-[0_4px_15px_rgba(37,211,102,0.4)] hover:scale-110 transition-transform"
+        aria-label={content.label}
+        className="relative flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-[0_4px_15px_rgba(37,211,102,0.4)] hover:scale-110 active:scale-95 transition-transform"
       >
         <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-75"></span>
         <svg className="w-8 h-8 text-white relative z-10" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
