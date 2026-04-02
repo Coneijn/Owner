@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image';
-import Header from '@/app/components/Header'; // <--- 1. Importamos el Header
+import Header from '@/app/components/Header';
 
 export default async function BlogIndexPage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const { lang } = await searchParams;
@@ -11,7 +11,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
   const posts = await prisma.post.findMany({
     where: { 
       isPublished: true,
-      isCaseStudy: false // <-- AÑADIR ESTE FILTRO
+      isCaseStudy: false
     },
     orderBy: { createdAt: 'desc' }
   });
@@ -19,7 +19,6 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
       
-      {/* 2. Usamos el componente Header con la página activa */}
       <Header lang={currentLang} activePage="blog" />
       
       <main className="max-w-7xl mx-auto px-4 py-16">
@@ -43,8 +42,10 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                     {currentLang === 'en' ? post.titleEn : post.titleEs}
                   </h2>
                   <p className="text-gray-400 text-sm line-clamp-3 mb-4">
-                    {/* Vista previa simple del contenido */}
-                    {currentLang === 'en' ? post.contentEn.substring(0, 100) : post.contentEs.substring(0, 100)}...
+                    {/* SOLUCIÓN: Limpiamos las etiquetas HTML antes de cortar el texto */}
+                    {currentLang === 'en' 
+                      ? post.contentEn.replace(/<[^>]+>/g, '').substring(0, 100) 
+                      : post.contentEs.replace(/<[^>]+>/g, '').substring(0, 100)}...
                   </p>
                   <span className="mt-auto pt-4 text-[#529e14] font-bold text-sm uppercase flex items-center gap-2">
                     {currentLang === 'en' ? 'Read More' : 'Leer Más'} <span>→</span>

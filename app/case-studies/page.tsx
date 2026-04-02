@@ -29,26 +29,28 @@ export default async function CaseStudiesIndexPage({ searchParams }: { searchPar
           {posts.map(post => (
             <Link key={post.id} href={`/case-studies/${post.slug}?lang=${currentLang}`} className="group">
               <article className="bg-[#242424] rounded-xl overflow-hidden border border-gray-800 hover:border-[#f8ed1a] transition-all h-full flex flex-col">
-                              <div className="relative h-48 w-full">
-                                 {post.mainImage ? (
-                                   <Image src={post.mainImage} alt="Cover" fill className="object-cover group-hover:scale-105 transition-transform" />
-                                 ) : (
-                                   <div className="w-full h-full bg-gray-800 flex items-center justify-center text-4xl">📰</div>
-                                 )}
-                              </div>
-                              <div className="p-6 flex-1 flex flex-col">
-                                <h2 className="text-xl font-bold mb-2 uppercase text-white group-hover:text-[#f8ed1a]">
-                                  {currentLang === 'en' ? post.titleEn : post.titleEs}
-                                </h2>
-                                <p className="text-gray-400 text-sm line-clamp-3 mb-4">
-                                  {/* Vista previa simple del contenido */}
-                                  {currentLang === 'en' ? post.contentEn.substring(0, 100) : post.contentEs.substring(0, 100)}...
-                                </p>
-                                <span className="mt-auto pt-4 text-[#529e14] font-bold text-sm uppercase flex items-center gap-2">
-                                  {currentLang === 'en' ? 'Read More' : 'Leer Más'} <span>→</span>
-                                </span>
-                              </div>
-                            </article>
+                  <div className="relative h-48 w-full">
+                     {post.mainImage ? (
+                       <Image src={post.mainImage} alt="Cover" fill className="object-cover group-hover:scale-105 transition-transform" />
+                     ) : (
+                       <div className="w-full h-full bg-gray-800 flex items-center justify-center text-4xl">📰</div>
+                     )}
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h2 className="text-xl font-bold mb-2 uppercase text-white group-hover:text-[#f8ed1a]">
+                      {currentLang === 'en' ? post.titleEn : post.titleEs}
+                    </h2>
+                    <p className="text-gray-400 text-sm line-clamp-3 mb-4">
+                      {/* SOLUCIÓN: Limpiamos las etiquetas HTML antes de cortar el texto */}
+                      {currentLang === 'en' 
+                        ? post.contentEn.replace(/<[^>]+>/g, '').substring(0, 100) 
+                        : post.contentEs.replace(/<[^>]+>/g, '').substring(0, 100)}...
+                    </p>
+                    <span className="mt-auto pt-4 text-[#529e14] font-bold text-sm uppercase flex items-center gap-2">
+                      {currentLang === 'en' ? 'Read More' : 'Leer Más'} <span>→</span>
+                    </span>
+                  </div>
+                </article>
             </Link>
           ))}
         </div>
