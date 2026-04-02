@@ -12,7 +12,22 @@ interface WrapperProps {
 const DICTIONARY = {
   es: {
     welcome: { 
-      title: <>Descubre tu Flujo de Caja.<br />Maximiza tus Ganancias.<br />Relájate y Cobra.</>, 
+      title: (
+        <span className="block text-center">
+          {/* Subtítulo superior en color rojo/salmón */}
+          <span className="block text-base md:text-xl lg:text-2xl text-[#e55050] font-semibold mb-2 md:mb-4 tracking-wide">
+            ¿Cansado de dejar dinero sobre la mesa?
+          </span>
+          
+          {/* Texto principal */}
+          <span className="block text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] drop-shadow-xl text-white">
+            ¿Y si pudieras combinar <br />
+            <span className="text-[#f8ed1a]">Venta de contratos, Remodelaciones, Rentas,</span> <br />
+            <span className="text-[#f8ed1a]">y Préstamos de Capital Privado</span> — todo en <br />
+            una sola estrategia?
+          </span>
+        </span>
+      ),
       titleHigh: "", 
       sub: "Ingresa tu dirección para ver estimaciones reales. Ya sea que quieras ser el banco, vender rápido en efectivo, remodelar o rentar. Tú decides, nosotros te conectamos.", 
       pts: [
@@ -24,7 +39,23 @@ const DICTIONARY = {
   },
   en: {
     welcome: { 
-      title: <>Discover Your Cashflow.<br />Maximize Profits.<br />Sit Back & Collect.</>, 
+      
+      title: (
+        <span className="block text-center">
+          {/* Subtítulo superior en color rojo/salmón */}
+          <span className="block text-base md:text-xl lg:text-2xl text-[#e55050] font-semibold mb-2 md:mb-4 tracking-wide">
+            Tired of Leaving Money on the Table?
+          </span>
+          
+          {/* Texto principal */}
+          <span className="block text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] drop-shadow-xl text-white">
+            What if you could combine <br />
+            <span className="text-[#f8ed1a]">Wholesaling, Flipping, Landlording,</span> <br />
+            <span className="text-[#f8ed1a]">and Hard Money Lending</span> — all in <br />
+            one strategy?
+          </span>
+        </span>
+      ),
       titleHigh: "", 
       sub: "Enter your address to see real estimates. Whether you want to be the bank, sell for fast cash, fix & list, or rent it out. You decide, we connect you.", 
       pts: [
