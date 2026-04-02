@@ -44,7 +44,7 @@ export default function WhatsAppButton({
 
   const horizontalClass = isRight 
     ? 'right-4 md:right-6' 
-    : 'left-4 lg:left-[450px] flex-row-reverse';
+    : 'left-6 lg:left-[450px] flex-row-reverse';
     
   const translateClass = isRight ? 'translate-x-4' : '-translate-x-4';
 
