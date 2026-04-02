@@ -14,11 +14,15 @@ import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
 
 export const metadata: Metadata = {
   title: 'Discover Your 🏡CashFlow',
+  // Agrega esto para sobrescribir el del layout:
+  alternates: {
+    canonical: '/sellers', // o la ruta exacta donde esté esta página
+  },
   openGraph: {
     title: 'Discover Your 🏡CashFlow',
     images: [
       {
-        url: '/share_map.png', // Asegúrate de que la imagen esté en la carpeta /public
+        url: '/share_map.png',
         width: 1200,
         height: 630,
         alt: 'CashFlow Share Map',
