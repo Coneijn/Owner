@@ -89,11 +89,11 @@ function MapTabs({
     // Si es español: reduce el texto (text-[10px]) y el padding (px-3) en móviles.
     // En pantallas medianas (md:), vuelve al tamaño normal para aprovechar el espacio.
     const buttonBaseClass = lang === 'es' 
-        ? 'px-3 py-2 text-[10px] md:px-6 md:text-xs' 
-        : 'px-6 py-2 text-xs';
+        ? 'px-2.5 py-1.5 text-[10px] md:px-6 md:text-xs' 
+        : 'px-4 py-2 text-xs';
 
     return (
-        <div className="inline-flex bg-[#121826]/90 backdrop-blur-md rounded-full p-1 border border-gray-700 shadow-xl mb-3">
+        <div className="inline-flex bg-[#121826]/90 backdrop-blur-md rounded-full p-0.5 border border-gray-700 shadow-xl mb-3 gap-0.5">
             <button
                 onClick={() => handleSwitch('buy')}
                 className={`${buttonBaseClass} rounded-full font-black uppercase tracking-wider transition-all ${
