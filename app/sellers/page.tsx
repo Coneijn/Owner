@@ -11,14 +11,28 @@ import Testimonials from '@/app/components/Testimonials';
 import reviewsData from '@/app/data/reviewsData.json';
 import MapLegend from '../components/MapLegend';  
 import SellerFunnelWrapper from '../components/SellerFunnelWrapper';
-import CashOfferWidget from '../components/CashOfferWidget';
-
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Aplicar',
-  description: 'Inicia tu proceso de compra o renta directa.',
+  title: 'Discover Your 🏡CashFlow',
+  openGraph: {
+    title: 'Discover Your 🏡CashFlow',
+    images: [
+      {
+        url: '/share_map.png', // Asegúrate de que la imagen esté en la carpeta /public
+        width: 1200,
+        height: 630,
+        alt: 'CashFlow Share Map',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Discover Your 🏡CashFlow',
+    images: ['/share_map.png'],
+  },
 };
+export const dynamic = 'force-dynamic';
+
 
 const FORM_URLS = {
   en: "https://api.leadconnectorhq.com/widget/form/UWo0iunefBi9DCl8ChSf", 

@@ -1,27 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import SellersClient from '@/app/admin/sellers/sellers-client';
-import { Metadata } from 'next'; // Importamos el tipo Metadata
-
-export const metadata: Metadata = {
-  title: 'Discover Your 🏡CashFlow',
-  openGraph: {
-    title: 'Discover Your 🏡CashFlow',
-    images: [
-      {
-        url: '/share_map.png', // Asegúrate de que la imagen esté en la carpeta /public
-        width: 1200,
-        height: 630,
-        alt: 'CashFlow Share Map',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Discover Your 🏡CashFlow',
-    images: ['/share_map.png'],
-  },
-};
 
 export const dynamic = 'force-dynamic';
 export default async function SellersManagerPage() {
