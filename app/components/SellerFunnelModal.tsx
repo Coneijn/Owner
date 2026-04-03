@@ -149,8 +149,7 @@ export default function SellerFunnelModal({ isOpen, onClose, lang, prefillData }
   setLoading(true);
   
   try {
-    //esta la dejaremos comentada para no mandar cosas a ghl sin que realmente querramos
-    //await submitSellerLead(data); 
+    await submitSellerLead(data); 
 
     
       const draftPayload = {
