@@ -7,8 +7,8 @@ import LanguageSwitch from './LanguageSwitch';
 import MapFloatingButtons from '@/app/map/ui/MapFloatingButtons';
 
 const HEADER_TEXTS = {
-  es: { home: "Inicio", properties: "Propiedades", sellers: "Vendedores", about: "Nosotros", blog: "Blog", caseStudies: "Casos de Estudio", contact: "Contacto", login: "Login" },
-  en: { home: "Home", properties: "Properties", sellers: "Sellers", about: "About Us", blog: "Blog", caseStudies: "Case Studies", contact: "Contact", login: "Login" }
+  es: { home: "Inicio", properties: "Propiedades", sellers: "Listar Mi Casa", about: "Nosotros", blog: "Blog", caseStudies: "Casos de Estudio", contact: "Contacto", login: "Login" },
+  en: { home: "Home", properties: "Properties", sellers: "Listy My Home", about: "About Us", blog: "Blog", caseStudies: "Case Studies", contact: "Contact", login: "Login" }
 };
 
 interface HeaderProps {

@@ -48,11 +48,13 @@ const i18n = {
     transparencyArv: "El Valor Remodelado (ARV) se estimó analizando {n} propiedades comparables vendidas recientemente.",
     transparencyRehab: "Las reparaciones se estimaron a {price}/SqFt basándonos en tu indicación de condición, tamaño y edad.",
     backedByRentComps: "Respaldado por {n} rentas",
-selectRentCompsTitle: "Selecciona propiedades en renta",
-selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afinar tu estimación.",
+    selectRentCompsTitle: "Selecciona propiedades en renta",
+    selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afinar tu estimación.",
     sellerFinanceTitle: "Sé el Banco", sellerFinanceSub: "(Dueño a Dueño)",
     sellerFinanceDesc: "Vende a plazos. Recibe un pago inicial hoy y genera ingresos mensuales sin lidiar con inquilinos.",
-    downPaymentReceivedLabel: "Pago Inicial:", monthlyIncomeLabel: "Ingreso Mensual (P&I):", termLabel: "Plazo:", termValue: "{years} años al {rate}%", totalYieldLabel: "Rendimiento Total:",
+    salePriceLabel: "Precio de Venta:",
+    downPaymentReceivedLabel: "Pago Inicial:", monthlyIncomeLabel: "Ingreso Mensual (P&I):", termLabel: "Plazo:", termValue: "{years} años al {rate}%", 
+    monthlyNetLabel: "Neto Mensual:", annualNetLabel: "Neto Anual:",
     
     fixListTitle: "Fix & List", fixListSub: "(Remodela y Vende)",
     fixListDesc: "Invierte tu dinero en reparar la casa para venderla al precio máximo en el mercado tradicional.",
@@ -73,7 +75,7 @@ selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afi
     rentMonthlyLabel: "Renta Mensual Estimada:", rentAnnualLabel: "Flujo de Caja Anual Neto:",
     netCashflowLabel: "Flujo de Caja Neto",
     
-    chooseBtn: "Elegir esta opción ->",
+    chooseBtn: "Listar Mi Casa Ahora ->",
     
     fineTuneBtn: "⚙️ Trabajar los Números Aquí", hide: "▲ Ocultar", show: "▼ Mostrar Controles",
     sectionCondition: "Condición Actual", arvInput: "Valor Remodelada (ARV $)", rehabInput: "Costo para Reparar ($)", rentInput: "Renta Mensual ($)",
@@ -104,11 +106,13 @@ selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afi
     transparencyArv: "The After Repair Value (ARV) was estimated by analyzing {n} recently sold comparable properties.",
     transparencyRehab: "Repairs were estimated at {price}/SqFt based on your condition input, property size, and age.",
     backedByRentComps: "Backed by {n} recent rents",
-selectRentCompsTitle: "Select similar rental properties",
-selectRentCompsDesc: "We will use the average monthly rent of these homes to fine-tune your estimate.",
+    selectRentCompsTitle: "Select similar rental properties",
+    selectRentCompsDesc: "We will use the average monthly rent of these homes to fine-tune your estimate.",
     sellerFinanceTitle: "Become The Bank", sellerFinanceSub: "(Seller Financing)",
     sellerFinanceDesc: "Sell on terms. Receive a down payment today and generate monthly income without dealing with tenants.",
-    downPaymentReceivedLabel: "Down Payment:", monthlyIncomeLabel: "Monthly Income (P&I):", termLabel: "Term:", termValue: "{years} yrs at {rate}%", totalYieldLabel: "Total Yield:",
+    salePriceLabel: "Sale Price:",
+    downPaymentReceivedLabel: "Down Payment:", monthlyIncomeLabel: "Monthly Income (P&I):", termLabel: "Term:", termValue: "{years} yrs at {rate}%", 
+    monthlyNetLabel: "Monthly Net:", annualNetLabel: "Annual Net:",
     
     fixListTitle: "Fix & List", fixListSub: "(Rehab & Sell)",
     fixListDesc: "Invest your money in repairing the house to sell it for maximum price on the traditional market.",
@@ -129,7 +133,7 @@ selectRentCompsDesc: "We will use the average monthly rent of these homes to fin
     rentMonthlyLabel: "Estimated Monthly Rent:", rentAnnualLabel: "Net Annual Cashflow:",
     netCashflowLabel: "Net Cashflow",
     
-    chooseBtn: "Choose this option ->",
+    chooseBtn: "List My Home Now ->",
     
     fineTuneBtn: "⚙️ Work the Numbers Here", hide: "▲ Hide", show: "▼ Show Controls",
     sectionCondition: "Current Condition", arvInput: "After Repair Value (ARV $)", rehabInput: "Cost to Repair ($)", rentInput: "Monthly Rent ($)",
@@ -152,15 +156,13 @@ export default function CashOfferWidget({ lang = 'es', onSelectOption, allProper
   const [conditionScale, setConditionScale] = useState(3);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-// Reemplazar showComps por activeModal
-const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
-const [selectedComps, setSelectedComps] = useState<any[]>([]);
-const [selectedRentComps, setSelectedRentComps] = useState<any[]>([]); 
-const [showSettings, setShowSettings] = useState(false);
-const [propertyDetails, setPropertyDetails] = useState<any>(null);
-const [isWheelExpanded, setIsWheelExpanded] = useState(false);
+  const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
+  const [selectedComps, setSelectedComps] = useState<any[]>([]);
+  const [selectedRentComps, setSelectedRentComps] = useState<any[]>([]); 
+  const [showSettings, setShowSettings] = useState(false);
+  const [propertyDetails, setPropertyDetails] = useState<any>(null);
+  const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   
-  // Nuevo estado para controlar porcentaje vs dinero en el enganche
   const [isDpPercent, setIsDpPercent] = useState(false); 
   
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -235,7 +237,6 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
     setInputs(prev => ({ ...prev, [field]: Number(value) || 0 }));
   };
 
-  // Actualizar ARV cuando cambian las ventas seleccionadas
   useEffect(() => {
     if (selectedComps.length > 0) {
       const avgPrice = selectedComps.reduce((sum, comp) => sum + comp.price, 0) / selectedComps.length;
@@ -243,7 +244,6 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
     }
   }, [selectedComps]);
 
-  // 👇 NUEVO: Actualizar Renta cuando cambian las rentas seleccionadas 👇
   useEffect(() => {
     if (selectedRentComps.length > 0) {
       const avgRent = selectedRentComps.reduce((sum, comp) => sum + comp.price, 0) / selectedRentComps.length;
@@ -348,7 +348,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   };
 
   const formatMoney = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
-
+  
   return (
     <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden text-white">
       
@@ -461,7 +461,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               <span className="font-bold text-xs">Taxes</span>
               <span className="text-[9px] uppercase">{formatMoney(inputs.taxesAnnual)} / {lang === 'en' ? 'yr' : 'año'}</span>
             </span>
-            {/* BOTÓN DE COMPARABLES DE VENTA */}
+            
             {propertyDetails.recentSales && propertyDetails.recentSales.length > 0 && (
               <button 
                 onClick={() => setActiveModal('sales')}
@@ -472,7 +472,6 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               </button>
             )}
 
-            {/* BOTÓN DE COMPARABLES DE RENTA */}
             {propertyDetails.recentRents && propertyDetails.recentRents.length > 0 && (
               <button 
                 onClick={() => setActiveModal('rent')}
@@ -486,7 +485,6 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               </button>
             )}
 
-            {/* MODAL DINÁMICO (Ventas o Rentas) */}
             {activeModal && (() => {
               const isSales = activeModal === 'sales';
               const modalTitle = isSales ? t.selectCompsTitle : t.selectRentCompsTitle;
@@ -494,7 +492,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               const compsList = isSales ? propertyDetails.recentSales : propertyDetails.recentRents;
               const selectedList = isSales ? selectedComps : selectedRentComps;
               const setSelected = isSales ? setSelectedComps : setSelectedRentComps;
-              const themeColor = isSales ? '#529e14' : '#a855f7'; // Verde para ventas, Morado para rentas
+              const themeColor = isSales ? '#529e14' : '#a855f7'; 
 
               return (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
@@ -574,7 +572,6 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
       {propertyDetails && (
         <div className="animate-fadeIn relative z-10">
           
-          {/* CORRECCIÓN: Validación isLoaded para el mapa */}
           {isLoaded && parsedAddress.lat !== 0 && parsedAddress.lng !== 0 && (
             <div className="border-t border-b border-white/10 bg-black/40">
               <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5">
@@ -700,7 +697,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
             </div>
           )}
 
-          {/* BOTÓN Y PANEL DE AJUSTES AVANZADOS (MOVIDO ARRIBA) */}
+          {/* BOTÓN Y PANEL DE AJUSTES AVANZADOS */}
           <button 
             onClick={() => setShowSettings(!showSettings)}
             className="w-full p-4 flex justify-between items-center bg-white/5 hover:bg-white/10 transition-colors focus:outline-none"
@@ -760,137 +757,155 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
           {/* GRID DE 4 COLUMNAS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x border-t border-white/10 divide-white/10">
             
-            <div className="p-6 bg-black/20 hover:bg-white/5 transition-colors group flex flex-col relative">
+            {/* COLUMN 1: SELLER FINANCE */}
+            <div className="p-6 bg-black/20 hover:bg-white/5 transition-colors group flex flex-col relative h-full">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#529e14]"></div>
-              <div className="flex items-center gap-3 mb-8">
-                <span className="text-2xl">🏦</span>
-                <h3 className="text-lg font-bold text-white">{t.sellerFinanceTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.sellerFinanceSub}</span></h3>
-              </div>
-
-              <div className="text-3xl leading-relaxed font-black text-[#529e14] mb-2">
-                {formatMoney(strategies.sellerFinance.totalMonthlyPayment)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
-              </div>
-
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
-                {lang === 'es' ? 'Pago Total del Comprador' : 'Total Buyer Payment'}
-              </p>
-
-              <p className="text-xs leading-relaxed text-gray-400 mb-6 flex-grow">{t.sellerFinanceDesc}</p>
               
-              <ul className="space-y-2 text-[15px] text-gray-300 mb-6">
-                {/* ENGANCHE */}
-                <li className="flex justify-between mb-3 text-sm border-b border-white/10 pb-2">
-                  <span>{t.downPaymentReceivedLabel}</span> 
-                  <span className="text-blue-400 font-bold">{formatMoney(strategies.sellerFinance.downPayment)}</span>
-                </li>
-                
-                {/* DESGLOSE DEL PAGO MENSUAL */}
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2">
-                  <span>• P&I</span> 
-                  <span className="text-[#529e14] font-bold">+{formatMoney(strategies.sellerFinance.monthlyIncome)}</span>
-                </li>
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2">
-                  <span>• {lang === 'es' ? 'Impuestos (Est.)' : 'Taxes (Est.)'}</span> 
-                  <span>+{formatMoney(strategies.sellerFinance.taxesMonthly)}</span>
-                </li>
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2">
-                  <span>• {lang === 'es' ? 'Seguro (Est.)' : 'Insurance (Est.)'}</span> 
-                  <span>+{formatMoney(strategies.sellerFinance.insuranceMonthly)}</span>
-                </li>
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2 pb-2">
-                  <span>• {lang === 'es' ? 'Tarifa (Fee)' : 'Servicing Fee'}</span> 
-                  <span>+{formatMoney(strategies.sellerFinance.servicingFee)}</span>
-                </li>
+              {/* Encabezados alineados arriba */}
+              <div>
+                <div className="flex items-center gap-3 mb-8">
+                  <span className="text-2xl">🏦</span>
+                  <h3 className="text-lg font-bold text-white">{t.sellerFinanceTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.sellerFinanceSub}</span></h3>
+                </div>
+                <div className="text-3xl leading-relaxed font-black text-[#529e14] mb-2">
+                  {formatMoney(strategies.sellerFinance.totalMonthlyPayment)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
+                </div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
+                  {lang === 'es' ? 'Pago Total del Comprador' : 'Total Buyer Payment'}
+                </p>
+              </div>
 
-                {/* YIELD / RENDIMIENTO TOTAL */}
-                <li className="flex justify-between pt-3 border-t border-white/10 font-bold text-[18px]">
-                  <span>{t.totalYieldLabel}</span> 
-                  <span className="text-white">{formatMoney(strategies.sellerFinance.totalYield)}</span>
-                </li>
-              </ul>
+              {/* Contenido centrado en el espacio restante */}
+              <div className="flex-grow flex flex-col justify-center">
+                <p className="text-xs leading-relaxed text-gray-400 mb-6">{t.sellerFinanceDesc}</p>
+                <ul className="space-y-3 text-sm text-gray-300 mb-6">
+                  <li className="flex justify-between mb-1 border-b border-white/10 pb-2">
+                    <span>{t.salePriceLabel}</span> 
+                    <span className="text-white font-bold">{formatMoney(strategies.sellerFinance.salePrice)}</span>
+                  </li>
+                  <li className="flex justify-between mb-3 border-b border-white/10 pb-2">
+                    <span>{t.downPaymentReceivedLabel}</span> 
+                    <span className="text-blue-400 font-bold">{formatMoney(strategies.sellerFinance.downPayment)}</span>
+                  </li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2">
+                    <span>• P&I</span> 
+                    <span className="text-[#529e14] font-bold">+{formatMoney(strategies.sellerFinance.monthlyIncome)}</span>
+                  </li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2">
+                    <span>• {lang === 'es' ? 'Impuestos (Est.)' : 'Taxes (Est.)'}</span> 
+                    <span>+{formatMoney(strategies.sellerFinance.taxesMonthly)}</span>
+                  </li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2">
+                    <span>• {lang === 'es' ? 'Seguro (Est.)' : 'Insurance (Est.)'}</span> 
+                    <span>+{formatMoney(strategies.sellerFinance.insuranceMonthly)}</span>
+                  </li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2 pb-2">
+                    <span>• {lang === 'es' ? 'Tarifa (Fee)' : 'Servicing Fee'}</span> 
+                    <span>+{formatMoney(strategies.sellerFinance.servicingFee)}</span>
+                  </li>
+                  <li className="flex justify-between pt-3 border-t border-white/10 font-bold text-[16px]">
+                    <span>{t.monthlyNetLabel}</span> 
+                    <span className="text-white">{formatMoney(strategies.sellerFinance.monthlyIncome)}</span>
+                  </li>
+                  <li className="flex justify-between pt-1 font-bold text-[16px]">
+                    <span>{t.annualNetLabel}</span> 
+                    <span className="text-[#529e14]">{formatMoney(strategies.sellerFinance.monthlyIncome * 12)}</span>
+                  </li>
+                </ul>
+              </div>
 
+              {/* Botón anclado al fondo absoluto */}
               <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold rounded-lg transition-colors mt-auto">
                 {t.chooseBtn}
               </button>
             </div>
+            
+            {/* COLUMN 2: RENT IT OUT */}
+            <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col h-full">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">🔑</span>
+                  <h3 className="text-lg font-bold text-white">{t.rentTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.rentSub}</span></h3>
+                </div>
+                <div className="text-3xl font-black text-white mb-2 group-hover:text-purple-400 transition-colors">
+                  {formatMoney(strategies.rent.monthly)}<span className="text-lg text-gray-500 font-normal">/mo</span>
+                </div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">{t.rentGrossLabel.replace(':', '')}</p>
+              </div>
 
-            <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
-              <div className="flex items-center gap-3 mb-8">
-                <span className="text-2xl">🔨</span>
-                <h3 className="text-lg leading-relaxed font-bold text-white">{t.fixListTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.fixListSub}</span></h3>
+              <div className="flex-grow flex flex-col justify-center">
+                <p className="text-xs text-gray-400 mb-6">{t.rentDesc}</p>
+                <ul className="space-y-3 text-sm text-gray-300">
+                  <li className="flex justify-between mb-3 border-b border-white/10 pb-2">
+                    <span className="font-semibold text-purple-400">{t.netCashflowLabel}</span> 
+                    <span className="font-bold text-white">{formatMoney(strategies.rent.netMonthly)}</span>
+                  </li>
+                  <li className="flex justify-between text-red-400/90 pt-1">
+                    <span>{t.rentExpensesLabel}</span> 
+                    <span className="font-bold">-{formatMoney(strategies.rent.monthly - strategies.rent.netMonthly)}</span>
+                  </li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2"><span>{t.rentTaxesLabel}</span> <span>-{formatMoney(inputs.taxesAnnual / 12)}</span></li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2"><span>{t.rentInsuranceLabel}</span> <span>-{formatMoney(inputs.insuranceAnnual / 12)}</span></li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2"><span>{t.rentAdminLabel}</span> <span>-{formatMoney(inputs.adminFeeMonthly)}</span></li>
+                  <li className="flex justify-between text-[11px] text-gray-400 pl-2 pb-2"><span>{t.rentMaintLabel}</span> <span>-{formatMoney(inputs.maintannaceMonthly)}</span></li>
+                  <li className="flex justify-between pt-3 border-t border-white/10 font-semibold text-purple-400">
+                    <span>{t.rentAnnualLabel}</span> <span>{formatMoney(strategies.rent.annual)}</span>
+                  </li>
+                </ul>
               </div>
-              <div className="text-3xl font-black text-white mb-2 group-hover:text-blue-400 transition-colors">
-                {formatMoney(strategies.fixAndList.netProfit)}
-              </div>
-              <p className="text-xs leading-relaxed text-gray-400 mb-6 flex-grow">{t.fixListDesc}</p>
-              <ul className="space-y-6 text-[18px] text-gray-300 mb-10">
-                <li className="flex justify-between"><span>{t.marketSaleLabel}</span> <span>{formatMoney(strategies.fixAndList.grossSale)}</span></li>
-                <li className="flex justify-between text-red-400/90"><span>{t.yourInvestmentLabel}</span> <span>-{formatMoney(inputs.rehabCosts)}</span></li>
-                <li className="flex justify-between text-red-400/90"><span>{t.realtorFeeLabel.replace('{n}', inputs.realtorFeePercent.toString())}</span> <span>-{formatMoney(strategies.fixAndList.grossSale * (inputs.realtorFeePercent / 100))}</span></li>
-              </ul>
-              <button onClick={() => handleSelect('fix_list')} className="w-full py-3 border border-gray-600 text-gray-300 hover:bg-white/10 font-bold rounded-lg transition-colors mt-auto">
-                {t.chooseBtn}
-              </button>
             </div>
 
-            <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
-              <div className="flex items-center gap-3 mb-8">
-                <span className="text-2xl">⚡</span>
-                <h3 className="text-lg leading-relaxed font-bold text-white">{t.cashBuyerTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.cashBuyerSub}</span></h3>
+            {/* COLUMN 3: FIX & LIST */}
+            <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col h-full">
+              <div>
+                <div className="flex items-center gap-3 mb-8">
+                  <span className="text-2xl">🔨</span>
+                  <h3 className="text-lg leading-relaxed font-bold text-white">{t.fixListTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.fixListSub}</span></h3>
+                </div>
+                <div className="text-3xl font-black text-white mb-2 group-hover:text-blue-400 transition-colors">
+                  {formatMoney(strategies.fixAndList.netProfit)}
+                </div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
+                  {lang === 'es' ? 'Ganancia Neta Estimada' : 'Estimated Net Profit'}
+                </p>
               </div>
-              <div className="text-3xl font-black text-white mb-2 group-hover:text-yellow-400 transition-colors">
-                {formatMoney(strategies.cashBuyer.offer)}
+
+              <div className="flex-grow flex flex-col justify-center">
+                <p className="text-xs leading-relaxed text-gray-400 mb-6">{t.fixListDesc}</p>
+                <ul className="space-y-3 text-sm text-gray-300">
+                  <li className="flex justify-between border-b border-white/10 pb-2"><span>{t.marketSaleLabel}</span> <span className="text-white font-bold">{formatMoney(strategies.fixAndList.grossSale)}</span></li>
+                  <li className="flex justify-between text-red-400/90 pt-1"><span>{t.yourInvestmentLabel}</span> <span>-{formatMoney(inputs.rehabCosts)}</span></li>
+                  <li className="flex justify-between text-red-400/90 pb-2"><span>{t.realtorFeeLabel.replace('{n}', inputs.realtorFeePercent.toString())}</span> <span>-{formatMoney(strategies.fixAndList.grossSale * (inputs.realtorFeePercent / 100))}</span></li>
+                </ul>
               </div>
-              <p className="text-xs leading-relaxed text-gray-400 mb-6 flex-grow">{t.cashBuyerDesc}</p>
-              <ul className="space-y-6 text-[18px] text-gray-300 mb-10">
-                <li className="flex justify-between"><span>{t.arvLabel}</span> <span>{formatMoney(inputs.arv)}</span></li>
-                <li className="flex justify-between text-red-400/90"><span>{t.rehabSavingsLabel}</span> <span>-{formatMoney(inputs.rehabCosts)}</span></li>
-                <li className="flex justify-between text-red-400/90"><span>{t.investorDiscountLabel}</span> <span>-{inputs.investorDiscountPercent}%</span></li>
-              </ul>
-              <button onClick={() => handleSelect('cash_sale')} className="w-full py-3 border border-gray-600 text-gray-300 hover:bg-white/10 font-bold rounded-lg transition-colors mt-auto">
-                {t.chooseBtn}
-              </button>
             </div>
 
-            <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">🔑</span>
-                <h3 className="text-lg font-bold text-white">{t.rentTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.rentSub}</span></h3>
+            {/* COLUMN 4: FAST CASH SALE */}
+            <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col h-full">
+              <div>
+                <div className="flex items-center gap-3 mb-8">
+                  <span className="text-2xl">⚡</span>
+                  <h3 className="text-lg leading-relaxed font-bold text-white">{t.cashBuyerTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.cashBuyerSub}</span></h3>
+                </div>
+                <div className="text-3xl font-black text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                  {formatMoney(strategies.cashBuyer.offer)}
+                </div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
+                  {lang === 'es' ? 'Oferta en Efectivo' : 'Cash Offer'}
+                </p>
               </div>
 
-              <div className="text-3xl font-black text-white mb-2 group-hover:text-purple-400 transition-colors">
-                {formatMoney(strategies.rent.monthly)}<span className="text-lg text-gray-500 font-normal">/mo</span>
+              <div className="flex-grow flex flex-col justify-center">
+                <p className="text-xs leading-relaxed text-gray-400 mb-6">{t.cashBuyerDesc}</p>
+                <ul className="space-y-3 text-sm text-gray-300">
+                  <li className="flex justify-between border-b border-white/10 pb-2"><span>{t.arvLabel}</span> <span className="text-white font-bold">{formatMoney(inputs.arv)}</span></li>
+                  <li className="flex justify-between text-red-400/90 pt-1"><span>{t.rehabSavingsLabel}</span> <span>-{formatMoney(inputs.rehabCosts)}</span></li>
+                  <li className="flex justify-between text-red-400/90 pb-2"><span>{t.investorDiscountLabel}</span> <span>-{inputs.investorDiscountPercent}%</span></li>
+                </ul>
               </div>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">{t.rentGrossLabel.replace(':', '')}</p>
-              <p className="text-xs text-gray-400 mb-6 flex-grow">{t.rentDesc}</p>
-             
-              <ul className="space-y-2 text-sm text-gray-300 mb-6">
-                <li className="flex justify-between mb-3 border-b border-white/10 pb-2">
-                  <span className="font-semibold text-purple-400">{t.netCashflowLabel}</span> 
-                  <span className="font-bold text-white">{formatMoney(strategies.rent.netMonthly)}</span>
-                </li>
-                
-                <li className="flex justify-between text-red-400/90 pt-1">
-                  <span>{t.rentExpensesLabel}</span> 
-                  <span className="font-bold">-{formatMoney(strategies.rent.monthly - strategies.rent.netMonthly)}</span>
-                </li>
-                
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2"><span>{t.rentTaxesLabel}</span> <span>-{formatMoney(inputs.taxesAnnual / 12)}</span></li>
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2"><span>{t.rentInsuranceLabel}</span> <span>-{formatMoney(inputs.insuranceAnnual / 12)}</span></li>
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2"><span>{t.rentAdminLabel}</span> <span>-{formatMoney(inputs.adminFeeMonthly)}</span></li>
-                <li className="flex justify-between text-[11px] text-gray-500 pl-2 pb-2"><span>{t.rentMaintLabel}</span> <span>-{formatMoney(inputs.maintannaceMonthly)}</span></li>
-
-                <li className="flex justify-between pt-3 border-t border-white/10 font-semibold text-purple-400">
-                  <span>{t.rentAnnualLabel}</span> <span>{formatMoney(strategies.rent.annual)}</span>
-                </li>
-              </ul>
-              <button onClick={() => handleSelect('rent')} className="w-full py-3 border border-gray-600 text-gray-300 hover:bg-white/10 font-bold rounded-lg transition-colors mt-auto">
-                {t.chooseBtn}
-              </button>
             </div>
 
           </div>
-
          {/* "¿Cómo calculamos esto?" */}
           <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner mt-4">
             <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
