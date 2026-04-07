@@ -34,10 +34,11 @@ const i18n = {
   es: {
     title: "Descubre el Verdadero Potencial de tu Propiedad",
     placeholder: "Ingresa la dirección completa...",
+    conditionLabelHeader:"Cuentanos sobre el estado de tu casa:",
     conditionLabel: "Nivel de Reparaciones Necesarias:",
     cond0: "0 - Sin arreglos",
     cond5: "5 - Remodelación total",
-    analyzeBtn: "Listar mi casa",
+    analyzeBtn: "Ver mis números y Listar mi Casa (Haz clic aquí)",
     analyzing: "Analizando...",
     beds: "Camas", baths: "Baños", sqft: "Pies²",
     switchToMoney: "Cambiar a $", switchToPercent: "Cambiar a %",
@@ -48,8 +49,8 @@ const i18n = {
     transparencyArv: "El Valor Remodelado (ARV) se estimó analizando {n} propiedades comparables vendidas recientemente.",
     transparencyRehab: "Las reparaciones se estimaron a {price}/SqFt basándonos en tu indicación de condición, tamaño y edad.",
     backedByRentComps: "Respaldado por {n} rentas",
-selectRentCompsTitle: "Selecciona propiedades en renta",
-selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afinar tu estimación.",
+    selectRentCompsTitle: "Selecciona propiedades en renta",
+    selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afinar tu estimación.",
     sellerFinanceTitle: "Sé el Banco", sellerFinanceSub: "(Dueño a Dueño)",
     sellerFinanceDesc: "Vende a plazos. Recibe un pago inicial hoy y genera ingresos mensuales sin lidiar con inquilinos.",
     downPaymentReceivedLabel: "Pago Inicial:", monthlyIncomeLabel: "Ingreso Mensual (P&I):", termLabel: "Plazo:", termValue: "{years} años al {rate}%", totalYieldLabel: "Rendimiento Total:",
@@ -90,10 +91,11 @@ selectRentCompsDesc: "Usaremos la renta mensual promedio de estas casas para afi
   en: {
     title: "Discover Your Property's True Potential",
     placeholder: "Enter full address...",
+    conditionLabelHeader:"Tell us about the condition of the home:",
     conditionLabel: "Repairs Needed Level:",
     cond0: "0 - Move-in ready",
     cond5: "5 - Full gut rehab",
-    analyzeBtn: "List my home",
+    analyzeBtn: "See my numbers & List my Home (Click here)",
     analyzing: "Analyzing...",
     beds: "Beds", baths: "Baths", sqft: "SqFt",
     switchToMoney: "Switch to $", switchToPercent: "Switch to %",
@@ -409,6 +411,13 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
               </span>
             )}
           </div>
+          {(!propertyDetails || isWheelExpanded) && (
+            <div className="mt-4 mb-2">
+              <h3 className="text-2xl font-semibold text-white">
+                {t.conditionLabelHeader}
+              </h3>
+            </div>
+          )}
 
           {(!propertyDetails || isWheelExpanded) && (
             <div className="mt-4">
@@ -432,9 +441,11 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
             <button 
               onClick={() => analyzeProperty()}
               disabled={loading}
-              className="relative w-full bg-[#529e14] text-[#0a0f1c] font-black uppercase tracking-wide px-8 py-4 rounded-lg hover:bg-[#459e10] disabled:opacity-50 transition-all shadow-lg shadow-[#529e14]/20 group"
+              className="relative w-full bg-[#529e14] text-[#0a0f1c] font-black uppercase tracking-wide px-8 py-4 rounded-lg hover:bg-[#459e10] disabled:opacity-50 transition-all shadow-lg shadow-[#529e14]/20 group overflow-visible"
             >
-              {!loading && <span className="absolute inset-0 rounded-lg bg-[#529e14] animate-ping opacity-20 group-hover:hidden"></span>}
+              {!loading && (
+                <span className="absolute inset-0 rounded-lg bg-[#7ceb21] animate-ping opacity-30"></span>
+              )}
               <span className="relative z-10">{loading ? t.analyzing : t.analyzeBtn}</span>
             </button>
           </div>
