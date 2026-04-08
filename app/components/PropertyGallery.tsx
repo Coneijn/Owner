@@ -2,19 +2,32 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import StaticPropertyMap from './StaticPropertyMap';
 
 interface GalleryProps {
   images: string[];
   title: string;
   address: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
-export default function PropertyGallery({ images, title, address }: GalleryProps) {
-  // 1. Filtramos imágenes
+export default function PropertyGallery({ images, title, address, lat, lng }: GalleryProps) {
+  // 1. Filtramos imágenes y construimos el carrusel mixto
   const validImages = images.filter(img => img && img.trim() !== "");
   
-  const [activeImage, setActiveImage] = useState(validImages.length > 0 ? validImages[0] : null);
-  const showStreetView = validImages.length === 0;
+  const galleryItems: { type: 'image' | 'map', content: string }[] = [];
+  
+  // Insertar primera imagen (si hay)
+  if (validImages.length > 0) galleryItems.push({ type: 'image', content: validImages[0] });
+  // Insertar mapa en la posición 2 (o posición 1 si no hay imágenes)
+  if (lat && lng) galleryItems.push({ type: 'map', content: 'map' });
+  // Insertar el resto de las imágenes
+  if (validImages.length > 1) validImages.slice(1).forEach(img => galleryItems.push({ type: 'image', content: img }));
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeItem = galleryItems[activeIndex];
+  const showStreetView = galleryItems.length === 0;
 
   // 2. CONFIGURACIÓN STREET VIEW STATIC API
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -63,16 +76,22 @@ export default function PropertyGallery({ images, title, address }: GalleryProps
         ) : (
           /* --- MODO GALERÍA NORMAL --- */
           <>
-            {activeImage && (
+            {activeItem?.type === 'image' && (
                 <Image
-                key={activeImage} 
-                src={activeImage}
+                key={activeItem.content} 
+                src={activeItem.content}
                 alt={title}
                 fill
                 priority 
                 className="object-cover transition-opacity duration-300"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 800px"
                 />
+            )}
+            
+            {activeItem?.type === 'map' && lat && lng && (
+                <div className="absolute inset-0 w-full h-full z-0">
+                    <StaticPropertyMap lat={lat} lng={lng} />
+                </div>
             )}
 
             <div className="absolute bottom-4 right-4 z-10 w-24 h-12 pointer-events-none opacity-90">
@@ -90,25 +109,35 @@ export default function PropertyGallery({ images, title, address }: GalleryProps
       </div>
 
       {/* Tira de Miniaturas */}
-      {!showStreetView && validImages.length > 1 && (
+      {!showStreetView && galleryItems.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          {validImages.map((img, idx) => (
+          {galleryItems.map((item, idx) => (
             <button
               key={idx}
-              onClick={() => setActiveImage(img)}
-              className={`relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                activeImage === img 
+              onClick={() => setActiveIndex(idx)}
+              className={`relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all bg-gray-100 ${
+                activeIndex === idx 
                   ? 'border-[#f8ed1a] opacity-100 ring-2 ring-[#f8ed1a]/30' 
                   : 'border-transparent opacity-60 hover:opacity-100'
               }`}
             >
-              <Image 
-                src={img} 
-                alt={`Thumbnail ${idx}`} 
-                fill
-                className="object-cover"
-                sizes="100px" 
-              />
+              {item.type === 'image' ? (
+                  <Image 
+                    src={item.content} 
+                    alt={`Thumbnail ${idx}`} 
+                    fill
+                    className="object-cover"
+                    sizes="100px" 
+                  />
+              ) : (
+                  <div className="w-full h-full relative">                      
+                      {lat && lng && (
+                          <div className="absolute inset-0 pointer-events-none">
+                              <StaticPropertyMap lat={lat} lng={lng} isThumbnail={true} />
+                          </div>
+                      )}                     
+                  </div>
+              )}
             </button>
           ))}
         </div>

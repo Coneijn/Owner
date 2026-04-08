@@ -237,15 +237,13 @@ export default async function PropertyDetailPage(props: Props) {
                     {/* Sección Izquierda (Detalles y Fotos) */}
                     <div className="lg:col-span-2 space-y-12">
                         <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 group">
-                            <PropertyGallery images={allImages} title={propertyTitle} address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}/>
-                            
-                            {/* Mini-mapa superpuesto en la esquina inferior izquierda */}
-                            {property.latitude && property.longitude && (
-                                <div className="hidden sm:block absolute bottom-6 left-6 w-38 h-38 rounded-xl overflow-hidden shadow-2xl border-4 border-white z-10 transition-transform duration-300 hover:scale-105">
-                                    {/* El mapa original es de 350px de alto, el contenedor lo recorta manteniéndolo centrado */}
-                                    <StaticPropertyMap lat={property.latitude} lng={property.longitude} />
-                                </div>
-                            )}
+                            <PropertyGallery 
+                                images={allImages} 
+                                title={propertyTitle} 
+                                address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+                                lat={property.latitude}
+                                lng={property.longitude}
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg">

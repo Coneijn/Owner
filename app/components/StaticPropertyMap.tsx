@@ -28,10 +28,10 @@ const libraries: ("places" | "visualization")[] = ["places", "visualization"];
 interface StaticPropertyMapProps {
   lat: number;
   lng: number;
+  isThumbnail?: boolean; // 👈 Nueva propiedad
 }
 
-
-export default function StaticPropertyMap({ lat, lng }: StaticPropertyMapProps) {
+export default function StaticPropertyMap({ lat, lng, isThumbnail = false }: StaticPropertyMapProps) {
   // Cargamos la API de Google Maps
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -41,10 +41,13 @@ export default function StaticPropertyMap({ lat, lng }: StaticPropertyMapProps) 
 
   if (!isLoaded) {
     return (
-      <div className="w-full h-[350px] bg-gray-100 animate-pulse flex items-center justify-center">
-        <p className="text-[#529e14] font-bold uppercase tracking-widest text-xs">
-          Loading Map...
-        </p>
+      <div className="w-full h-full bg-[#1a1a1a] animate-pulse flex flex-col items-center justify-center border border-gray-800 overflow-hidden">
+        <span className={isThumbnail ? "text-2xl" : "text-4xl mb-2"}>🗺️</span>
+        {!isThumbnail && ( // Ocultamos el texto si es una miniatura pequeña
+            <p className="text-[#f8ed1a] font-bold uppercase tracking-widest text-xs">
+              Loading Map...
+            </p>
+        )}
       </div>
     );
   }
@@ -55,21 +58,26 @@ export default function StaticPropertyMap({ lat, lng }: StaticPropertyMapProps) 
     <GoogleMap
       mapContainerStyle={containerStyle}
       center={center}
-      zoom={13} // Un zoom de 15 o 16 suele ser ideal para propiedades a nivel de calle
+      zoom={isThumbnail ? 13 : 16} // Zoom más lejano para la miniatura
       options={{
-        disableDefaultUI: true,   // Oculta los botones de satélite, zoom, street view, etc.
-        gestureHandling: 'none',  // Bloquea por completo el scroll, el arrastre y el zoom con dos dedos
-        keyboardShortcuts: false, // Evita que se mueva con las flechas del teclado
-        clickableIcons: false,    // Evita que los negocios cercanos en el mapa sean clickeables
-        styles: cleanMapStyles,   // 👈 Aplica el tema oscuro
-        backgroundColor: '#0a0f1c'// 👈 Fondo oscuro mientras el mapa termina de cargar
+        disableDefaultUI: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: !isThumbnail, // Ocultar botones +/- si es miniatura
+        zoomControlOptions: { position: window.google.maps.ControlPosition.RIGHT_BOTTOM },
+        gestureHandling: isThumbnail ? 'none' : 'cooperative', // Bloquear TODO el movimiento si es miniatura
+        keyboardShortcuts: !isThumbnail,
+        clickableIcons: false,
+        styles: cleanMapStyles,
+        backgroundColor: '#1a1a1a'
       }}
     >
       <Marker
         position={center}
         icon={{
-          url: '/frog-pin.png', // Tu pin personalizado
-          scaledSize: new window.google.maps.Size(40, 40), // Ajusta el tamaño si es necesario
+          url: '/frog-pin.png', 
+          scaledSize: new window.google.maps.Size(isThumbnail ? 30 : 60, isThumbnail ? 30 : 60), // Pin más pequeño en la miniatura
         }}
       />
     </GoogleMap>
