@@ -131,6 +131,7 @@ export default async function BuyersDashboard() {
     interestRate: Number(contract.interestRate || 0),
     nextPayment: pendingPayment ? Number(pendingPayment.totalDue) : 0,
     dueDate: pendingPayment ? pendingPayment.paymentDate.toISOString() : contract.startDate.toISOString(),
+    paymentId: pendingPayment ? pendingPayment.id : null,
     equityBuilt: equityBuilt,
     equityPercentage: Math.round(equityPercentage),
     transactions: paidTransactions.map(tx => ({
@@ -163,9 +164,6 @@ export default async function BuyersDashboard() {
             </p>
           </div>
           <div className="flex gap-4">
-            <button className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors flex items-center gap-2">
-              💳 Make Payment
-            </button>
             <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
               <button className="bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
                 Sign Out

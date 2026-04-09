@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
+import { useSearchParams } from 'next/navigation';
 
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -14,6 +15,36 @@ const formatMoney = (amount: number) => {
 export default function DashboardBuyerClient({ data }: { data: any }) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const success = searchParams.get('success');
+  const canceled = searchParams.get('canceled');
+
+  const handlePayment = async () => {
+    if (!data.paymentId) return;
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId: data.paymentId }),
+      });
+      const result = await response.json();
+      
+      if (result.url) {
+        window.location.href = result.url; // Redirigir a Stripe
+      } else {
+        console.error(result.error);
+        alert('Hubo un error al generar el pago. Intenta de nuevo.');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error de conexión.');
+      setIsLoading(false);
+    }
+  };
 
   // Inicializar Chart.js
   useEffect(() => {
@@ -61,24 +92,65 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
   return (
     <div className="space-y-8">
       
+      {/* ALERTAS DE STRIPE */}
+      {success && (
+        <div className="bg-[#529e14]/20 border border-[#529e14] text-white p-4 rounded-xl flex items-center gap-3">
+          <span className="text-[#529e14] text-xl">✅</span>
+          <div>
+            <h4 className="font-bold text-[#529e14]">¡Pago Exitoso!</h4>
+            <p className="text-sm text-gray-300">Tu mensualidad ha sido procesada correctamente.</p>
+          </div>
+        </div>
+      )}
+      {canceled && (
+        <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded-xl flex items-center gap-3">
+          <span className="text-red-500 text-xl">❌</span>
+          <div>
+            <h4 className="font-bold text-red-500">Pago Cancelado</h4>
+            <p className="text-sm text-gray-300">No se realizó ningún cargo a tu tarjeta en este momento.</p>
+          </div>
+        </div>
+      )}
+
       {/* TARJETAS SUPERIORES (METRICS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 shadow-xl relative overflow-hidden group hover:border-gray-700 transition-colors">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest relative z-10">Outstanding Balance</p>
-          <h2 className="text-4xl font-black text-white mt-3 relative z-10">{formatMoney(data.outstandingBalance)}</h2>
+        <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 shadow-xl relative overflow-hidden group hover:border-gray-700 transition-colors flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest relative z-10">Outstanding Balance</p>
+            <h2 className="text-4xl font-black text-white mt-3 relative z-10">{formatMoney(data.outstandingBalance)}</h2>
+          </div>
           <div className="mt-4 flex items-center text-sm relative z-10">
             <span className="bg-[#529e14]/20 text-[#529e14] border border-[#529e14]/50 px-2 py-0.5 text-xs font-bold mr-2 rounded uppercase">ACTIVE</span>
             <span className="font-mono text-xs text-gray-400">30 Year Fixed at {data.interestRate}%</span>
           </div>
         </div>
 
-        <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 shadow-xl relative overflow-hidden group hover:border-gray-700 transition-colors">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest relative z-10">Next Payment Due</p>
-          <h2 className="text-4xl font-black text-white mt-3 relative z-10">{formatMoney(data.nextPayment)}</h2>
-          <p className="text-[#f8ed1a] text-xs font-bold uppercase tracking-wide mt-4 flex items-center gap-1 relative z-10">
-            ⏳ Due by {new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
-          </p>
+        <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 shadow-xl relative overflow-hidden group hover:border-gray-700 transition-colors flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest relative z-10">Next Payment Due</p>
+            <h2 className="text-4xl font-black text-white mt-3 relative z-10">{formatMoney(data.nextPayment)}</h2>
+            <p className="text-[#f8ed1a] text-xs font-bold uppercase tracking-wide mt-2 flex items-center gap-1 relative z-10">
+              ⏳ Due by {new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+            </p>
+          </div>
+          <button 
+            onClick={handlePayment}
+            disabled={isLoading || !data.paymentId || data.nextPayment <= 0}
+            className="mt-4 w-full bg-[#529e14] disabled:bg-gray-700 disabled:text-gray-400 text-white py-3 rounded-lg font-black uppercase tracking-widest text-xs shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors flex items-center justify-center gap-2 relative z-10"
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Procesando...
+              </>
+            ) : (
+              <>💳 Make Payment</>
+            )}
+          </button>
         </div>
 
         <div className="bg-[#1a1a1a] rounded-xl border border-gray-700 p-6 shadow-[0_0_20px_rgba(248,237,26,0.05)] relative overflow-hidden text-white">

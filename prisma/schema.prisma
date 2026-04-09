@@ -333,7 +333,7 @@ model BuyerProfile {
   lastName    String
   phone       String?
   // El email ya vive en el modelo User principal
-
+  stripeCustomerID String? @unique
   // Relación con sus contratos de propiedades
   contracts   Contract[]
 
@@ -408,6 +408,8 @@ model Payment {
   // Control de estado
   status        PaymentStatus @default(PENDING) 
   paidAt        DateTime?     // Fecha real en que el cliente pagó
+
+  stripePaymentIntentID String? @unique
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

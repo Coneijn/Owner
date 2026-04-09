@@ -13,6 +13,7 @@
     "@aws-sdk/s3-request-presigner": "^3.969.0",
     "@otplib/preset-default": "^12.0.1",
     "@react-google-maps/api": "^2.20.8",
+    "@stripe/stripe-js": "^9.1.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
@@ -33,6 +34,7 @@
     "react-leaflet": "^5.0.0",
     "react-to-print": "^3.3.0",
     "slugify": "^1.6.6",
+    "stripe": "^22.0.1",
     "use-debounce": "^10.1.0"
   },
   "devDependencies": {
