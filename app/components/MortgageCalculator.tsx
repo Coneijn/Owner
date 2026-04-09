@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 
 interface CalculatorProps {
   price: number;
@@ -23,7 +23,13 @@ const TEXTS = {
     loanTerm: "Plazo del Préstamo",
     years: "Años",
     homePrice: "Precio Casa",
-    interest: "Tasa Interés"
+    interest: "Tasa Interés",
+    viewBreakdown: "Ver Desglose", 
+    hideBreakdown: "Ocultar Desglose",
+    principalAndInterest: "Principal e Interés",
+    taxes: "Impuestos",
+    insurance: "Seguro",
+    serviceFee: "Tarifa de Servicio"
   },
   en: {
     title: "Your Monthly Payment",
@@ -34,7 +40,13 @@ const TEXTS = {
     loanTerm: "Loan Term",
     years: "Years",
     homePrice: "Home Price",
-    interest: "Interest Rate"
+    interest: "Interest Rate",
+    viewBreakdown: "View Breakdown", 
+    hideBreakdown: "Hide Breakdown",
+    principalAndInterest: "Principal & Interest",
+    taxes: "Taxes",
+    insurance: "Insurance",
+    serviceFee: "Service Fee"
   }
 };
 
@@ -49,11 +61,12 @@ export default function MortgageCalculator({
   
   const [downPayment, setDownPayment] = useState(defaultDownPayment);
   const [termYears, setTermYears] = useState(30);
-  const [monthlyPayment, setMonthlyPayment] = useState(0);
+  const [showBreakdown, setShowBreakdown] = useState(false); 
 
   const t = TEXTS[lang];
 
-  useEffect(() => {
+  /*calcula y guarda todas las partes */
+  const breakdown = useMemo(() => {
     const loanAmount = price - downPayment;
     
     const monthlyRate = (interestRate / 100) / 12;
@@ -69,10 +82,9 @@ export default function MortgageCalculator({
 
     const monthlyTaxes = taxes / 12;
     const monthlyInsurance = insurance / 12;
+    const total = principalAndInterest + monthlyTaxes + monthlyInsurance + SERVICE_FEE;
 
-    // Sumamos el SERVICE_FEE al total
-    setMonthlyPayment(principalAndInterest + monthlyTaxes + monthlyInsurance + SERVICE_FEE);
-
+    return { principalAndInterest, monthlyTaxes, monthlyInsurance, total };
   }, [price, downPayment, termYears, interestRate, taxes, insurance]);
 
   const formatMoney = (val: number) => 
@@ -85,16 +97,45 @@ export default function MortgageCalculator({
         <span className="text-2xl">🧮</span> {t.title}
       </h3>
 
-      <div className="text-center py-8 bg-white/5 rounded-xl border border-white/10 mb-8 backdrop-blur-sm">
+      <div className="text-center py-8 px-4 bg-white/5 rounded-xl border border-white/10 mb-8 backdrop-blur-sm flex flex-col items-center">
         <span className="block text-gray-400 text-xs uppercase font-bold tracking-wider mb-2">
             {t.estimated}
         </span>
         <span className="text-5xl font-black text-[#f8ed1a] tracking-tight">
-          {formatMoney(monthlyPayment)}
+          {formatMoney(breakdown.total)}
         </span>
-        <span className="block text-[10px] text-gray-500 mt-2 font-medium uppercase">
+        <span className="block text-[10px] text-gray-500 mt-2 mb-4 font-medium uppercase">
             {t.includes}
         </span>
+
+        {/*Botón y sección colapsable */}
+        <button 
+          onClick={() => setShowBreakdown(!showBreakdown)}
+          className="text-xs text-gray-400 underline hover:text-white transition"
+        >
+          {showBreakdown ? t.hideBreakdown : t.viewBreakdown}
+        </button>
+
+        {showBreakdown && (
+          <div className="mt-4 w-full p-4 bg-black/20 rounded-lg border border-gray-700 text-sm space-y-2 text-gray-300 text-left animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex justify-between">
+              <span>{t.principalAndInterest}</span>
+              <span className="font-bold text-white">{formatMoney(breakdown.principalAndInterest)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{t.taxes}</span>
+              <span className="font-bold text-white">{formatMoney(breakdown.monthlyTaxes)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{t.insurance}</span>
+              <span className="font-bold text-white">{formatMoney(breakdown.monthlyInsurance)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
+              <span>{t.serviceFee}</span>
+              <span className="font-bold text-white">{formatMoney(SERVICE_FEE)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-8">
