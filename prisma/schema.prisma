@@ -27,10 +27,25 @@ model User {
   // Relaciones de Perfiles
   sellerProfile       SellerProfile?
   agentProfile        AgentProfile?  // <-- NUEVO: Relación con el Agente
-
+  renterProfile       RenterProfile?       
   buyerProfile        BuyerProfile?  // <-- NUEVO: Relación con el Comprador
 }
+model RenterProfile {
+  id          String   @id @default(cuid())
+  
+  // Relación con el usuario (Autenticación)
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Datos públicos del rentero
+  RenterName  String?  // Nombre a mostrar públicamente
+  phone String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relación 1-a-Muchos con las propiedades
+  properties  Property[]
+}
 model SellerProfile {
   id          String   @id @default(cuid())
   
@@ -149,7 +164,8 @@ model Property {
   showSeller  Boolean @default(false)
   sellerProfileId String?
   sellerProfile   SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: SetNull)
-
+  renterProfileId String?
+  renterProfile   RenterProfile? @relation(fields: [renterProfileId], references: [id], onDelete: SetNull)
   //contenido para agentes 
   emoji              String?
   condition          String?
