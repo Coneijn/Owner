@@ -10,6 +10,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(req: Request) {
   try {
     const { paymentId } = await req.json();
+    
+    // Obtenemos la URL exacta desde donde el usuario hizo clic en el botón
+    const referer = req.headers.get('referer');
+    const returnPath = referer ? new URL(referer).pathname : '/buyersDashboard';
 
     // 2. Corrección Prisma: Incluir la cadena completa contract -> buyer -> user
     const payment = await prisma.payment.findUnique({
@@ -51,8 +55,8 @@ export async function POST(req: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/buyersDashboard?success=true`,
-      cancel_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/buyersDashboard?canceled=true`,
+      success_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${returnPath}?success=true`,
+      cancel_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${returnPath}?canceled=true`,
       // Metadatos para que el Webhook sepa qué registro actualizar en tu base de datos
       metadata: {
         localPaymentId: payment.id,

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { createTestSeller } from './actions';
+import { createTestUser, UserProfileType } from './actions';
 
-export default function SellerCreatorPage() {
+export default function UserCreatorPage() {
   const [testCode, setTestCode] = useState('');
+  const [userType, setUserType] = useState<UserProfileType>('SELLER');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; email?: string; password?: string; error?: string } | null>(null);
 
@@ -13,22 +14,51 @@ export default function SellerCreatorPage() {
     setResult(null);
     setLoading(true);
 
-    const res = await createTestSeller(testCode);
+    const res = await createTestUser(testCode, userType);
     setResult(res);
     setLoading(false);
   };
 
-  const emailPreview = testCode ? `tester-${testCode.toLowerCase()}@testmail.com` : 'tester-___@testmail.com';
-  const passPreview = testCode ? `Testing${testCode}` : 'Testing___';
+  // Lógica para formatear la previsualización
+  const typeLower = userType.toLowerCase();
+  const typeCapitalized = typeLower.charAt(0).toUpperCase() + typeLower.slice(1);
+
+  const emailPreview = testCode 
+    ? `tester-${typeLower}-${testCode.toLowerCase()}@testmail.com` 
+    : `tester-${typeLower}-___@testmail.com`;
+    
+  const passPreview = testCode 
+    ? `Testing${typeCapitalized}${testCode}` 
+    : `Testing${typeCapitalized}___`;
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4 text-gray-200">
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full max-w-md shadow-2xl">
         <h1 className="text-3xl font-black text-[#f8ed1a] mb-6 tracking-wide text-center">
-          Seller Test Creator
+          Test User Creator
         </h1>
 
         <form onSubmit={handleCreate} className="space-y-6">
+          
+          {/* NUEVO DROPDOWN */}
+          <div>
+            <label className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-2">
+              Tipo de Usuario
+            </label>
+            <select
+              value={userType}
+              onChange={(e) => setUserType(e.target.value as UserProfileType)}
+              className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-[#f8ed1a] outline-none transition-colors cursor-pointer"
+            >
+              <option value="SELLER">Vendedor (Seller)</option>
+              <option value="BUYER">Comprador (Buyer)</option>
+              <option value="RENTER">Rentero (Renter)</option>
+              <option value="AGENT">Agente (Agent)</option>
+              <option value="ADMIN">Administrador (Admin)</option>
+              <option value="STAFF">Equipo (Staff)</option>
+            </select>
+          </div>
+
           <div>
             <label className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-2">
               Identificador (Texto o Número)
@@ -54,7 +84,7 @@ export default function SellerCreatorPage() {
             disabled={loading || !testCode}
             className="w-full py-4 bg-[#529e14] text-white font-black uppercase tracking-wide rounded-lg shadow-lg hover:bg-[#458510] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creando...' : 'Generar Seller ->'}
+            {loading ? 'Creando...' : 'Generar Usuario ->'}
           </button>
         </form>
 
