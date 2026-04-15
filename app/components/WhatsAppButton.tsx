@@ -9,8 +9,8 @@ interface WhatsAppButtonProps {
 }
 
 const DICTIONARY: Record<string, { label: string; template: string }> = {
-  en: { label: 'Contact us', template: "Hi, I'm interested in the property: " },
-  es: { label: 'Contáctanos', template: 'Hola, me interesa la propiedad: ' }
+  en: { label: 'Contact us', template: "Hi, I'm interested in a property: " },
+  es: { label: 'Contáctanos', template: 'Hola, me interesa una propiedad: ' }
 };
 
 export default function WhatsAppButton({ 

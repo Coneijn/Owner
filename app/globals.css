@@ -12,6 +12,14 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   
+  /* Amarillo brillante usado en logo, botones de login y navegación activa */
+  --color-brand-accent: #f8ed1a; 
+  
+  /* Azul marino oscuro usado como fondo general de la aplicación (ej. el mapa) */
+  --color-brand-dark: #0a0f1c;   
+  
+  /* Gris muy oscuro usado para diferenciar el Header del fondo principal */
+  --color-brand-header: #1a1a1a;
   /* 1. Defines la utilidad de animación */
   --animate-marquee: marquee 24s linear infinite;
   

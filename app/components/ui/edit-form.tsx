@@ -339,6 +339,7 @@ export default function EditForm({
                       <option value="AVAILABLE">Available</option>
                       <option value="UNDER_CONTRACT">Under Contract | Pending</option>
                       <option value="SOLD">Sold</option>
+                      <option value="RENTED">Rented</option>
                       <option value="DRAFT">Draft</option>
                       <option value="COMING_SOON">Coming Soon</option>
                   </select>

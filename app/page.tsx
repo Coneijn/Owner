@@ -18,7 +18,7 @@ export default async function MapPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-  const contactName = lang === 'es' ? 'la página del mapa' : 'the map page';
+  const contactName = lang === 'es' ? '' : '';
   // --- CAMBIO APLICADO: Agregamos 'sold' como opción ---
   const typeParam = searchParams?.type;
   const searchType = typeParam === 'rent' ? 'rent' : typeParam === 'sold' ? 'sold' : 'buy';

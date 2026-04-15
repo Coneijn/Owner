@@ -41,8 +41,8 @@ export default function MapFloatingButtons({ lang }: { lang: 'es' | 'en' }) {
 
   // Definición del mensaje y URL para WhatsApp
   const waMessage = lang === 'en' 
-    ? "Hi, I'm interested in the property: the map page" 
-    : "Hola, me interesa la propiedad: la página del mapa";
+    ? "Hi, I'm interested in a property: " 
+    : "Hola, me interesa una propiedad: ";
   const waUrl = `https://wa.me/19016604115?text=${encodeURIComponent(waMessage)}`;
   return (
   

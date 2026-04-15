@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PropertyStatus } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 // lib/actions.ts (Solo la función authenticate)
 export async function authenticate(
@@ -318,12 +319,13 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
     const currentProperty = await prisma.property.findUnique({
       where: { id },
-      select: { price: true }
+      select: { price: true, status: true } 
     });
 
     const currentPriceNum = currentProperty?.price ? Number(currentProperty.price) : null;
     const newPriceNum = newPriceValue ? Number(newPriceValue) : null;
-
+    const oldStatus = currentProperty?.status;
+    const newStatus = rawFormData.status as PropertyStatus;
     let logDetails = 'Propiedad actualizada.'; // Mensaje por defecto para la auditoría
 
     if (newPriceNum !== currentPriceNum) {
@@ -426,6 +428,10 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   revalidatePath('/admin');
   revalidatePath(`/propiedades/${sanitizedSlug}`); 
+  const finalStatus = rawFormData.status as PropertyStatus;
+  if(finalStatus=== 'SOLD' || finalStatus === 'RENTED') {
+    redirect(`/admin/properties/${id}/assign?type=${finalStatus}`);
+  }
   redirect('/admin');
 }
 // --- ACTIONS PARA SELLERS (Agregar al final de lib/actions.ts) ---
@@ -583,5 +589,134 @@ export async function updateDraftPropertyMedia(propertyId: string, photos: any[]
   } catch (error) {
     console.error("Error updating draft property media:", error);
     return { success: false, message: "No se pudieron actualizar las fotos del borrador." };
+  }
+}
+
+// --- ASSIGN PROPERTY CLIENT (15 abril) ---
+export async function assignPropertyClient(
+  propertyId: string, 
+  clientType: 'BUYER' | 'RENTER', 
+  formData: FormData
+) {
+  try {
+    // 1. VALIDACIÓN DE SESIÓN Y PERMISOS
+    const session = await auth();
+    if (!session || !session.user?.id) {
+      return { success: false, message: 'No estás autenticado.' };
+    }
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) {
+      return { success: false, message: 'Propiedad no encontrada.' };
+    }
+
+    // Buscamos al usuario en la BD para ver su rol exacto y su perfil de vendedor
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { sellerProfile: true }
+    });
+
+    // Lógica de permisos: ADMIN puede todo. SELLER solo sus propiedades.
+    if (dbUser?.role !== 'ADMIN') {
+      const isSeller = !!dbUser?.sellerProfile;
+      if (!isSeller || property.sellerProfileId !== dbUser?.sellerProfile?.id) {
+        return { success: false, message: 'No tienes permiso para asignar clientes a esta propiedad.' };
+      }
+    }
+
+    // 2. EXTRACCIÓN DE DATOS DEL FORMULARIO
+    const email = formData.get('email') as string;
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const phone = formData.get('phone') as string;
+
+    if (!email || !firstName || !lastName) {
+      return { success: false, message: 'Faltan datos obligatorios del cliente.' };
+    }
+
+    // 3. GESTIÓN DE CUENTAS (Búsqueda o Creación)
+    let targetUser = await prisma.user.findUnique({
+      where: { email },
+      include: { renterProfile: true, buyerProfile: true }
+    });
+
+    if (!targetUser) {
+      // Crear nuevo usuario si no existe
+      const temporaryPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
+      
+      targetUser = await prisma.user.create({
+        data: {
+          email,
+          password: temporaryPassword,
+          name: `${firstName} ${lastName}`,
+          forcePasswordChange: true, // Para el onboarding futuro
+          role: 'USER',
+        },
+        include: { renterProfile: true, buyerProfile: true }
+      });
+    }
+
+    // 4. CREACIÓN DE PERFIL ESPECÍFICO SI NO LO TIENE
+    let renterProfileId = targetUser.renterProfile?.id;
+    let buyerProfileId = targetUser.buyerProfile?.id;
+
+    if (clientType === 'RENTER' && !renterProfileId) {
+      const newRenter = await prisma.renterProfile.create({
+        data: {
+          userId: targetUser.id,
+          RenterName: `${firstName} ${lastName}`,
+          phone: phone || null,
+        }
+      });
+      renterProfileId = newRenter.id;
+    }
+
+    if (clientType === 'BUYER' && !buyerProfileId) {
+      const newBuyer = await prisma.buyerProfile.create({
+        data: {
+          userId: targetUser.id,
+          firstName,
+          lastName,
+          phone: phone || null,
+        }
+      });
+      buyerProfileId = newBuyer.id;
+    }
+
+    // 5. ASIGNACIÓN A LA PROPIEDAD
+    if (clientType === 'RENTER') {
+      await prisma.property.update({
+        where: { id: propertyId },
+        data: { renterProfileId, status: 'RENTED' }
+      });
+    } else if (clientType === 'BUYER') {
+      // Como acordamos en la Fase 1, asignamos directamente a la propiedad
+      await prisma.property.update({
+        where: { id: propertyId },
+        data: { buyerProfileId, status: 'SOLD' }
+      });
+    }
+
+    // 6. LOG DE AUDITORÍA
+    await prisma.auditLog.create({
+      data: {
+        action: `PROPERTY_ASSIGNED_TO_${clientType}`,
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        userId: session.user.id,
+        propertyId: propertyId,
+        address: property.address,
+        details: `Propiedad asignada al email: ${email}`,
+      }
+    });
+
+    revalidatePath('/admin');
+    revalidatePath(`/admin/properties/${propertyId}/edit`);
+    
+    return { success: true, message: 'Cliente asignado correctamente.' };
+
+  } catch (error) {
+    console.error('Error assigning property client:', error);
+    return { success: false, message: 'Ocurrió un error al procesar la asignación.' };
   }
 }
