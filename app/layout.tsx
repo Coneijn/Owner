@@ -17,12 +17,9 @@ const geistMono = Geist_Mono({
 const baseUrl = "https://ownertodueno.com";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(baseUrl), 
-  title: {
-    default: "Dueño a Dueño | Compra y Venta Directa en Memphis",
-    template: "%s | Dueño a Dueño", 
-  },
-  description: "Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.",
+  metadataBase: new URL(baseUrl), // Asegúrate de tener baseUrl definido en tu archivo
+  title: 'Discover Your 🏡CashFlow',
+  description: 'Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.',
   robots: {
     index: true, 
     follow: true,
@@ -35,11 +32,29 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: '/', 
+    canonical: '/sellers', // Se mantiene el de la página actual
     languages: {
       'es': '/',           
       'en': '/?lang=en',   
     },
+  },
+  openGraph: {
+    title: 'Discover Your 🏡CashFlow',
+    description: 'Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.',
+    images: [
+      {
+        url: '/share_map.png',
+        width: 1200,
+        height: 630,
+        alt: 'CashFlow Share Map',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Discover Your 🏡CashFlow',
+    description: 'Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.',
+    images: ['/share_map.png'],
   },
 };
 
