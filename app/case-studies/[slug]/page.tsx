@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/app/components/Header';
-// 1. Importamos la librería de seguridad
-import DOMPurify from 'isomorphic-dompurify';
+// 1. Importamos la nueva librería de seguridad (Reemplaza a DOMPurify)
+import sanitizeHtml from 'sanitize-html';
 
 export default async function BlogPostPage(props: { 
   params: Promise<{ slug: string }>;
@@ -21,17 +21,23 @@ export default async function BlogPostPage(props: {
   const title = currentLang === 'en' ? post.titleEn : post.titleEs;
   const rawContent = currentLang === 'en' ? post.contentEn : post.contentEs;
 
-  // 2. Configuración de Sanitización (El filtro de seguridad)
+  // 2. Configuración de Sanitización (El filtro de seguridad actualizado)
   // Permitimos jerarquía completa (h2-h6) y elementos comunes de blog.
-  const sanitizedContent = DOMPurify.sanitize(rawContent, {
-    ALLOWED_TAGS: [
+  const sanitizedContent = sanitizeHtml(rawContent, {
+    allowedTags: [
       'b', 'i', 'em', 'strong', 'a', 'p', 
       'h2', 'h3', 'h4', 'h5', 'h6', 
       'ul', 'ol', 'li', 'br', 'img', 'blockquote', 'code', 'pre', 'hr'
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'className', 'class', 'width', 'height', 'rel'],
+    allowedAttributes: {
+      '*': ['className', 'class'], // Permite clases de Tailwind en todos los elementos
+      'a': ['href', 'target', 'rel'],
+      'img': ['src', 'alt', 'width', 'height']
+    },
     // Esto fuerza a que los enlaces externos se abran en nueva pestaña de forma segura
-    ADD_ATTR: ['target'], 
+    transformTags: {
+      'a': sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' })
+    }
   });
 
   return (

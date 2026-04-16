@@ -19,7 +19,7 @@ export default async function MapPage(props: {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const contactName = lang === 'es' ? '' : '';
-  // --- CAMBIO APLICADO: Agregamos 'sold' como opción ---
+  
   const typeParam = searchParams?.type;
   const searchType = typeParam === 'rent' ? 'rent' : typeParam === 'sold' ? 'sold' : 'buy';
 
@@ -45,7 +45,7 @@ export default async function MapPage(props: {
       tabs: {
         buy: "COMPRAR",
         rent: "RENTAR",
-        sold: "VENDER" // --- NUEVO ---
+        sold: "VENDER"
       },
       specs: {
         beds: "Hab",
@@ -74,7 +74,7 @@ export default async function MapPage(props: {
       tabs: {
         buy: "BUY",
         rent: "RENT",
-        sold: "SOLD" // --- NUEVO ---
+        sold: "SOLD"
       },
       specs: {
         beds: "Beds",
@@ -86,7 +86,6 @@ export default async function MapPage(props: {
 
   const t = DICTIONARY[lang];
 
-  // --- LÓGICA DE FILTROS ---
   const queryText = searchParams?.query || '';
   const minPrice = searchParams?.minPrice ? Number(searchParams.minPrice) : undefined;
   const maxPrice = searchParams?.maxPrice ? Number(searchParams.maxPrice) : undefined;
@@ -94,10 +93,9 @@ export default async function MapPage(props: {
   const minBaths = searchParams?.baths ? Number(searchParams.baths) : undefined;
   const minSqft = searchParams?.sqft ? Number(searchParams.sqft) : undefined;
 
-  // --- CAMBIO APLICADO: Ajuste del WhereClause para propiedades Vendidas ---
   const whereClause: any = {
     ...(searchType === 'sold'
-        ? { status: 'SOLD' } // Si es sold, ignoramos si es renta/venta y solo buscamos vendidas
+        ? { status: 'SOLD' } 
         : {
             OR: [
                 { status: 'AVAILABLE' },
@@ -133,7 +131,6 @@ export default async function MapPage(props: {
     ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
   };
 
-  // --- CONSULTA A BASE DE DATOS ---
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
@@ -162,7 +159,8 @@ export default async function MapPage(props: {
         sqft: true,
         status: true,
         
-        // Campos de Renta
+        // --- CAMBIO: Seleccionamos explícitamente ambos tipos ---
+        isForSale: true,
         isForRent: true,
         monthlyRent: true,
         securityDeposit: true, 
@@ -180,7 +178,6 @@ export default async function MapPage(props: {
     }
   });
 
-  // --- MAPEO DE DATOS ---
   const properties = rawProperties.map(p => ({
     id: p.id,
     title: lang === 'en' ? p.titleEn : p.titleEs,
@@ -203,18 +200,21 @@ export default async function MapPage(props: {
     baths: p.bathrooms,
     sqft: p.sqft,
     status: p.status,
+    
+    // --- CAMBIO: Pasamos los valores al front ---
     isForRent: p.isForRent, 
+    isForSale: p.isForSale,
+    // Definimos el tipo para el bot (Frank)
+    listingType: p.isForRent && !p.isForSale ? 'rent' : 'owner-finance',
+
     features: p.features,
     showSeller: p.showSeller,
-
     sellerName: p.sellerProfile?.sellerName || null,
     sellerImage: p.sellerProfile?.sellerImage || null,
     sellerType: p.sellerProfile?.sellerType || null,
-
     createdAt: p.createdAt.toISOString(),
     previousprice: p.previousPrice ? Number(p.previousPrice) : null,
     lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null,
-
   }));
 
   return (
@@ -229,7 +229,6 @@ export default async function MapPage(props: {
             />
         </div>
         
-        {/* Este es el WhatsApp original (Solo en escritorio) */}
         <div className="hidden lg:block">
             <WhatsAppButton lang={lang} propertyName={contactName} position="left"/>
         </div>

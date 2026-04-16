@@ -43,7 +43,7 @@ export async function POST(req: Request) {
           data: {
             status: 'PAID',
             paidAt: new Date(),
-            stripePaymentIntentId: session.payment_intent as string,
+            stripePaymentIntentID: session.payment_intent as string,
           },
         });
       } catch (dbError) {
