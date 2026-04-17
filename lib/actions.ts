@@ -312,10 +312,23 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   const newPriceValue = parseDecimalOrNull(rawFormData.price);
   let priceHistoryData = {};
+  let basePath = '/admin'; // <-- DECLARADO AFUERA DEL TRY
 
   try {
     // 1. Obtenemos sesión
     const session = await auth();
+
+    // --- Determinar la ruta base según el rol ---
+    if (session?.user?.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true }
+      });
+      // Si el usuario existe y NO es ADMIN, asume que es Vendedor
+      if (dbUser && dbUser.role !== 'ADMIN') {
+        basePath = '/sellerDashboard';
+      }
+    }
 
     const currentProperty = await prisma.property.findUnique({
       where: { id },
@@ -426,13 +439,15 @@ export async function updateProperty(prevState: any, formData: FormData) {
     return { message: 'Error al actualizar la propiedad.' };
   }
 
-  revalidatePath('/admin');
+  revalidatePath(basePath);
   revalidatePath(`/propiedades/${sanitizedSlug}`); 
   const finalStatus = rawFormData.status as PropertyStatus;
-  if(finalStatus=== 'SOLD' || finalStatus === 'RENTED') {
-    redirect(`/admin/properties/${id}/assign?type=${finalStatus}`);
+  
+  if(finalStatus === 'SOLD' || finalStatus === 'RENTED') {
+    redirect(`${basePath}/properties/${id}/assign?type=${finalStatus}`);
   }
-  redirect('/admin');
+  
+  redirect(basePath);
 }
 // --- ACTIONS PARA SELLERS (Agregar al final de lib/actions.ts) ---
 
@@ -690,10 +705,33 @@ export async function assignPropertyClient(
         data: { renterProfileId, status: 'RENTED' }
       });
     } else if (clientType === 'BUYER') {
-      // Como acordamos en la Fase 1, asignamos directamente a la propiedad
+      // Opción B: Actualizamos solo el estatus de la propiedad a SOLD (o UNDER_CONTRACT)
+      if (!buyerProfileId) {
+        return { success: false, message: 'Error: No se pudo obtener el ID del comprador.' };
+      }
+
       await prisma.property.update({
         where: { id: propertyId },
-        data: { buyerProfileId, status: 'SOLD' }
+        data: { status: 'SOLD' }
+      });
+
+      // Extraemos los valores financieros de la propiedad para el contrato inicial
+      // Prisma devuelve objetos Decimal, por lo que los convertimos a número o usamos 0 si son null
+      const propPrice = property.price ? Number(property.price) : 0;
+      const propDownPayment = property.downPayment ? Number(property.downPayment) : 0;
+      const principal = propPrice - propDownPayment;
+
+      // Creamos un contrato base que une al Comprador con la Propiedad
+      await prisma.contract.create({
+        data: {
+          propertyId: propertyId,
+          buyerProfileId: buyerProfileId,
+          type: 'LOAN',
+          totalAmount: propPrice,
+          downPayment: propDownPayment,
+          principalAmount: principal > 0 ? principal : 0,
+          startDate: new Date(), // Fecha actual como inicio del contrato
+        }
       });
     }
 

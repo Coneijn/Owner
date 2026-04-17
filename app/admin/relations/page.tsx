@@ -40,6 +40,33 @@ async function updatePropertyProfile(formData: FormData) {
   }
 }
 
+async function createContract(formData: FormData) {
+  "use server";
+  const propertyId = formData.get("propertyId") as string;
+  const buyerProfileId = formData.get("buyerProfileId") as string;
+  const type = formData.get("type") as "LOAN" | "LEASE";
+  
+  const totalAmount = parseFloat(formData.get("totalAmount") as string) || 0;
+  const downPayment = parseFloat(formData.get("downPayment") as string) || 0;
+  const principalAmount = parseFloat(formData.get("principalAmount") as string) || 0;
+  const startDateStr = formData.get("startDate") as string;
+
+  if (propertyId && buyerProfileId && startDateStr) {
+    await prisma.contract.create({
+      data: {
+        propertyId,
+        buyerProfileId,
+        type,
+        totalAmount,
+        downPayment,
+        principalAmount,
+        startDate: new Date(startDateStr),
+      },
+    });
+    revalidatePath("/admin/relations");
+  }
+}
+
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
@@ -88,6 +115,65 @@ export default async function RelationsAdminPage() {
             <div className="flex items-center gap-3 mb-6">
               <div className="h-8 w-2 bg-brand-accent"></div>
               <h2 className="text-2xl font-bold text-white uppercase tracking-wider">Gestión de Contratos</h2>
+            </div>
+
+            {/* FORMULARIO PARA CREAR NUEVO CONTRATO */}
+            <div className="mb-8 p-6 rounded-xl border border-white/10 bg-black/40 shadow-xl">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <span className="text-brand-accent">+</span> Crear Nuevo Contrato
+              </h3>
+              <form action={createContract} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Propiedad</label>
+                  <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none">
+                    <option value="">Selecciona Propiedad...</option>
+                    {properties.map(p => <option key={p.id} value={p.id}>{p.address}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Comprador / Inquilino</label>
+                  <select name="buyerProfileId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none">
+                    <option value="">Selecciona Cliente...</option>
+                    {allBuyers.map(b => <option key={b.id} value={b.id}>{b.firstName} {b.lastName}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Tipo de Contrato</label>
+                  <select name="type" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none">
+                    <option value="LOAN">Préstamo / Venta (LOAN)</option>
+                    <option value="LEASE">Renta (LEASE)</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Fecha de Inicio</label>
+                  <input type="date" name="startDate" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none" />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Monto Total ($)</label>
+                  <input type="number" step="0.01" name="totalAmount" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none" placeholder="0.00" />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Enganche / Depósito ($)</label>
+                  <input type="number" step="0.01" name="downPayment" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none" placeholder="0.00" />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Monto Principal a Financiar ($)</label>
+                  <input type="number" step="0.01" name="principalAmount" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none" placeholder="0.00" />
+                </div>
+
+                <div className="flex flex-col justify-end">
+                  <button type="submit" className="bg-brand-accent text-brand-dark hover:bg-white w-full py-2 rounded-md text-sm font-bold transition-all">
+                    Crear Contrato
+                  </button>
+                </div>
+              </form>
             </div>
             
             <div className="overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-2xl">
@@ -151,83 +237,133 @@ export default async function RelationsAdminPage() {
             </div>
           </section>
 
-          {/* ================= GRID DE PROPIEDADES ================= */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* ================= SECCIÓN: ASIGNACIÓN RÁPIDA DE PROPIEDADES ================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* RENTADORES */}
+            {/* 1. RENTA -> INQUILINO */}
             <section>
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
-                Inmuebles en Renta (Asignar Inquilino)
-              </h3>
-              <div className="space-y-4">
-                {rentedProperties.map((p) => (
-                  <div key={p.id} className="bg-black/20 border border-white/5 p-4 rounded-lg hover:border-brand-accent/30 transition-all">
-                    <p className="text-white font-bold">{p.address}</p>
-                    
-                    <form action={updatePropertyProfile} className="mt-4 flex flex-col gap-2">
-                      <input type="hidden" name="propertyId" value={p.id} />
-                      <input type="hidden" name="profileType" value="renter" />
-                      
-                      <div className="flex gap-2 w-full">
-                        <select 
-                          name="profileId"
-                          defaultValue={p.renterProfileId || ""}
-                          className="bg-black border border-white/10 text-gray-300 text-sm rounded-md px-3 py-2 flex-grow focus:border-brand-accent outline-none"
-                        >
-                          <option value="">-- Sin inquilino asignado --</option>
-                          {allRenters.map(renter => (
-                            <option key={renter.id} value={renter.id}>
-                              {renter.RenterName || "Sin Nombre"} ({renter.phone || "Sin Teléfono"})
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className="bg-brand-accent/20 text-brand-accent border border-brand-accent/50 hover:bg-brand-accent hover:text-black px-4 py-2 rounded-md text-sm font-bold transition-all">
-                          Actualizar
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                ))}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-8 w-2 bg-brand-accent"></div>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wider">Asignar Inquilino (Renta)</h2>
               </div>
+              
+              <form action={updatePropertyProfile} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
+                <input type="hidden" name="profileType" value="renter" />
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">1. Propiedad</label>
+                  <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
+                    <option value="">-- Selecciona propiedad --</option>
+                    {rentedProperties.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.address} {p.renterProfileId ? '(Ocupada)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">2. Inquilino</label>
+                  <select name="profileId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
+                    <option value="">-- Elige inquilino --</option>
+                    {allRenters.map(renter => (
+                      <option key={renter.id} value={renter.id}>
+                        {renter.RenterName || "Sin Nombre"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mt-2">
+                  <button type="submit" className="bg-white/10 hover:bg-brand-accent hover:text-black border border-white/10 text-white px-4 py-2 rounded-md text-sm font-bold transition-all w-full">
+                    Actualizar Inquilino
+                  </button>
+                </div>
+              </form>
             </section>
 
-            {/* VENDEDORES / DUEÑOS */}
+            {/* 2. RENTA -> DUEÑO (NUEVO) */}
             <section>
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
-                Inmuebles en Venta (Asignar Dueño/Seller)
-              </h3>
-              <div className="space-y-4">
-                {saleProperties.map((p) => (
-                  <div key={p.id} className="bg-black/20 border border-white/5 p-4 rounded-lg hover:border-brand-accent/30 transition-all">
-                    <p className="text-white font-bold">{p.address}</p>
-                    
-                    <form action={updatePropertyProfile} className="mt-4 flex flex-col gap-2">
-                      <input type="hidden" name="propertyId" value={p.id} />
-                      <input type="hidden" name="profileType" value="seller" />
-                      
-                      <div className="flex gap-2 w-full">
-                        <select 
-                          name="profileId"
-                          defaultValue={p.sellerProfileId || ""}
-                          className="bg-black border border-white/10 text-gray-300 text-sm rounded-md px-3 py-2 flex-grow focus:border-brand-accent outline-none"
-                        >
-                          <option value="">-- Sin dueño asignado --</option>
-                          {allSellers.map(seller => (
-                            <option key={seller.id} value={seller.id}>
-                              {seller.sellerName || "Sin Nombre"} ({seller.sellerType})
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className="bg-brand-accent/20 text-brand-accent border border-brand-accent/50 hover:bg-brand-accent hover:text-black px-4 py-2 rounded-md text-sm font-bold transition-all">
-                          Actualizar
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                ))}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-8 w-2 bg-brand-accent"></div>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wider">Asignar Dueño (Renta)</h2>
               </div>
+              
+              <form action={updatePropertyProfile} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
+                <input type="hidden" name="profileType" value="seller" />
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">1. Propiedad</label>
+                  <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
+                    <option value="">-- Selecciona propiedad --</option>
+                    {rentedProperties.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.address} {p.sellerProfileId ? '(Tiene dueño)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">2. Dueño / Landlord</label>
+                  <select name="profileId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
+                    <option value="">-- Elige dueño --</option>
+                    {allSellers.map(seller => (
+                      <option key={seller.id} value={seller.id}>
+                        {seller.sellerName || "Sin Nombre"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mt-2">
+                  <button type="submit" className="bg-white/10 hover:bg-brand-accent hover:text-black border border-white/10 text-white px-4 py-2 rounded-md text-sm font-bold transition-all w-full">
+                    Actualizar Dueño
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {/* 3. VENTA -> DUEÑO */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-8 w-2 bg-brand-accent"></div>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wider">Asignar Dueño (Venta)</h2>
+              </div>
+              
+              <form action={updatePropertyProfile} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
+                <input type="hidden" name="profileType" value="seller" />
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">1. Propiedad</label>
+                  <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
+                    <option value="">-- Selecciona propiedad --</option>
+                    {saleProperties.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.address} {p.sellerProfileId ? '(Tiene dueño)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">2. Dueño / Seller</label>
+                  <select name="profileId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
+                    <option value="">-- Elige dueño --</option>
+                    {allSellers.map(seller => (
+                      <option key={seller.id} value={seller.id}>
+                        {seller.sellerName || "Sin Nombre"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mt-2">
+                  <button type="submit" className="bg-white/10 hover:bg-brand-accent hover:text-black border border-white/10 text-white px-4 py-2 rounded-md text-sm font-bold transition-all w-full">
+                    Actualizar Dueño
+                  </button>
+                </div>
+              </form>
             </section>
 
           </div>

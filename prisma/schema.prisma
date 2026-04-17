@@ -321,7 +321,7 @@ model PropertyImage {
 
 
 
-// --- NUEVO: Perfil del Cliente (Comprador o Inquilino) ---
+// ---  Perfil del Comprador  ---
 model BuyerProfile {
   id          String   @id @default(cuid())
   
