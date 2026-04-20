@@ -10,7 +10,7 @@ export default async function BuyersDashboard() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect('/login');
+    redirect('/');
   }
 
   // 1. Obtener usuario y su Perfil de Comprador
@@ -28,7 +28,7 @@ export default async function BuyersDashboard() {
           <p className="text-gray-300">
             Tu cuenta no tiene un perfil de comprador asignado. Si crees que esto es un error, por favor contacta a soporte.
           </p>
-          <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }} className="mt-6">
+          <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }} className="mt-6">
             <button className="w-full bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
               Cerrar Sesión
             </button>
@@ -75,6 +75,13 @@ export default async function BuyersDashboard() {
                 Protege tu información financiera vinculando una aplicación de autenticación (como Google Authenticator).
             </p>
             <TwoFactorManager isEnabled={false} email={currentUser.email} role={currentUser.role}/>
+            <div className="mt-10 flex justify-between items-center pt-6 border-t border-gray-800">
+            <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
+              <button className="text-gray-400 font-bold uppercase hover:text-white transition-colors">
+                Sign Out
+              </button>
+            </form>
+          </div>
          </div>
       </div>
     );
@@ -103,7 +110,7 @@ export default async function BuyersDashboard() {
       <div className="min-h-screen bg-[#111111] text-white p-10 text-center flex flex-col items-center justify-center">
         <h1 className="text-3xl font-black mb-4">Aún no tienes un contrato activo.</h1>
         <p className="text-gray-400">Tus datos de financiamiento aparecerán aquí una vez que se firme el contrato.</p>
-        <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }} className="mt-8">
+        <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }} className="mt-8">
             <button className="bg-[#f8ed1a] text-black px-8 py-3 rounded-full font-black uppercase tracking-widest hover:bg-yellow-400 transition-colors">
               Salir
             </button>
@@ -164,7 +171,7 @@ export default async function BuyersDashboard() {
             </p>
           </div>
           <div className="flex gap-4">
-            <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
+            <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
               <button className="bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
                 Sign Out
               </button>

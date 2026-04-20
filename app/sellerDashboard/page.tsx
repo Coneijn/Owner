@@ -84,7 +84,7 @@ export default async function DashboardVendedor() {
           </div>
 
           <div className="mt-10 flex justify-between items-center pt-6 border-t border-gray-800">
-            <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
+            <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
               <button className="text-gray-400 font-bold uppercase hover:text-white transition-colors">
                 Sign Out
               </button>
@@ -184,7 +184,7 @@ export default async function DashboardVendedor() {
             <Link href="/sellerDashboard/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">
               + New Listing
             </Link>
-            <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
+            <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
               <button className="bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
                 Sign Out
               </button>

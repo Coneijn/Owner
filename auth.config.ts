@@ -27,6 +27,7 @@ export const authConfig = {
         if (profiles.includes('SELLER')) return new URL('/sellerDashboard', nextUrl);
         if (profiles.includes('BUYER')) return new URL('/buyersDashboard', nextUrl);
         
+        if (profiles.includes('RENTER')) return new URL('/rentersDashboard', nextUrl);
         // 3. Fallback: Si no tiene perfiles asignados, lo mandamos a la página de inicio
         return new URL('/', nextUrl);
       };
@@ -60,14 +61,10 @@ export const authConfig = {
     },
 
     async session({ session, token }) {
-      // Pasamos la info del token a la sesión final disponible en el cliente
       if (token.sub && session.user) {
-        // @ts-ignore 
         session.user.id = token.sub;
-        // @ts-ignore
-        session.user.role = token.role;
-        // @ts-ignore
-        session.user.profiles = token.profiles; // Hacemos disponibles los perfiles
+        session.user.role = token.role as string;
+        session.user.profiles = token.profiles as string[]; 
       }
       return session;
     },

@@ -13,30 +13,57 @@ export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
 ) {
+  let targetUrl = '';
+
   try {
+    // 1. Intentamos el login SIN redirección automática
     await signIn('credentials', {
       ...Object.fromEntries(formData),
-      //redirectTo: '/login',
-      
+      redirect: false, 
     });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      switch (error.type) {
-        case 'CredentialsSignin':
-          return 'Invalid credentials. Please check your email and password.';
-        
-        case 'CallbackRouteError':
-          const cause = error.cause as any;
-          if (cause?.err?.message === '2FA_REQUIRED') {
-             return '2FA_REQUIRED'; 
-          }
-          return 'Authentication error.';
 
-        default:
-          return 'Something went wrong. Please try again.';
+    // 2. Si llegamos aquí, las credenciales son válidas.
+    // Buscamos al usuario en la BD para determinar su destino real.
+    const email = formData.get('email') as string;
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        sellerProfile: true,
+        agentProfile: true,
+        buyerProfile: true,
+        renterProfile: true,
+      }
+    });
+
+    if (user) {
+      if (user.role === 'ADMIN') {
+        targetUrl = '/admin';
+      } else if (user.agentProfile) {
+        targetUrl = '/agentsDashboard';
+      } else if (user.sellerProfile) {
+        targetUrl = '/sellerDashboard';
+      } else if (user.buyerProfile) {
+        targetUrl = '/buyersDashboard';
+      } else if (user.renterProfile) {
+        targetUrl = '/rentersDashboard';
+      }else {
+        targetUrl = '/';
       }
     }
-    throw error;
+
+  } catch (error) {
+    if (error instanceof AuthError) {
+      // Tu lógica actual de manejo de errores (2FA, credenciales, etc.)
+      const cause = error.cause as any;
+      if (cause?.err?.message === '2FA_REQUIRED') return '2FA_REQUIRED';
+      return 'Invalid credentials.';
+    }
+    // No relanzamos errores aquí porque manejaremos la redirección abajo
+  }
+
+  // 3. REDIRECCIÓN FINAL (Fuera del try/catch)
+  if (targetUrl) {
+    redirect(targetUrl);
   }
 }
 

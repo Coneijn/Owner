@@ -74,6 +74,11 @@ export default async function AgentDashboardPage() {
             </p>
             <TwoFactorManager isEnabled={false} email={currentUser.email} 
                   role={currentUser.role}/>
+                  <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }} className="mt-6">
+            <button className="w-full bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
+              Cerrar Sesión
+            </button>
+          </form>
          </div>
       </div>
     );

@@ -8,7 +8,7 @@ export default async function RentersDashboard() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect('/login');
+    redirect('/');
   }
 
   // 1. Obtener usuario y su Perfil de Inquilino (RenterProfile)
@@ -26,7 +26,7 @@ export default async function RentersDashboard() {
           <p className="text-gray-300">
             Tu cuenta no tiene un perfil de inquilino (renter) asignado. Si crees que esto es un error, por favor contacta a soporte.
           </p>
-          <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }} className="mt-6">
+          <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }} className="mt-6">
             <button className="w-full bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
               Cerrar Sesión
             </button>
@@ -146,7 +146,7 @@ export default async function RentersDashboard() {
             </p>
           </div>
           <div className="flex gap-4">
-            <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
+            <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
               <button className="bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
                 Sign Out
               </button>
