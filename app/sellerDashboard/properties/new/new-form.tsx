@@ -206,7 +206,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
             </div>
 
             {/* 1. STATUS & LOCATION */}
-            <AccordionSection title="Status, Location & Specs" icon="📍" defaultOpen={true}>
+            <AccordionSection title="* Status, Location & Specs" icon="📍" defaultOpen={true}>
               <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
                   
                   <div className="sm:col-span-2">
@@ -241,13 +241,13 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                       <input type="text" name="phoneNumber"  className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                   </div>
                   <div className="sm:col-span-6">
-                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL)</label>
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Slug (URL) *</label>
                       <input type="text" name="slug" required placeholder="e-g-beautiful-house-memphis" className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
                   </div>
 
                   {/* LOCATION */}
                   <div className="sm:col-span-3">
-                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address</label>
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Address *</label>
                       {isLoaded ? (
                         <Autocomplete
                             onLoad={(auto) => (autocompleteRef.current = auto)}
@@ -273,7 +273,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                       )}
                   </div>
                   <div className="sm:col-span-1">
-                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City</label>
+                      <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">City *</label>
                       <input 
                         type="text" 
                         name="city" 
@@ -294,7 +294,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                       />
                   </div>
                   <div className="sm:col-span-1">
-                      <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Zip Code</label>
+                      <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Zip Code *</label>
                       <input 
                         type="text" 
                         name="zipCode" 
@@ -378,7 +378,10 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
             </AccordionSection>
 
             {/* 3. FINANCIALS */}
-            <AccordionSection title="Financial Data (Sale)" icon="💰">
+            <AccordionSection 
+              title={isForSale ? "* Financial Data (Sale)" : "Financial Data (Sale)"} 
+              icon="💰"
+            >
               <div className="space-y-6">
                   
                   <div className="flex items-center">
@@ -398,7 +401,9 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                   {isForSale && (
                       <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
                           <div className="sm:col-span-2">
-                              <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
+                              <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                  Total Price ($) {isForSale && <span className="text-red-500">*</span>}
+                              </label>
                               <input 
                                 type="number" 
                                 step="0.01" 
@@ -411,7 +416,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                           </div>
                           <div className="sm:col-span-2">
                               <label className="block text-xs font-bold leading-6 text-white uppercase">
-                                    Down Payment ($)
+                                    Down Payment ($) {isForSale && <span className="text-red-500">*</span>}
                                 </label>
                                 <select
                                     name="downPayment"
@@ -427,7 +432,9 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                                 </select>
                           </div>
                           <div className="sm:col-span-2">
-                              <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
+                              <label className="block text-xs font-bold leading-6 text-white uppercase">
+                                  Interest Rate (%) {isForSale && <span className="text-red-500">*</span>}
+                              </label>
                               <input 
                                 type="number" 
                                 step="0.01" 
@@ -513,7 +520,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
             </AccordionSection>
 
             {/* 4. MEDIA & CONTENT */}
-            <AccordionSection title="Photos, Video & Descriptions" icon="📷">
+            <AccordionSection title="* Photos, Video & Descriptions" icon="📷">
               <div className="space-y-8">
                   <div className="grid grid-cols-1 gap-8">
                       <ImageUpload label="Main Image" value={mainImageFiles} onChange={setMainImageFiles} multiple={false} />
@@ -527,14 +534,26 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
 
                   <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-4 border-t border-gray-700">
                       <div className="space-y-4">
-                          <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇺🇸 English Content</h3>
-                          <input type="text" name="titleEn" placeholder="Title EN" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
-                          <textarea name="descriptionEn" rows={4} placeholder="Description EN" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                          <h3 className="text-sm font-bold text-[#f8ed1a] uppercase mb-4">🇺🇸 English Content</h3>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Title EN *</label>
+                              <input type="text" name="titleEn" placeholder="Property Title in English" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Description EN *</label>
+                              <textarea name="descriptionEn" rows={4} placeholder="Description in English" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                          </div>
                       </div>
                       <div className="space-y-4">
-                          <h3 className="text-sm font-bold text-[#f8ed1a] uppercase">🇲🇽 Spanish Content</h3>
-                          <input type="text" name="titleEs" placeholder="Title ES" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
-                          <textarea name="descriptionEs" rows={4} placeholder="Description ES" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                          <h3 className="text-sm font-bold text-[#f8ed1a] uppercase mb-4">🇲🇽 Spanish Content</h3>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Title ES *</label>
+                              <input type="text" name="titleEs" placeholder="Título de la propiedad en Español" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm" />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Description ES *</label>
+                              <textarea name="descriptionEs" rows={4} placeholder="Descripción en Español" required className="block w-full rounded bg-gray-800 border-0 text-white ring-1 ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"></textarea>
+                          </div>
                       </div>
                   </div>
 
