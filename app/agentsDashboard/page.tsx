@@ -2,8 +2,7 @@ import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 // Asegúrate de importar tu método de autenticación (NextAuth, Clerk, Supabase, etc.)
 // Ajusta la ruta de importación según tu configuración
-import { auth } from "@/auth"; 
-
+import { auth, signOut } from '@/auth';
 import AgentDashboardClient from "./agent-dashboard-client";
 import { ChangePasswordForm, TwoFactorManager } from "../components/ui/client-components";
 
@@ -138,12 +137,29 @@ export default async function AgentDashboardPage() {
 
   // Le pasamos las propiedades y opcionalmente los datos del agente al cliente
   return (
-    
-    <AgentDashboardClient 
-    
-      initialProps={serializedProps} 
-      // Si en el futuro AgentDashboardClient necesita mostrar la foto del agente, 
-      // puedes pasárselo así: agentData={currentUser.agentProfile}
-    />
+    <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
+      {/* NAVBAR DEL SERVIDOR */}
+      <nav className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-8 py-4 bg-[#1a1a1a] border-b border-gray-800 shadow-lg">
+        <div className="flex items-center gap-3">
+          <span className="text-white text-xl font-black uppercase tracking-tight leading-none">
+            Owner To <span className="text-[#f8ed1a]">Dueño</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-xs font-bold tracking-widest uppercase text-gray-500 hidden sm:block">
+            Local Rep: <strong className="text-white">{currentUser.agentProfile.agentName || currentUser.name || 'Agente'}</strong>
+          </div>
+          {/* FORMULARIO DE SIGN OUT (Server Action) */}
+          <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
+            <button className="bg-[#1a1a1a] border border-gray-700 hover:border-red-500 hover:text-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all">
+              Sign Out
+            </button>
+          </form>
+        </div>
+      </nav>
+
+      {/* COMPONENTE CLIENTE */}
+      <AgentDashboardClient initialProps={serializedProps} />
+    </div>
   );
 }

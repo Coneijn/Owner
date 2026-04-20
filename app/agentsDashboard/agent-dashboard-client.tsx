@@ -1,5 +1,4 @@
 "use client";
-import {signOut } from "@/auth";
 import React, { useState, useMemo } from 'react';
 import { Search, Home, Flame, Clock, DollarSign, X, ExternalLink, Info, Target, Megaphone, MapPin } from 'lucide-react';
 
@@ -33,21 +32,7 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
   }, [filteredProps]);
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
-      
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-8 py-4 bg-[#1a1a1a] border-b border-gray-800 shadow-lg">
-        <div className="flex items-center gap-3">
-          <span className="text-white text-xl font-black uppercase tracking-tight leading-none">
-            Owner To <span className="text-[#f8ed1a]">Dueño</span>
-          </span>
-        </div>
-        <div className="text-xs font-bold tracking-widest uppercase text-gray-500">
-          Local Rep: <strong className="text-white">Test</strong>
-        </div>
-         
-      </nav>
-
+    <div className="bg-transparent text-gray-200 font-sans w-full">
       <main className="max-w-7xl mx-auto p-4 sm:p-8">
         
         {/* STATS */}
