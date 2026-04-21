@@ -214,12 +214,18 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                       <select 
                         name="status" 
                         value={status} 
-                        onChange={(e) => setStatus(e.target.value)}
+                        onChange={(e) => {
+                            const newStatus = e.target.value;
+                            setStatus(newStatus);
+                            if (newStatus === 'SOLD') setIsForSale(true);
+                            if (newStatus === 'RENTED') setIsForRent(true);
+                        }}
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                       >
                           <option value="AVAILABLE">Available</option>
                           <option value="UNDER_CONTRACT">Under Contract | Pending</option>
                           <option value="SOLD">Sold</option>
+                          <option value="RENTED">Rented</option>
                           <option value="DRAFT">Draft</option>
                           <option value="COMING_SOON">Coming Soon</option>
                       </select>
@@ -410,7 +416,8 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                                 name="price" 
                                 ref={priceRef}
                                 onChange={handleCommissionCalc}
-                                required={isForSale} 
+                                required={isForSale}
+                                placeholder="0.00"
                                 className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                               />
                           </div>
@@ -420,7 +427,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                                 </label>
                                 <select
                                     name="downPayment"
-                                    defaultValue="10000"
+                                    defaultValue=""
                                     required={isForSale}
                                     className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                                 >
@@ -439,28 +446,37 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                                 type="number" 
                                 step="0.01" 
                                 name="interestRate" 
-                                defaultValue="10"
+                                defaultValue=""
+                                placeholder="0.00"
                                 required={isForSale} 
                                 className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                               />
                           </div>
                           <div className="sm:col-span-3">
-                              <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
+                              <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
+                                  Annual Taxes ($) {isForSale && <span className="text-red-500">*</span>}
+                              </label>
                               <input 
                                 type="number" 
                                 step="0.01" 
                                 name="taxes" 
-                                defaultValue="0"
+                                defaultValue=""
+                                placeholder="0.00"
+                                required={isForSale}
                                 className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                               />
                           </div>
                           <div className="sm:col-span-3">
-                              <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
+                              <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
+                                  Annual Insurance ($) {isForSale && <span className="text-red-500">*</span>}
+                              </label>
                               <input 
                                 type="number" 
                                 step="0.01" 
                                 name="insurance" 
-                                defaultValue="0"
+                                defaultValue=""
+                                placeholder="0.00"
+                                required={isForSale}
                                 className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                               />
                           </div>
@@ -491,26 +507,28 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                   <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
                     <div className="sm:col-span-3">
                       <label className="block text-xs font-bold leading-6 text-white uppercase">
-                        Monthly Rent ($)
+                        Monthly Rent ($) {isForRent && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="number"
                         step="0.01"
                         name="monthlyRent"
                         placeholder="0.00"
+                        required={isForRent}
                         className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                       />
                     </div>
 
                     <div className="sm:col-span-3">
                       <label className="block text-xs font-bold leading-6 text-white uppercase">
-                        Security Deposit ($)
+                        Security Deposit ($) {isForRent && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="number"
                         step="0.01"
                         name="securityDeposit"
                         placeholder="0.00"
+                        required={isForRent}
                         className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                       />
                     </div>

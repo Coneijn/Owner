@@ -333,7 +333,12 @@ export default function EditForm({
                   <select 
                     name="status" 
                     value={status} 
-                    onChange={(e) => setStatus(e.target.value)}
+                    onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setStatus(newStatus);
+                        if (newStatus === 'SOLD') setIsForSale(true);
+                        if (newStatus === 'RENTED') setIsForRent(true);
+                    }}
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                   >
                       <option value="AVAILABLE">Available</option>
@@ -525,29 +530,31 @@ export default function EditForm({
               {isForSale && (
                   <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 animate-in fade-in slide-in-from-top-2">
                       <div className="sm:col-span-2">
-                          <label className="block text-xs font-bold leading-6 text-white uppercase">Total Price ($)</label>
+                          <label className="block text-xs font-bold leading-6 text-white uppercase">
+                              Total Price ($) {isForSale && <span className="text-red-500">*</span>}
+                          </label>
                           <input 
                             type="number" 
                             step="0.01" 
                             name="price" 
                             ref={priceRef}
                             onChange={handleCommissionCalc}
-                            defaultValue={String(property.price || 0)} 
-                            required={isForSale} 
+                            defaultValue={property.price || ''} 
+                            required={isForSale}
+                            placeholder="0.00" 
                             className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                           />
                       </div>
                       <div className="sm:col-span-2">
                           <label className="block text-xs font-bold leading-6 text-white uppercase">
-                                Down Payment ($)
+                                Down Payment ($) {isForSale && <span className="text-red-500">*</span>}
                             </label>
                             <select
                                 name="downPayment"
-                                defaultValue={String(property.downPayment || 0)}
+                                defaultValue={property.downPayment || ''}
                                 required={isForSale}
                                 className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                             >
-                                
                                 <option value="10000">$10,000</option>
                                 <option value="20000">$20,000</option>
                                 <option value="30000">$30,000</option>
@@ -556,33 +563,44 @@ export default function EditForm({
                             </select>
                       </div>
                       <div className="sm:col-span-2">
-                          <label className="block text-xs font-bold leading-6 text-white uppercase">Interest Rate (%)</label>
+                          <label className="block text-xs font-bold leading-6 text-white uppercase">
+                              Interest Rate (%) {isForSale && <span className="text-red-500">*</span>}
+                          </label>
                           <input 
                             type="number" 
                             step="0.01" 
                             name="interestRate" 
-                            defaultValue={String(property.interestRate || 10)} 
-                            required={isForSale} 
+                            defaultValue={property.interestRate || ''} 
+                            required={isForSale}
+                            placeholder="0.00" 
                             className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                           />
                       </div>
                       <div className="sm:col-span-3">
-                          <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Taxes ($)</label>
+                          <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
+                              Annual Taxes ($) {isForSale && <span className="text-red-500">*</span>}
+                          </label>
                           <input 
                             type="number" 
                             step="0.01" 
                             name="taxes" 
-                            defaultValue={String(property.taxes || 0)} 
+                            required={isForSale}
+                            defaultValue={property.taxes || ''} 
+                            placeholder="0.00"
                             className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                           />
                       </div>
                       <div className="sm:col-span-3">
-                          <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">Annual Insurance ($)</label>
+                          <label className="block text-xs font-bold leading-6 text-gray-400 uppercase">
+                              Annual Insurance ($) {isForSale && <span className="text-red-500">*</span>}
+                          </label>
                           <input 
                             type="number" 
                             step="0.01" 
                             name="insurance" 
-                            defaultValue={String(property.insurance || 0)} 
+                            required={isForSale}
+                            defaultValue={property.insurance || ''} 
+                            placeholder="0.00"
                             className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm" 
                           />
                       </div>
@@ -614,7 +632,7 @@ export default function EditForm({
                 
                 <div className="sm:col-span-3">
                   <label className="block text-xs font-bold leading-6 text-white uppercase">
-                    Monthly Rent ($)
+                    Monthly Rent ($) {isForRent && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="number"
@@ -622,13 +640,14 @@ export default function EditForm({
                     name="monthlyRent"
                     defaultValue={property.monthlyRent || ''}
                     placeholder="0.00"
+                    required={isForRent}
                     className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                   />
                 </div>
 
                 <div className="sm:col-span-3">
                   <label className="block text-xs font-bold leading-6 text-white uppercase">
-                    Security Deposit ($)
+                    Security Deposit ($) {isForRent && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="number"
@@ -636,6 +655,7 @@ export default function EditForm({
                     name="securityDeposit"
                     defaultValue={property.securityDeposit || ''}
                     placeholder="0.00"
+                    required={isForRent}
                     className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                   />
                 </div>

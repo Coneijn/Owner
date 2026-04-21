@@ -209,6 +209,19 @@ export async function createProperty(prevState: any, formData: FormData) {
     // 1. OBTENEMOS LA SESIÓN
     const session = await auth();
 
+    // --- VALIDACIÓN ESTRICTA EN EL SERVIDOR ---
+    const newStatus = rawFormData.status as PropertyStatus;
+    if (newStatus === 'SOLD' || newStatus === 'UNDER_CONTRACT') {
+      if (!rawFormData.price || !rawFormData.downPayment || Number(rawFormData.price) === 0) {
+        return { message: 'Error: Los datos financieros de Venta (Precio y Enganche) son obligatorios para este estatus.' };
+      }
+    }
+    if (newStatus === 'RENTED') {
+      if (!rawFormData.monthlyRent || !rawFormData.securityDeposit || Number(rawFormData.monthlyRent) === 0) {
+        return { message: 'Error: Los datos financieros de Renta (Mensualidad y Depósito) son obligatorios para este estatus.' };
+      }
+    }
+
     // 2. GUARDAMOS EL RESULTADO EN UNA VARIABLE (newProperty)
     const newProperty = await prisma.property.create({
       data: {
@@ -367,6 +380,18 @@ export async function updateProperty(prevState: any, formData: FormData) {
     const oldStatus = currentProperty?.status;
     const newStatus = rawFormData.status as PropertyStatus;
     let logDetails = 'Propiedad actualizada.'; // Mensaje por defecto para la auditoría
+
+    // --- VALIDACIÓN ESTRICTA EN EL SERVIDOR ---
+    if (newStatus === 'SOLD' || newStatus === 'UNDER_CONTRACT') {
+      if (!rawFormData.price || !rawFormData.downPayment || Number(rawFormData.price) === 0) {
+        return { message: 'Error: Los datos financieros de Venta (Precio y Enganche) son obligatorios para este estatus.' };
+      }
+    }
+    if (newStatus === 'RENTED') {
+      if (!rawFormData.monthlyRent || !rawFormData.securityDeposit || Number(rawFormData.monthlyRent) === 0) {
+        return { message: 'Error: Los datos financieros de Renta (Mensualidad y Depósito) son obligatorios para este estatus.' };
+      }
+    }
 
     if (newPriceNum !== currentPriceNum) {
        console.log(`Detectado cambio de precio: De ${currentPriceNum} a ${newPriceNum}`);

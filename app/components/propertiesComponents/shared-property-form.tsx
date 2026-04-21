@@ -165,8 +165,16 @@ export default function SharedPropertyForm({ sellers = [], isAdmin, currentSelle
              formData.set('taxes', '0');
              formData.set('insurance', '0');
         }
+        if (!isForRent) {
+             formData.set('monthlyRent', '0');
+             formData.set('securityDeposit', '0');
+        }
+        
+        if (status === 'SOLD') formData.set('isForSale', 'on');
+        if (status === 'RENTED') formData.set('isForRent', 'on');
+
         if (!isStrict) {
-            const financialFields = ['price', 'downPayment', 'interestRate', 'taxes'];
+            const financialFields = ['price', 'downPayment', 'interestRate', 'taxes', 'monthlyRent', 'securityDeposit'];
             financialFields.forEach((field) => {
                 const value = formData.get(field);
                 if (!value || value === '') {
@@ -225,12 +233,18 @@ export default function SharedPropertyForm({ sellers = [], isAdmin, currentSelle
                     <select 
                         name="status" 
                         value={status}
-                        onChange={(e) => setStatus(e.target.value)}
+                        onChange={(e) => {
+                            const newStatus = e.target.value;
+                            setStatus(newStatus);
+                            if (newStatus === 'SOLD') setIsForSale(true);
+                            if (newStatus === 'RENTED') setIsForRent(true);
+                        }}
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                     >
                         <option value="AVAILABLE">Available</option>
                         <option value="UNDER_CONTRACT">Under Contract | Pending</option>
                         <option value="SOLD">Sold</option>
+                        <option value="RENTED">Rented</option>
                         <option value="DRAFT">Draft</option>
                         <option value="COMING_SOON">Coming Soon</option>
                     </select>
@@ -516,26 +530,28 @@ export default function SharedPropertyForm({ sellers = [], isAdmin, currentSelle
                   
                   <div className="sm:col-span-3">
                     <label className="block text-xs font-bold leading-6 text-white uppercase">
-                      Monthly Rent ($)
+                      Monthly Rent ($) {isStrict && isForRent && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       name="monthlyRent"
                       placeholder="0.00"
+                      required={isStrict && isForRent}
                       className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                     />
                   </div>
 
                   <div className="sm:col-span-3">
                     <label className="block text-xs font-bold leading-6 text-white uppercase">
-                      Security Deposit ($)
+                      Security Deposit ($) {isStrict && isForRent && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       name="securityDeposit"
                       placeholder="0.00"
+                      required={isStrict && isForRent}
                       className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
                     />
                   </div>
