@@ -757,7 +757,7 @@ export async function assignPropertyClient(
         data: { renterProfileId, status: 'RENTED' }
       });
     } else if (clientType === 'BUYER') {
-      // Opción B: Actualizamos solo el estatus de la propiedad a SOLD (o UNDER_CONTRACT)
+      // Opción B: Actualizamos solo el estatus de la propiedad a SOLD
       if (!buyerProfileId) {
         return { success: false, message: 'Error: No se pudo obtener el ID del comprador.' };
       }
@@ -767,13 +767,39 @@ export async function assignPropertyClient(
         data: { status: 'SOLD' }
       });
 
-      // Extraemos los valores financieros de la propiedad para el contrato inicial
-      // Prisma devuelve objetos Decimal, por lo que los convertimos a número o usamos 0 si son null
+      // 1. Extraemos TODOS los valores financieros de la propiedad
       const propPrice = property.price ? Number(property.price) : 0;
       const propDownPayment = property.downPayment ? Number(property.downPayment) : 0;
       const principal = propPrice - propDownPayment;
+      
+      const interestRate = property.interestRate ? Number(property.interestRate) : 0;
+      const taxes = property.taxes ? Number(property.taxes) : 0;
+      const insurance = property.insurance ? Number(property.insurance) : 0;
 
-      // Creamos un contrato base que une al Comprador con la Propiedad
+      // 2. CÁLCULO DE LA PRIMERA CUOTA (Asumiendo 30 años por defecto)
+      const termInYears = 30;
+      const termInMonths = termInYears * 12;
+      const monthlyInterestRate = interestRate > 0 ? (interestRate / 100) / 12 : 0;
+
+      let pmt = 0; // Pago a Capital e Interés
+      if (principal > 0) {
+        if (monthlyInterestRate > 0) {
+          pmt = principal * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termInMonths)) / (Math.pow(1 + monthlyInterestRate, termInMonths) - 1);
+        } else {
+          pmt = principal / termInMonths;
+        }
+      }
+
+      const firstMonthInterest = principal * monthlyInterestRate;
+      const firstMonthPrincipal = pmt - firstMonthInterest;
+      const totalDue = pmt + taxes + insurance; // Mensualidad Total (Escrow incluido)
+      const newRemainingBalance = principal - firstMonthPrincipal;
+
+      // La fecha del primer pago será exactamente en 1 mes
+      const firstPaymentDate = new Date();
+      firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+
+      // 3. Creamos el Contrato JUNTO con su Primer Pago Pendiente
       await prisma.contract.create({
         data: {
           propertyId: propertyId,
@@ -782,7 +808,26 @@ export async function assignPropertyClient(
           totalAmount: propPrice,
           downPayment: propDownPayment,
           principalAmount: principal > 0 ? principal : 0,
-          startDate: new Date(), // Fecha actual como inicio del contrato
+          interestRate: interestRate,
+          termInYears: termInYears,
+          monthlyTaxes: taxes,
+          monthlyInsurance: insurance,
+          startDate: new Date(), 
+          
+          // INICIALIZAMOS EL PRIMER PAGO AUTOMÁTICAMENTE
+          payments: {
+            create: {
+              paymentDate: firstPaymentDate,
+              totalDue: totalDue > 0 ? totalDue : 0,
+              principal: firstMonthPrincipal > 0 ? firstMonthPrincipal : 0,
+              interest: firstMonthInterest > 0 ? firstMonthInterest : 0,
+              taxes: taxes,
+              insurance: insurance,
+              serviceFee: 0,
+              remainingBalance: newRemainingBalance > 0 ? newRemainingBalance : 0,
+              status: 'PENDING'
+            }
+          }
         }
       });
     }

@@ -120,7 +120,7 @@ export default async function BuyersDashboard() {
   }
 
   // Lógica para separar el pago pendiente actual y los pagos históricos
-  const pendingPayment = contract.payments.find(p => p.status === 'PENDING') || contract.payments[0];
+  const pendingPayment = [...contract.payments].reverse().find(p => p.status === 'PENDING') || contract.payments[0];
   const paidTransactions = contract.payments.filter(p => p.status === 'PAID').slice(0, 3); // Últimos 3 pagos
 
   // Cálculos financieros

@@ -79,29 +79,14 @@ export default async function RentersDashboard() {
   // 4. Consultas a Prisma para el Dashboard de Inquilino
   // =========================================================================
 
-  // Buscamos la propiedad asignada al inquilino y su contrato tipo LEASE activo (si existe)
+  // Buscamos solo la propiedad asignada al inquilino directamente
   const propertyInfo = await prisma.property.findFirst({
     where: { 
       renterProfileId: currentUser.renterProfile.id,
-    },
-    include: {
-      contracts: {
-        where: { type: 'LEASE', isActive: true },
-        include: {
-          payments: {
-            orderBy: { paymentDate: 'desc' },
-          }
-        }
-      }
     }
   });
 
-  const contract = propertyInfo?.contracts?.[0];
-
-  const pendingPayment = contract?.payments.find(p => p.status === 'PENDING') || contract?.payments[0];
-  const paidTransactions = contract?.payments.filter(p => p.status === 'PAID').slice(0, 5) || []; 
-
-  // Empaquetamos todo para enviarlo al Client Component, manejando el caso de que no haya datos
+  // Empaquetamos los datos simplificados (sin depender de contratos o pagos)
   const realRenterData = {
     homeAddress: propertyInfo 
       ? `${propertyInfo.address}, ${propertyInfo.city}, ${propertyInfo.state} ${propertyInfo.zipCode}` 
@@ -112,21 +97,14 @@ export default async function RentersDashboard() {
       image: propertyInfo?.mainImage || '',
     },
     securityDeposit: Number(propertyInfo?.securityDeposit || 0),
-    nextPayment: pendingPayment ? Number(pendingPayment.totalDue) : 0,
-    dueDate: pendingPayment 
-      ? pendingPayment.paymentDate.toISOString() 
-      : (contract ? contract.startDate.toISOString() : new Date().toISOString()),
-    paymentId: pendingPayment ? pendingPayment.id : null,
-    transactions: paidTransactions.map(tx => ({
-      date: tx.paidAt ? tx.paidAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '',
-      type: "Rent Payment",
-      amount: Number(tx.totalDue),
-      status: tx.status
-    })),
+    nextPayment: Number(propertyInfo?.monthlyRent || 0), 
+    dueDate: new Date().toISOString(), // Fecha por defecto al no haber contrato
+    paymentId: null, // No aplica al no haber registro de pagos en DB
+    transactions: [], // Historial vacío por ahora
     paymentBreakdown: {
-      rent: pendingPayment ? Number(pendingPayment.principal) : (contract ? Number(contract.principalAmount) : 0),
-      services: pendingPayment ? Number(pendingPayment.serviceFee || 0) : 0,
-      lateFee: pendingPayment ? Number(pendingPayment.lateFee || 0) : 0
+      rent: Number(propertyInfo?.monthlyRent || 0),
+      services: 0,
+      lateFee: 0
     }
   };
 
