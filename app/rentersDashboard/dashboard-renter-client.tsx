@@ -177,12 +177,7 @@ export default function DashboardRenterClient({ data }: { data: any }) {
           </div>
         </div>
       </div>
-
-      {/* SECCIÓN INFERIOR DIVIDIDA */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Tabla de Historial */}
-        <div className="lg:col-span-2 bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-xl flex flex-col">
+            <div className="lg:col-span-2 bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-xl flex flex-col">
           <div className="p-6 border-b border-gray-800 bg-[#111] flex justify-between items-center">
             <h3 className="font-black text-xl text-white uppercase tracking-wide">Payment History</h3>
             <button className="text-[#f8ed1a] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">Download PDF</button>
@@ -220,59 +215,7 @@ export default function DashboardRenterClient({ data }: { data: any }) {
             )}
           </div>
         </div>
-
-        {/* Gráfico de dona (Chart) para Renta */}
-        <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 shadow-xl flex flex-col">
-          <h3 className="font-black text-xl text-white uppercase tracking-wide mb-6">Rent Breakdown</h3>
-          <div className="relative h-56 w-full flex-1">
-            <canvas ref={chartRef}></canvas>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Total</span>
-              <span className="text-xl font-black text-white">{formatMoney(data.nextPayment)}</span>
-            </div>
-          </div>
-          <div className="mt-8 space-y-4">
-            
-            <div className="flex justify-between items-center text-sm border-b border-gray-800 pb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#529e14] rounded-sm shadow-[0_0_8px_rgba(82,158,20,0.5)]"></div>
-                <span className="text-gray-300 font-bold">Base Rent</span>
-              </div>
-              <span className="font-mono font-bold text-white">
-                {formatMoney(data.paymentBreakdown.rent)}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center text-sm border-b border-gray-800 pb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#f8ed1a] rounded-sm shadow-[0_0_8px_rgba(248,237,26,0.3)]"></div>
-                <span className="text-gray-300 font-bold">Services / Fees</span>
-              </div>
-              <span className="font-mono font-bold text-white">
-                {formatMoney(data.paymentBreakdown.services)}
-              </span>
-            </div>
-
-            {data.paymentBreakdown.lateFee > 0 && (
-              <div className="flex justify-between items-center text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
-                  <span className="text-gray-300 font-bold">Late Fees</span>
-                </div>
-                <span className="font-mono font-bold text-red-500">
-                  {formatMoney(data.paymentBreakdown.lateFee)}
-                </span>
-              </div>
-            )}
-
-          </div>
-          
-          <button className="w-full mt-6 py-3 bg-transparent border border-gray-600 rounded-lg text-white hover:bg-white hover:text-black text-xs font-bold uppercase tracking-widest transition-colors duration-200">
-            View Lease Agreement
-          </button>
-        </div>
-
-      </div>
+      
     </div>
   );
 }
