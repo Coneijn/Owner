@@ -295,6 +295,7 @@ export default function DashboardVendedorClient({ properties = [], contracts = [
   const availableProps = filteredProperties.filter(p => p.status === 'AVAILABLE');
   const underContractProps = filteredProperties.filter(p => p.status === 'UNDER_CONTRACT');
   const soldProps = filteredProperties.filter(p => p.status === 'SOLD');
+  const rentedProps = filteredProperties.filter(p => p.status === 'RENTED');
   const draftProps = filteredProperties.filter(p => p.status === 'DRAFT');
   const comingSoonProps = filteredProperties.filter(p => p.status === 'COMING_SOON');
 
@@ -356,6 +357,7 @@ export default function DashboardVendedorClient({ properties = [], contracts = [
           <PropertySection title="Coming Soon" items={comingSoonProps} icon="⏳" colorClass="text-blue-400" />
           <PropertySection title="Under Contract" items={underContractProps} icon="📝" colorClass="text-[#f8ed1a]" />
           <PropertySection title="Sold History" items={soldProps} icon="💰" colorClass="text-red-500" />
+          <PropertySection title="Rented History" items={rentedProps} icon="🏠" colorClass="text-purple-400" />
           <PropertySection title="Drafts" items={draftProps} icon="✏️" colorClass="text-orange-400" />
         </div>
       )}

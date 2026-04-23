@@ -121,13 +121,18 @@ export default async function BuyersDashboard() {
 
   // Lógica para separar el pago pendiente actual y los pagos históricos
   const pendingPayment = [...contract.payments].reverse().find(p => p.status === 'PENDING') || contract.payments[0];
-  const paidTransactions = contract.payments.filter(p => p.status === 'PAID').slice(0, 3); // Últimos 3 pagos
+  const allPaidTransactions = contract.payments.filter(p => p.status === 'PAID');
+  const paidTransactions = allPaidTransactions.slice(0, 3); // Últimos 3 pagos para la tabla inferior
 
   // Cálculos financieros
-  const outstandingBalance = pendingPayment ? Number(pendingPayment.remainingBalance) : Number(contract.principalAmount);
+  // La deuda actual real es el balance que quedó DESPUÉS del último pago que SÍ fue exitoso ('PAID')
+  const lastPaidPayment = allPaidTransactions[0]; // Como prisma ordenó 'desc', el [0] es el pago exitoso más reciente
+  const currentOutstandingBalance = lastPaidPayment ? Number(lastPaidPayment.remainingBalance) : Number(contract.principalAmount);
+  
+  const outstandingBalance = currentOutstandingBalance;
   const totalPropertyValue = Number(contract.totalAmount);
   
-  // Equity = Valor total - Deuda actual
+  // Equity = Valor total - Deuda actual (Esto es matemáticamente idéntico a: Enganche + Suma de capital pagado)
   const equityBuilt = Math.max(totalPropertyValue - outstandingBalance, 0); 
   const equityPercentage = totalPropertyValue > 0 ? (equityBuilt / totalPropertyValue) * 100 : 0;
 
@@ -141,13 +146,17 @@ export default async function BuyersDashboard() {
     paymentId: pendingPayment ? pendingPayment.id : null,
     equityBuilt: equityBuilt,
     equityPercentage: Math.round(equityPercentage),
-    transactions: paidTransactions.map(tx => ({
-      date: tx.paidAt ? tx.paidAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '',
-      type: "Monthly Payment",
-      amount: Number(tx.totalDue),
-      principal: Number(tx.principal),
-      interest: Number(tx.interest),
-    })),
+    transactions: paidTransactions.map(tx => {
+      // Respaldo: Si no hay paidAt explícito, usamos la fecha original del pago
+      const dateToUse = tx.paidAt || tx.paymentDate; 
+      return {
+        date: dateToUse ? new Date(dateToUse).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '',
+        type: "Monthly Payment",
+        amount: Number(tx.totalDue),
+        principal: Number(tx.principal),
+        interest: Number(tx.interest),
+      };
+    }),
     paymentBreakdown: {
       interest: pendingPayment ? Number(pendingPayment.interest) : 0,
       principal: pendingPayment ? Number(pendingPayment.principal) : 0,

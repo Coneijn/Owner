@@ -215,6 +215,7 @@ export default function DashboardClient({ properties }: { properties: any[] }) {
   const availableProps = filteredProperties.filter(p => p.status === 'AVAILABLE');
   const underContractProps = filteredProperties.filter(p => p.status === 'UNDER_CONTRACT');
   const soldProps = filteredProperties.filter(p => p.status === 'SOLD');
+  const rentedProps = filteredProperties.filter(p => p.status === 'RENTED');
   const draftProps = filteredProperties.filter(p => p.status === 'DRAFT');
   const comingSoonProps = filteredProperties.filter(p => p.status === 'COMING_SOON');
 
@@ -268,6 +269,13 @@ export default function DashboardClient({ properties }: { properties: any[] }) {
         items={soldProps} 
         icon="💰" 
         colorClass="text-red-500" 
+      />
+
+      <PropertySection 
+        title="Rented History" 
+        items={rentedProps} 
+        icon="🏠" 
+        colorClass="text-purple-400" 
       />
 
       <PropertySection 

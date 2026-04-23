@@ -71,10 +71,10 @@ export async function processContractImport(data: any) {
       // D. Crear la tabla de amortización (Pagos)
       // Filtramos filas vacías por seguridad y mapeamos al esquema de Prisma
       const paymentRecords = payments
-        .filter((p: any) => p.date && p.remainingBalance) 
+        .filter((p: any) => p.paymentDate && p.remainingBalance) 
         .map((p: any) => ({
           contractId: contract.id,
-          paymentDate: new Date(p.date),
+          paymentDate: new Date(p.paymentDate),
           totalDue: p.totalDue,
           principal: p.principal || 0,
           interest: p.interest || 0,
@@ -82,7 +82,8 @@ export async function processContractImport(data: any) {
           insurance: loanInfo.monthlyInsurance,
           serviceFee: loanInfo.monthlyServFee,
           remainingBalance: p.remainingBalance,
-          status: p.principal > 0 ? "PENDING" : "PAID", // El pago inicial (mes 0) suele marcarse pagado
+          status: p.status || "PENDING", // <-- Tomamos el status que calculamos en el frontend
+          paidAt: p.paidAt ? new Date(p.paidAt) : null, // <-- Guardamos la fecha de pago
         }));
 
       await tx.payment.createMany({

@@ -63,13 +63,20 @@ const formatPhoneE164 = (phoneStr: string) => {
               monthlyServFee: cleanNumber(data[11][1]),
             },
             // Los pagos comienzan a partir de la fila 16 (índice 15 es la cabecera)
-            payments: data.slice(16).map((row) => ({
-              date: row[0],
-              totalDue: cleanNumber(row[1]),
-              interest: cleanNumber(row[2]),
-              principal: cleanNumber(row[3]),
-              remainingBalance: cleanNumber(row[4]),
-            })),
+            payments: data.slice(16).map((row) => {
+              const paymentDateObj = new Date(row[0]);
+              const isPastPayment = paymentDateObj < new Date();
+              
+              return {
+                paymentDate: paymentDateObj.toISOString(), 
+                totalDue: cleanNumber(row[1]),
+                interest: cleanNumber(row[2]),
+                principal: cleanNumber(row[3]),
+                remainingBalance: cleanNumber(row[4]),
+                status: isPastPayment ? 'PAID' : 'PENDING',
+                paidAt: isPastPayment ? new Date(row[0]).toISOString() : null,
+              };
+            }),
           };
 
           const response = await processContractImport(payload);
