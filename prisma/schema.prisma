@@ -43,8 +43,7 @@ model RenterProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relación 1-a-Muchos con las propiedades
-  properties  Property[]
+  leases          LeaseAgreement[]
 }
 model SellerProfile {
   id          String   @id @default(cuid())
@@ -164,8 +163,6 @@ model Property {
   showSeller  Boolean @default(false)
   sellerProfileId String?
   sellerProfile   SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: SetNull)
-  renterProfileId String?
-  renterProfile   RenterProfile? @relation(fields: [renterProfileId], references: [id], onDelete: SetNull)
   
   //contenido para agentes 
   emoji              String?
@@ -181,6 +178,7 @@ model Property {
   buyerFinancing     String?
   marketingMaterials MarketingMaterial[]
   contracts Contract[]
+  leases          LeaseAgreement[]
 }
 
 //Usado por el agente
@@ -375,6 +373,29 @@ model Contract {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+model LeaseAgreement {
+  id              String   @id @default(cuid())
+
+  // Relaciones Explícitas (A quién y de qué propiedad)
+  propertyId      String
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  
+  renterProfileId String
+  renterProfile   RenterProfile @relation(fields: [renterProfileId], references: [id], onDelete: Restrict)
+
+  // Condiciones del contrato (El historial "congelado" de esta transacción)
+  startDate       DateTime
+  endDate         DateTime? // Opcional, por si el contrato es mes a mes sin fecha de fin
+  monthlyRent     Decimal  @db.Decimal(10, 2)
+  securityDeposit Decimal? @db.Decimal(10, 2)
+  isActive        Boolean  @default(true) // Para saber si es el contrato actual o uno viejo
+
+  // Relación 1-a-Muchos: Todos los pagos asociados a ESTE contrato en específico
+  payments        RentalPayment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
 // --- NUEVO: Modelo para Enlaces de Primer Acceso / Magic Links ---
 model VerificationToken {
   id         String   @id @default(cuid())
@@ -414,6 +435,28 @@ model Payment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+model RentalPayment {
+  id              String   @id @default(cuid())
+
+  // Relación Explícita con el Contrato (Ya no va directo a la propiedad/rentero)
+  leaseId         String
+  lease           LeaseAgreement @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  paymentDate     DateTime // Fecha en la que toca el pago
+  
+  // Desglose del pago
+  totalDue        Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes
+  serviceFee      Decimal? @db.Decimal(10, 2) // Tarifa de servicio (plataforma)
+  lateFee         Decimal? @db.Decimal(10, 2) @default(0) // Penalizaciones
+  
+  // Control de estado
+  status          PaymentStatus @default(PENDING) 
+  paidAt          DateTime?     // Fecha real en la que el cliente pagó
+  stripePaymentIntentID String? @unique
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
 // 7. Enums
 enum Role {
   ADMIN
@@ -432,7 +475,6 @@ enum PropertyStatus {
 // --- NUEVOS ENUMS ---
 enum ContractType {
   LOAN
-  LEASE
 }
 
 enum PaymentStatus {
