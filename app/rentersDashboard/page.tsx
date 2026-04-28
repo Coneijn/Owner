@@ -79,10 +79,15 @@ export default async function RentersDashboard() {
   // 4. Consultas a Prisma para el Dashboard de Inquilino
   // =========================================================================
 
-  // Buscamos solo la propiedad asignada al inquilino directamente
+  // Buscamos la propiedad asignada al inquilino a través de sus contratos activos (LeaseAgreement)
   const propertyInfo = await prisma.property.findFirst({
     where: { 
-      renterProfileId: currentUser.renterProfile.id,
+      leases: {
+        some: {
+          renterProfileId: currentUser.renterProfile.id,
+          isActive: true
+        }
+      }
     }
   });
 

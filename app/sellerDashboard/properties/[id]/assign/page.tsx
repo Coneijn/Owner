@@ -22,7 +22,18 @@ export default async function SellerAssignPage({
   const [property, dbUser] = await Promise.all([
     prisma.property.findUnique({
       where: { id: resolvedParams.id },
-      select: { id: true, titleEn: true, address: true, sellerProfileId: true }
+      select: { 
+        id: true, 
+        titleEn: true, 
+        address: true, 
+        sellerProfileId: true,
+        // Traemos los datos para el Form
+        monthlyRent: true,
+        securityDeposit: true,
+        price: true,
+        downPayment: true,
+        interestRate: true
+      }
     }),
     prisma.user.findUnique({
       where: { id: session.user?.id },
@@ -70,7 +81,14 @@ export default async function SellerAssignPage({
         <AssignClientForm 
           propertyId={property.id} 
           clientType={clientType} 
-          successRedirect="/sellerDashboard" 
+          successRedirect="/sellerDashboard"
+          initialData={{
+            monthlyRent: property.monthlyRent ? Number(property.monthlyRent) : undefined,
+            securityDeposit: property.securityDeposit ? Number(property.securityDeposit) : undefined,
+            price: property.price ? Number(property.price) : undefined,
+            downPayment: property.downPayment ? Number(property.downPayment) : undefined,
+            interestRate: property.interestRate ? Number(property.interestRate) : undefined,
+          }}
         />
         
       </div>

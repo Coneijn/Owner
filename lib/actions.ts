@@ -659,7 +659,7 @@ export async function updateDraftPropertyMedia(propertyId: string, photos: any[]
   }
 }
 
-// --- ASSIGN PROPERTY CLIENT (15 abril) ---
+// --- ASSIGN PROPERTY CLIENT (Actualizado para el nuevo Schema 28-04-26) ---
 export async function assignPropertyClient(
   propertyId: string, 
   clientType: 'BUYER' | 'RENTER', 
@@ -677,13 +677,11 @@ export async function assignPropertyClient(
       return { success: false, message: 'Propiedad no encontrada.' };
     }
 
-    // Buscamos al usuario en la BD para ver su rol exacto y su perfil de vendedor
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: { sellerProfile: true }
     });
 
-    // Lógica de permisos: ADMIN puede todo. SELLER solo sus propiedades.
     if (dbUser?.role !== 'ADMIN') {
       const isSeller = !!dbUser?.sellerProfile;
       if (!isSeller || property.sellerProfileId !== dbUser?.sellerProfile?.id) {
@@ -691,11 +689,13 @@ export async function assignPropertyClient(
       }
     }
 
-    // 2. EXTRACCIÓN DE DATOS DEL FORMULARIO
+    // 2. EXTRACCIÓN DE DATOS PERSONALES DEL FORMULARIO
     const email = formData.get('email') as string;
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
     const phone = formData.get('phone') as string;
+    const startDateString = formData.get('startDate') as string;
+    const startDate = startDateString ? new Date(startDateString) : new Date();
 
     if (!email || !firstName || !lastName) {
       return { success: false, message: 'Faltan datos obligatorios del cliente.' };
@@ -708,22 +708,20 @@ export async function assignPropertyClient(
     });
 
     if (!targetUser) {
-      // Crear nuevo usuario si no existe
       const temporaryPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
-      
       targetUser = await prisma.user.create({
         data: {
           email,
           password: temporaryPassword,
           name: `${firstName} ${lastName}`,
-          forcePasswordChange: true, // Para el onboarding futuro
+          forcePasswordChange: true,
           role: 'USER',
         },
         include: { renterProfile: true, buyerProfile: true }
       });
     }
 
-    // 4. CREACIÓN DE PERFIL ESPECÍFICO SI NO LO TIENE
+    // 4. CREACIÓN DE PERFIL ESPECÍFICO
     let renterProfileId = targetUser.renterProfile?.id;
     let buyerProfileId = targetUser.buyerProfile?.id;
 
@@ -750,38 +748,49 @@ export async function assignPropertyClient(
       buyerProfileId = newBuyer.id;
     }
 
-    // 5. ASIGNACIÓN A LA PROPIEDAD
+    // 5. ASIGNACIÓN A LA PROPIEDAD Y CREACIÓN DE CONTRATOS
     if (clientType === 'RENTER') {
-      await prisma.property.update({
-        where: { id: propertyId },
-        data: { renterProfileId, status: 'RENTED' }
-      });
-    } else if (clientType === 'BUYER') {
-      // Opción B: Actualizamos solo el estatus de la propiedad a SOLD
-      if (!buyerProfileId) {
-        return { success: false, message: 'Error: No se pudo obtener el ID del comprador.' };
-      }
-
-      await prisma.property.update({
-        where: { id: propertyId },
-        data: { status: 'SOLD' }
-      });
-
-      // 1. Extraemos TODOS los valores financieros de la propiedad
-      const propPrice = property.price ? Number(property.price) : 0;
-      const propDownPayment = property.downPayment ? Number(property.downPayment) : 0;
-      const principal = propPrice - propDownPayment;
+      if (!renterProfileId) return { success: false, message: 'Error al obtener el perfil del inquilino.' };
       
-      const interestRate = property.interestRate ? Number(property.interestRate) : 0;
-      const taxes = property.taxes ? Number(property.taxes) : 0;
-      const insurance = property.insurance ? Number(property.insurance) : 0;
+      const monthlyRent = parseFloat(formData.get('monthlyRent') as string || '0');
+      const securityDeposit = parseFloat(formData.get('securityDeposit') as string || '0');
 
-      // 2. CÁLCULO DE LA PRIMERA CUOTA (Asumiendo 30 años por defecto)
-      const termInYears = 30;
+      // Crear el contrato de arrendamiento (LeaseAgreement)
+      await prisma.leaseAgreement.create({
+        data: {
+          propertyId,
+          renterProfileId,
+          startDate,
+          monthlyRent,
+          securityDeposit,
+          isActive: true
+        }
+      });
+
+      await prisma.property.update({
+        where: { id: propertyId },
+        data: { status: 'RENTED', isForRent: true }
+      });
+
+    } else if (clientType === 'BUYER') {
+      if (!buyerProfileId) return { success: false, message: 'Error al obtener el perfil del comprador.' };
+
+      // Datos del formulario
+      const totalAmount = parseFloat(formData.get('totalAmount') as string || '0');
+      const downPayment = parseFloat(formData.get('downPayment') as string || '0');
+      const interestRate = parseFloat(formData.get('interestRate') as string || '0');
+      const termInYears = parseInt(formData.get('termInYears') as string || '30');
+      
+      const principal = totalAmount - downPayment;
+      // Los impuestos y el seguro siguen tomándose directamente de la configuración de la propiedad
+      const taxes = property.taxes ? Number(property.taxes) / 12 : 0; 
+      const insurance = property.insurance ? Number(property.insurance) / 12 : 0; 
+
+      // CÁLCULO DE LA PRIMERA CUOTA
       const termInMonths = termInYears * 12;
       const monthlyInterestRate = interestRate > 0 ? (interestRate / 100) / 12 : 0;
 
-      let pmt = 0; // Pago a Capital e Interés
+      let pmt = 0;
       if (principal > 0) {
         if (monthlyInterestRate > 0) {
           pmt = principal * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termInMonths)) / (Math.pow(1 + monthlyInterestRate, termInMonths) - 1);
@@ -792,29 +801,27 @@ export async function assignPropertyClient(
 
       const firstMonthInterest = principal * monthlyInterestRate;
       const firstMonthPrincipal = pmt - firstMonthInterest;
-      const totalDue = pmt + taxes + insurance; // Mensualidad Total (Escrow incluido)
+      const totalDue = pmt + taxes + insurance;
       const newRemainingBalance = principal - firstMonthPrincipal;
 
-      // La fecha del primer pago será exactamente en 1 mes
-      const firstPaymentDate = new Date();
+      const firstPaymentDate = new Date(startDate);
       firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
 
-      // 3. Creamos el Contrato JUNTO con su Primer Pago Pendiente
+      // Crear Contrato y Primer Pago
       await prisma.contract.create({
         data: {
           propertyId: propertyId,
           buyerProfileId: buyerProfileId,
           type: 'LOAN',
-          totalAmount: propPrice,
-          downPayment: propDownPayment,
+          totalAmount: totalAmount,
+          downPayment: downPayment,
           principalAmount: principal > 0 ? principal : 0,
           interestRate: interestRate,
           termInYears: termInYears,
           monthlyTaxes: taxes,
           monthlyInsurance: insurance,
-          startDate: new Date(), 
+          startDate: startDate, 
           
-          // INICIALIZAMOS EL PRIMER PAGO AUTOMÁTICAMENTE
           payments: {
             create: {
               paymentDate: firstPaymentDate,
@@ -829,6 +836,11 @@ export async function assignPropertyClient(
             }
           }
         }
+      });
+
+      await prisma.property.update({
+        where: { id: propertyId },
+        data: { status: 'SOLD', isForSale: true }
       });
     }
 
@@ -848,7 +860,7 @@ export async function assignPropertyClient(
     revalidatePath('/admin');
     revalidatePath(`/admin/properties/${propertyId}/edit`);
     
-    return { success: true, message: 'Cliente asignado correctamente.' };
+    return { success: true, message: 'Cliente y contrato generados correctamente.' };
 
   } catch (error) {
     console.error('Error assigning property client:', error);

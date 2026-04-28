@@ -19,7 +19,18 @@ export default async function AssignPropertyPage({
   // 1. Fetch the property using the resolved ID (changed titleEs to titleEn)
   const property = await prisma.property.findUnique({
     where: { id: resolvedParams.id },
-    select: { id: true, titleEn: true, address: true, sellerProfileId: true }
+    select: { 
+      id: true, 
+      titleEn: true, 
+      address: true, 
+      sellerProfileId: true,
+      // Campos necesarios para el formulario
+      monthlyRent: true,
+      securityDeposit: true,
+      price: true,
+      downPayment: true,
+      interestRate: true
+    }
   });
 
   if (!property) notFound();
@@ -62,6 +73,13 @@ export default async function AssignPropertyPage({
           propertyId={property.id} 
           clientType={clientType} 
           successRedirect="/admin" 
+          initialData={{
+            monthlyRent: property.monthlyRent ? Number(property.monthlyRent) : undefined,
+            securityDeposit: property.securityDeposit ? Number(property.securityDeposit) : undefined,
+            price: property.price ? Number(property.price) : undefined,
+            downPayment: property.downPayment ? Number(property.downPayment) : undefined,
+            interestRate: property.interestRate ? Number(property.interestRate) : undefined,
+          }}
         />
         
       </div>
