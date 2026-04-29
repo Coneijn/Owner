@@ -11,10 +11,13 @@ const formatMoney = (amount: number) => {
     maximumFractionDigits: 2,
   }).format(amount);
 };
+const SERVICE_FEE = 39;
 
 export default function DashboardBuyerClient({ data }: { data: any }) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
+  
+  const totalNextPayment = data.nextPayment + SERVICE_FEE;
   
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -58,13 +61,14 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
         chartInstance.current = new Chart(ctx, {
           type: 'doughnut',
           data: {
-            labels: ['Interest', 'Principal', 'Escrow'],
+            labels: ['Interest', 'Principal', 'Escrow', 'Service Fee'],
             datasets: [{
-              data: [data.paymentBreakdown.interest, data.paymentBreakdown.principal, data.paymentBreakdown.escrow],
+              data: [data.paymentBreakdown.interest, data.paymentBreakdown.principal, data.paymentBreakdown.escrow, SERVICE_FEE],
               backgroundColor: [
                 '#272727', // Gris oscuro para Intereses
                 '#529e14', // Verde para Principal (Equity)
-                '#f8ed1a'  // Amarillo para Escrow
+                '#f8ed1a', // Amarillo para Escrow
+                '#6b7280'  // Gris para Service Fee
               ],
               borderColor: '#000000', // Borde del color de fondo de la app
               borderWidth: 3,
@@ -129,14 +133,14 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
         <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-6 shadow-xl relative overflow-hidden group hover:border-gray-700 transition-colors flex flex-col justify-between">
           <div>
             <p className="text-xs text-gray-500 font-bold uppercase tracking-widest relative z-10">Next Payment Due</p>
-            <h2 className="text-4xl font-black text-white mt-3 relative z-10">{formatMoney(data.nextPayment)}</h2>
+            <h2 className="text-4xl font-black text-white mt-3 relative z-10">{formatMoney(totalNextPayment)}</h2>
             <p className="text-[#f8ed1a] text-xs font-bold uppercase tracking-wide mt-2 flex items-center gap-1 relative z-10">
               ⏳ Due by {new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
             </p>
           </div>
           <button 
             onClick={handlePayment}
-            disabled={isLoading || !data.paymentId || data.nextPayment <= 0}
+            disabled={isLoading || !data.paymentId || totalNextPayment <= 0}
             className="mt-4 w-full bg-[#529e14] disabled:bg-gray-700 disabled:text-gray-400 text-white py-3 rounded-lg font-black uppercase tracking-widest text-xs shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors flex items-center justify-center gap-2 relative z-10"
           >
             {isLoading ? (
@@ -209,7 +213,7 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
             <canvas ref={chartRef}></canvas>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Monthly</span>
-              <span className="text-2xl font-black text-white">{formatMoney(data.nextPayment)}</span>
+              <span className="text-2xl font-black text-white">{formatMoney(totalNextPayment)}</span>
             </div>
           </div>
           <div className="mt-8 space-y-4">
@@ -220,7 +224,7 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
                 <span className="text-gray-300 font-bold">Interest ({data.interestRate}%)</span>
               </div>
               <span className="font-mono font-bold text-gray-400">
-                {Math.round((data.paymentBreakdown.interest / data.nextPayment) * 100)}%
+                {Math.round((data.paymentBreakdown.interest / totalNextPayment) * 100)}%
               </span>
             </div>
 
@@ -230,17 +234,27 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
                 <span className="text-gray-300 font-bold">Principal (Equity)</span>
               </div>
               <span className="font-mono font-bold text-gray-400">
-                {Math.round((data.paymentBreakdown.principal / data.nextPayment) * 100)}%
+                {Math.round((data.paymentBreakdown.principal / totalNextPayment) * 100)}%
               </span>
             </div>
 
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center text-sm border-b border-gray-800 pb-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-[#f8ed1a] rounded-sm shadow-[0_0_8px_rgba(248,237,26,0.3)]"></div>
                 <span className="text-gray-300 font-bold">Taxes & Insurance</span>
               </div>
               <span className="font-mono font-bold text-gray-400">
-                {Math.round((data.paymentBreakdown.escrow / data.nextPayment) * 100)}%
+                {Math.round((data.paymentBreakdown.escrow / totalNextPayment) * 100)}%
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-gray-500 rounded-sm"></div>
+                <span className="text-gray-300 font-bold">Service Fee</span>
+              </div>
+              <span className="font-mono font-bold text-gray-400">
+                {Math.round((SERVICE_FEE / totalNextPayment) * 100)}%
               </span>
             </div>
 

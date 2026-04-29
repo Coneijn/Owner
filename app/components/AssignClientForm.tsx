@@ -23,6 +23,7 @@ export default function AssignClientForm({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasCoOwner, setHasCoOwner] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(formData: FormData) {
@@ -83,7 +84,56 @@ export default function AssignClientForm({
         </div>
       </div>
 
-      {/* SECCIÓN 2: TÉRMINOS DEL CONTRATO (Basado en nuevo Schema) */}
+      {/* SECCIÓN CO-PROPIETARIO */}
+      <div className="pt-4 border-t border-gray-800">
+        <div className="flex items-center space-x-3 mb-6">
+          <input
+            type="checkbox"
+            name="hasCoOwner"
+            id="hasCoOwner"
+            checked={hasCoOwner}
+            onChange={(e) => setHasCoOwner(e.target.checked)}
+            className="w-5 h-5 rounded border-gray-700 bg-[#0a0f1c] text-[#f8ed1a] focus:ring-[#f8ed1a]"
+          />
+          <label htmlFor="hasCoOwner" className="text-white font-bold uppercase text-xs tracking-widest">
+            Add Co-{clientType === 'BUYER' ? 'Buyer' : 'Tenant'}?
+          </label>
+        </div>
+
+        {hasCoOwner && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <h3 className="text-[#f8ed1a] font-bold uppercase text-xs tracking-widest mb-4 border-b border-gray-800 pb-2">
+              Co-{clientType === 'BUYER' ? 'Buyer' : 'Tenant'} Information
+            </h3>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Email Address</label>
+              <input
+                type="email"
+                name="coEmail"
+                required={hasCoOwner}
+                className="w-full bg-[#0a0f1c] text-white border border-gray-700 p-2 rounded focus:ring-2 focus:ring-[#f8ed1a] outline-none"
+                placeholder="co-client@email.com"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">First Name</label>
+                <input type="text" name="coFirstName" required={hasCoOwner} className="w-full bg-[#0a0f1c] text-white border border-gray-700 p-2 rounded focus:ring-2 focus:ring-[#f8ed1a] outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Last Name</label>
+                <input type="text" name="coLastName" required={hasCoOwner} className="w-full bg-[#0a0f1c] text-white border border-gray-700 p-2 rounded focus:ring-2 focus:ring-[#f8ed1a] outline-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Phone Number</label>
+              <input type="tel" name="coPhone" className="w-full bg-[#0a0f1c] text-white border border-gray-700 p-2 rounded focus:ring-2 focus:ring-[#f8ed1a] outline-none" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* SECCIÓN 2: TÉRMINOS DEL CONTRATO */}
       <div className="pt-4">
         <h3 className="text-[#f8ed1a] font-bold uppercase text-xs tracking-widest mb-4 border-b border-gray-800 pb-2">
           {clientType === 'BUYER' ? 'Sale & Loan Terms' : 'Lease Agreement Terms'}

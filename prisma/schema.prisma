@@ -346,8 +346,9 @@ model Contract {
   // Relaciones
   propertyId      String
   property        Property @relation(fields: [propertyId], references: [id])
-  buyerProfileId  String
-  buyer           BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+  
+  // Arreglo de compradores (Muchos a Muchos)
+  buyers          BuyerProfile[] 
 
   // Tipo de contrato
   type            ContractType @default(LOAN) 
@@ -380,8 +381,8 @@ model LeaseAgreement {
   propertyId      String
   property        Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
   
-  renterProfileId String
-  renterProfile   RenterProfile @relation(fields: [renterProfileId], references: [id], onDelete: Restrict)
+  // Arreglo de inquilinos (Muchos a Muchos)
+  renters         RenterProfile[]
 
   // Condiciones del contrato (El historial "congelado" de esta transacción)
   startDate       DateTime

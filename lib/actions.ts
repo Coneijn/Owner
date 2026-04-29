@@ -405,13 +405,16 @@ export async function updateProperty(prevState: any, formData: FormData) {
        logDetails = `Propiedad actualizada. Cambio de precio detectado: de $${currentPriceNum || 0} a $${newPriceNum || 0}`;
     }
 
-    // 2. Actualizamos la propiedad y la guardamos en una variable
+    // 2. Determinamos si debemos posponer el cambio de estado
+    const statusInput = rawFormData.status as PropertyStatus;
+    const isTransitioning = statusInput === 'SOLD' || statusInput === 'RENTED';
+
     const updatedProperty = await prisma.property.update({
       where: { id },
       data: {
-        // ... (Todos los datos que ya tienes para actualizar)
         slug: sanitizedSlug,
-        status: rawFormData.status as PropertyStatus,
+        // Si va a asignación, mantenemos el estado actual o lo ponemos en UNDER_CONTRACT temporalmente
+        status: isTransitioning ? (currentProperty?.status || 'AVAILABLE') : statusInput,
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
         isForSale: rawFormData.isForSale === 'on',
@@ -458,7 +461,8 @@ export async function updateProperty(prevState: any, formData: FormData) {
           create: imagesToCreate 
         },
         showSeller: rawFormData.showSeller === 'on',
-        sellerProfileId: parseStringOrNull(rawFormData.sellerProfileId),
+        // Solo actualizamos si el campo existe en el formulario (evita borrarlo si el acordeón está cerrado)
+        sellerProfileId: rawFormData.sellerProfileId !== undefined ? parseStringOrNull(rawFormData.sellerProfileId) : undefined,
         emoji: parseStringOrNull(rawFormData.emoji),
         condition: parseStringOrNull(rawFormData.condition),
         commissionPct: parseDecimalOrNull(rawFormData.commissionPct),
@@ -495,10 +499,12 @@ export async function updateProperty(prevState: any, formData: FormData) {
   revalidatePath(`/propiedades/${sanitizedSlug}`); 
   const finalStatus = rawFormData.status as PropertyStatus;
   
+  // Si el nuevo estado es SOLD o RENTED, forzamos la ida a la página de asignación
   if(finalStatus === 'SOLD' || finalStatus === 'RENTED') {
     redirect(`${basePath}/properties/${id}/assign?type=${finalStatus}`);
   }
   
+  // Si no, regresamos al dashboard desde donde vinimos
   redirect(basePath);
 }
 // --- ACTIONS PARA SELLERS (Agregar al final de lib/actions.ts) ---
@@ -697,69 +703,83 @@ export async function assignPropertyClient(
     const startDateString = formData.get('startDate') as string;
     const startDate = startDateString ? new Date(startDateString) : new Date();
 
+    // Datos del Co-propietario
+    const hasCoOwner = formData.get('hasCoOwner') === 'on';
+    const coEmail = formData.get('coEmail') as string;
+    const coFirstName = formData.get('coFirstName') as string;
+    const coLastName = formData.get('coLastName') as string;
+    const coPhone = formData.get('coPhone') as string;
+
     if (!email || !firstName || !lastName) {
-      return { success: false, message: 'Faltan datos obligatorios del cliente.' };
+      return { success: false, message: 'Faltan datos obligatorios del cliente titular.' };
     }
 
-    // 3. GESTIÓN DE CUENTAS (Búsqueda o Creación)
-    let targetUser = await prisma.user.findUnique({
-      where: { email },
-      include: { renterProfile: true, buyerProfile: true }
-    });
-
-    if (!targetUser) {
-      const temporaryPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
-      targetUser = await prisma.user.create({
-        data: {
-          email,
-          password: temporaryPassword,
-          name: `${firstName} ${lastName}`,
-          forcePasswordChange: true,
-          role: 'USER',
-        },
+    // --- FUNCIÓN INTERNA PARA CREAR/BUSCAR USUARIOS Y PERFILES ---
+    const getOrCreateProfile = async (uEmail: string, uFirstName: string, uLastName: string, uPhone: string) => {
+      let targetUser = await prisma.user.findUnique({
+        where: { email: uEmail },
         include: { renterProfile: true, buyerProfile: true }
       });
-    }
 
-    // 4. CREACIÓN DE PERFIL ESPECÍFICO
-    let renterProfileId = targetUser.renterProfile?.id;
-    let buyerProfileId = targetUser.buyerProfile?.id;
+      if (!targetUser) {
+        const temporaryPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
+        targetUser = await prisma.user.create({
+          data: {
+            email: uEmail,
+            password: temporaryPassword,
+            name: `${uFirstName} ${uLastName}`,
+            forcePasswordChange: true,
+            role: 'USER',
+          },
+          include: { renterProfile: true, buyerProfile: true }
+        });
+      }
 
-    if (clientType === 'RENTER' && !renterProfileId) {
-      const newRenter = await prisma.renterProfile.create({
-        data: {
-          userId: targetUser.id,
-          RenterName: `${firstName} ${lastName}`,
-          phone: phone || null,
+      let profileId = '';
+      if (clientType === 'RENTER') {
+        if (!targetUser.renterProfile) {
+          const newRenter = await prisma.renterProfile.create({
+            data: { userId: targetUser.id, RenterName: `${uFirstName} ${uLastName}`, phone: uPhone || null }
+          });
+          profileId = newRenter.id;
+        } else {
+          profileId = targetUser.renterProfile.id;
         }
-      });
-      renterProfileId = newRenter.id;
-    }
-
-    if (clientType === 'BUYER' && !buyerProfileId) {
-      const newBuyer = await prisma.buyerProfile.create({
-        data: {
-          userId: targetUser.id,
-          firstName,
-          lastName,
-          phone: phone || null,
+      } else {
+        if (!targetUser.buyerProfile) {
+          const newBuyer = await prisma.buyerProfile.create({
+            data: { userId: targetUser.id, firstName: uFirstName, lastName: uLastName, phone: uPhone || null }
+          });
+          profileId = newBuyer.id;
+        } else {
+          profileId = targetUser.buyerProfile.id;
         }
-      });
-      buyerProfileId = newBuyer.id;
+      }
+      return profileId;
+    };
+
+    // 3. CREAR O BUSCAR AL TITULAR
+    const primaryProfileId = await getOrCreateProfile(email, firstName, lastName, phone);
+    if (!primaryProfileId) return { success: false, message: 'Error al obtener perfil titular.' };
+    
+    // Arreglo de relaciones que espera Prisma
+    const profilesToConnect = [{ id: primaryProfileId }];
+
+    // 4. CREAR O BUSCAR AL CO-PROPIETARIO (Previene duplicados si envían el mismo correo por error)
+    if (hasCoOwner && coEmail && coFirstName && coLastName && coEmail.toLowerCase() !== email.toLowerCase()) {
+      const coProfileId = await getOrCreateProfile(coEmail, coFirstName, coLastName, coPhone);
+      if (coProfileId) profilesToConnect.push({ id: coProfileId });
     }
 
     // 5. ASIGNACIÓN A LA PROPIEDAD Y CREACIÓN DE CONTRATOS
     if (clientType === 'RENTER') {
-      if (!renterProfileId) return { success: false, message: 'Error al obtener el perfil del inquilino.' };
-      
       const monthlyRent = parseFloat(formData.get('monthlyRent') as string || '0');
       const securityDeposit = parseFloat(formData.get('securityDeposit') as string || '0');
 
-      // Crear el contrato de arrendamiento (LeaseAgreement)
       await prisma.leaseAgreement.create({
         data: {
           propertyId,
-          renterProfileId,
+          renters: { connect: profilesToConnect }, // <-- Relación Muchos-a-Muchos en Prisma
           startDate,
           monthlyRent,
           securityDeposit,
@@ -767,26 +787,22 @@ export async function assignPropertyClient(
         }
       });
 
+      // AQUÍ ES DONDE SE ACTUALIZA REALMENTE EL STATUS A RENTED
       await prisma.property.update({
         where: { id: propertyId },
         data: { status: 'RENTED', isForRent: true }
       });
 
     } else if (clientType === 'BUYER') {
-      if (!buyerProfileId) return { success: false, message: 'Error al obtener el perfil del comprador.' };
-
-      // Datos del formulario
       const totalAmount = parseFloat(formData.get('totalAmount') as string || '0');
       const downPayment = parseFloat(formData.get('downPayment') as string || '0');
       const interestRate = parseFloat(formData.get('interestRate') as string || '0');
       const termInYears = parseInt(formData.get('termInYears') as string || '30');
       
       const principal = totalAmount - downPayment;
-      // Los impuestos y el seguro siguen tomándose directamente de la configuración de la propiedad
       const taxes = property.taxes ? Number(property.taxes) / 12 : 0; 
       const insurance = property.insurance ? Number(property.insurance) / 12 : 0; 
 
-      // CÁLCULO DE LA PRIMERA CUOTA
       const termInMonths = termInYears * 12;
       const monthlyInterestRate = interestRate > 0 ? (interestRate / 100) / 12 : 0;
 
@@ -807,29 +823,27 @@ export async function assignPropertyClient(
       const firstPaymentDate = new Date(startDate);
       firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
 
-      // Crear Contrato y Primer Pago
       await prisma.contract.create({
         data: {
           propertyId: propertyId,
-          buyerProfileId: buyerProfileId,
+          buyers: { connect: profilesToConnect }, // <-- Relación Muchos-a-Muchos en Prisma
           type: 'LOAN',
-          totalAmount: totalAmount,
-          downPayment: downPayment,
+          totalAmount,
+          downPayment,
           principalAmount: principal > 0 ? principal : 0,
-          interestRate: interestRate,
-          termInYears: termInYears,
+          interestRate,
+          termInYears,
           monthlyTaxes: taxes,
           monthlyInsurance: insurance,
-          startDate: startDate, 
-          
+          startDate, 
           payments: {
             create: {
               paymentDate: firstPaymentDate,
               totalDue: totalDue > 0 ? totalDue : 0,
               principal: firstMonthPrincipal > 0 ? firstMonthPrincipal : 0,
               interest: firstMonthInterest > 0 ? firstMonthInterest : 0,
-              taxes: taxes,
-              insurance: insurance,
+              taxes,
+              insurance,
               serviceFee: 0,
               remainingBalance: newRemainingBalance > 0 ? newRemainingBalance : 0,
               status: 'PENDING'
@@ -838,6 +852,7 @@ export async function assignPropertyClient(
         }
       });
 
+      // AQUÍ ES DONDE SE ACTUALIZA REALMENTE EL STATUS A SOLD
       await prisma.property.update({
         where: { id: propertyId },
         data: { status: 'SOLD', isForSale: true }

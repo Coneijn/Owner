@@ -84,7 +84,11 @@ export default async function RentersDashboard() {
     where: { 
       leases: {
         some: {
-          renterProfileId: currentUser.renterProfile.id,
+          renters: {
+            some: {
+              id: currentUser.renterProfile.id
+            }
+          },
           isActive: true
         }
       }

@@ -94,7 +94,11 @@ export default async function BuyersDashboard() {
   // Buscamos el contrato principal activo del comprador
   const contract = await prisma.contract.findFirst({
     where: { 
-      buyerProfileId: currentUser.buyerProfile.id,
+      buyers: {
+        some: {
+          id: currentUser.buyerProfile.id
+        }
+      },
       isActive: true
     },
     include: {

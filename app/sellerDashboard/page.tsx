@@ -126,7 +126,7 @@ export default async function DashboardVendedor() {
   // B) Contratos (Créditos/Rentas) SOLO de este vendedor
   const rawContracts = await prisma.contract.findMany({
     where: { property: { sellerProfileId: sellerProfile.id } },
-    include: { property: true, buyer: true },
+    include: { property: true, buyers: true }, // <-- Cambiamos 'buyer' por 'buyers'
     orderBy: { createdAt: 'desc' }
   });
 
