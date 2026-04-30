@@ -15,15 +15,15 @@ export async function POST(req: Request) {
     const referer = req.headers.get('referer');
     const returnPath = referer ? new URL(referer).pathname : '/buyersDashboard';
 
-    // 2. Corrección Prisma: Incluir la cadena completa contract -> buyer -> user
+    // 2. CORRECCIÓN PRISMA: Cambiamos 'buyer' por 'buyers' (plural) según el nuevo Schema
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: { 
         contract: { 
           include: { 
-            buyer: {
+            buyers: { // <-- AHORA ES PLURAL
               include: {
-                user: true // <-- Esto soluciona el error del 'user'
+                user: true // <-- Traemos el usuario para obtener el email
               }
             } 
           } 
@@ -35,17 +35,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Pago no encontrado' }, { status: 404 });
     }
 
+    // Obtenemos el comprador principal (el primero de la lista) para Stripe
+    const primaryBuyer = payment.contract.buyers && payment.contract.buyers.length > 0 
+      ? payment.contract.buyers[0] 
+      : null;
+
     // 3. Crear la sesión de Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'us_bank_account'],
-      // Como ya incluimos 'user', TypeScript ya reconoce que 'email' existe
-      customer_email: payment.contract.buyer.user?.email || undefined, 
+      // CORRECCIÓN STRIPE: Usamos el email del primaryBuyer
+      customer_email: primaryBuyer?.user?.email || undefined, 
       line_items: [
         {
           price_data: {
             currency: 'usd', 
             product_data: {
-              name: `Mensualidad - Contrato ${payment.contractId}`,
+              name: `Mensualidad - Contrato ${payment.contractId.slice(-8)}`, // Un slice cortito para que se vea mejor en Stripe
               description: `Pago de principal, intereses e impuestos`,
             },
             // Multiplicamos por 100 porque Stripe procesa todo en centavos

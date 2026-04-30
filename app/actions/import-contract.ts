@@ -51,10 +51,13 @@ export async function processContractImport(data: any) {
       if (!buyerProfile) throw new Error("No se pudo obtener el perfil de comprador.");
 
       // C. Crear el Contrato principal
+      // CORRECCIÓN APLICADA AQUÍ: Se usa 'buyers: { connect: ... }' en lugar de 'buyerProfileId'
       const contract = await tx.contract.create({
         data: {
           propertyId,
-          buyerProfileId: buyerProfile.id,
+          buyers: {
+            connect: { id: buyerProfile.id }
+          },
           type: "LOAN",
           totalAmount: loanInfo.totalAmount,
           downPayment: loanInfo.downPayment,

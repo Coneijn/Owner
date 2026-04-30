@@ -20,7 +20,7 @@ type Contract = {
   type: string;
   totalAmount: string;
   isActive: boolean;
-  buyer: Buyer;
+  buyer: Buyer | null; // <-- CORRECCIÓN 1: Ahora permite que sea null
   property: Property;
 };
 
@@ -54,21 +54,30 @@ export default function CreditsClient({ contracts }: { contracts: Contract[] }) 
                 
                 {/* BUYER INFO */}
                 <td className="px-6 py-4">
-                  <div className="text-white font-bold text-base">
-                    {contract.buyer.firstName} {contract.buyer.lastName}
-                  </div>
-                  {contract.buyer.phone && (
-                     <div className="text-xs text-gray-500 font-mono mt-0.5">{contract.buyer.phone}</div>
+                  {/* CORRECCIÓN 2: Validación para evitar errores si el comprador es null */}
+                  {contract.buyer ? (
+                    <>
+                      <div className="text-white font-bold text-base">
+                        {contract.buyer.firstName} {contract.buyer.lastName}
+                      </div>
+                      {contract.buyer.phone && (
+                         <div className="text-xs text-gray-500 font-mono mt-0.5">{contract.buyer.phone}</div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-gray-500 italic">
+                      No buyer assigned
+                    </div>
                   )}
                 </td>
 
                 {/* PROPERTY INFO */}
                 <td className="px-6 py-4">
                   <div className="text-gray-300 font-medium">
-                    {contract.property.titleEn}
+                    {contract.property?.titleEn || 'N/A'}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">
-                    {contract.property.address}
+                    {contract.property?.address || 'N/A'}
                   </div>
                 </td>
 

@@ -14,37 +14,63 @@ async function updateContractBuyer(formData: FormData) {
   if (contractId && buyerProfileId) {
     await prisma.contract.update({
       where: { id: contractId },
-      data: { buyerProfileId },
+      data: { 
+        buyers: {
+          set: [], 
+          connect: { id: buyerProfileId }
+        }
+      },
     });
-    revalidatePath("/admin/relations"); // Cambia esta ruta si tu archivo está en otro path
+    revalidatePath("/admin/relations"); 
   }
 }
 
-async function updatePropertyProfile(formData: FormData) {
+// Acción simplificada solo para asignar DUEÑOS (Sellers)
+async function assignSeller(formData: FormData) {
   "use server";
   const propertyId = formData.get("propertyId") as string;
-  const profileType = formData.get("profileType") as string; // 'seller' o 'renter'
   const profileId = formData.get("profileId") as string;
 
-  if (propertyId && profileType) {
-    const dataToUpdate =
-      profileType === "seller"
-        ? { sellerProfileId: profileId || null }
-        : { renterProfileId: profileId || null };
-
+  if (propertyId && profileId) {
     await prisma.property.update({
       where: { id: propertyId },
-      data: dataToUpdate,
+      data: { sellerProfileId: profileId },
     });
     revalidatePath("/admin/relations");
   }
 }
 
+// NUEVA ACCIÓN: Crear un LeaseAgreement (Asignar Inquilino)
+async function createLeaseAgreement(formData: FormData) {
+  "use server";
+  const propertyId = formData.get("propertyId") as string;
+  const renterProfileId = formData.get("profileId") as string;
+  const startDateStr = formData.get("startDate") as string;
+  const monthlyRent = parseFloat(formData.get("monthlyRent") as string) || 0;
+  const securityDeposit = parseFloat(formData.get("securityDeposit") as string) || 0;
+
+  if (propertyId && renterProfileId && startDateStr && monthlyRent > 0) {
+    await prisma.leaseAgreement.create({
+      data: {
+        propertyId,
+        renters: {
+          connect: { id: renterProfileId }
+        },
+        startDate: new Date(startDateStr),
+        monthlyRent,
+        securityDeposit: securityDeposit > 0 ? securityDeposit : null,
+      }
+    });
+    revalidatePath("/admin/relations");
+  }
+}
+
+// Acción para crear contratos de VENTA / PRÉSTAMO (LOAN)
 async function createContract(formData: FormData) {
   "use server";
   const propertyId = formData.get("propertyId") as string;
   const buyerProfileId = formData.get("buyerProfileId") as string;
-  const type = formData.get("type") as "LOAN" | "LEASE";
+  const type = formData.get("type") as "LOAN";
   
   const totalAmount = parseFloat(formData.get("totalAmount") as string) || 0;
   const downPayment = parseFloat(formData.get("downPayment") as string) || 0;
@@ -55,7 +81,7 @@ async function createContract(formData: FormData) {
     await prisma.contract.create({
       data: {
         propertyId,
-        buyerProfileId,
+        buyers: { connect: { id: buyerProfileId } },
         type,
         totalAmount,
         downPayment,
@@ -72,28 +98,32 @@ async function createContract(formData: FormData) {
 // ==========================================
 
 export default async function RelationsAdminPage() {
-  // 1. Obtener los datos principales
+  // 1. Obtener Contratos (LOAN)
   const contracts = await prisma.contract.findMany({
     include: {
       property: true,
-      buyer: true, // buyerProfile 
+      buyers: true, 
     },
     orderBy: { createdAt: "desc" },
   });
 
+  // 2. Obtener Propiedades (Incluyendo sus Leases activos para saber si están ocupadas)
   const properties = await prisma.property.findMany({
     include: {
-      renterProfile: true,
-      sellerProfile: true,
+      sellerProfile: true, // El dueño directo
+      leases: {            // Los contratos de renta
+        where: { isActive: true },
+        include: { renters: true }
+      }
     },
   });
 
-  // 2. Obtener los catálogos para los Dropdowns (Listas de selección)
+  // 3. Obtener Catálogos
   const allBuyers = await prisma.buyerProfile.findMany();
   const allSellers = await prisma.sellerProfile.findMany();
   const allRenters = await prisma.renterProfile.findMany();
 
-  // 3. Filtrar propiedades para las vistas en la interfaz
+  // 4. Filtrar propiedades
   const rentedProperties = properties.filter((p) => p.isForRent);
   const saleProperties = properties.filter((p) => p.isForSale);
 
@@ -110,30 +140,29 @@ export default async function RelationsAdminPage() {
         </header>
 
         <div className="space-y-12">
-          {/* ================= SECCIÓN: CONTRATOS ================= */}
+          {/* ================= SECCIÓN: CONTRATOS DE VENTA / PRÉSTAMO ================= */}
           <section>
             <div className="flex items-center gap-3 mb-6">
               <div className="h-8 w-2 bg-brand-accent"></div>
-              <h2 className="text-2xl font-bold text-white uppercase tracking-wider">Gestión de Contratos</h2>
+              <h2 className="text-2xl font-bold text-white uppercase tracking-wider">Gestión de Créditos (Ventas)</h2>
             </div>
 
-            {/* FORMULARIO PARA CREAR NUEVO CONTRATO */}
+            {/* FORMULARIO PARA CREAR NUEVO CONTRATO (LOAN) */}
             <div className="mb-8 p-6 rounded-xl border border-white/10 bg-black/40 shadow-xl">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="text-brand-accent">+</span> Crear Nuevo Contrato
+                <span className="text-brand-accent">+</span> Crear Nuevo Crédito
               </h3>
               <form action={createContract} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400">Propiedad</label>
                   <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none">
                     <option value="">Selecciona Propiedad...</option>
-                    {properties.map(p => <option key={p.id} value={p.id}>{p.address}</option>)}
+                    {saleProperties.map(p => <option key={p.id} value={p.id}>{p.address}</option>)}
                   </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-400">Comprador / Inquilino</label>
+                  <label className="text-xs text-gray-400">Comprador</label>
                   <select name="buyerProfileId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none">
                     <option value="">Selecciona Cliente...</option>
                     {allBuyers.map(b => <option key={b.id} value={b.id}>{b.firstName} {b.lastName}</option>)}
@@ -144,7 +173,6 @@ export default async function RelationsAdminPage() {
                   <label className="text-xs text-gray-400">Tipo de Contrato</label>
                   <select name="type" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none">
                     <option value="LOAN">Préstamo / Venta (LOAN)</option>
-                    <option value="LEASE">Renta (LEASE)</option>
                   </select>
                 </div>
 
@@ -159,12 +187,12 @@ export default async function RelationsAdminPage() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-400">Enganche / Depósito ($)</label>
+                  <label className="text-xs text-gray-400">Enganche ($)</label>
                   <input type="number" step="0.01" name="downPayment" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none" placeholder="0.00" />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-400">Monto Principal a Financiar ($)</label>
+                  <label className="text-xs text-gray-400">Capital a Financiar ($)</label>
                   <input type="number" step="0.01" name="principalAmount" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 focus:border-brand-accent outline-none" placeholder="0.00" />
                 </div>
 
@@ -187,46 +215,49 @@ export default async function RelationsAdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {contracts.map((contract) => (
-                    <tr key={contract.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="block text-sm font-mono text-gray-300">{contract.id.slice(-8)}</span>
-                        <span className="inline-flex mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-brand-accent text-brand-dark uppercase">
-                          {contract.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-white">{contract.property.address}</div>
-                        <div className="text-xs text-gray-500">{contract.property.city}, {contract.property.state}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-brand-accent">
-                          ${Number(contract.totalAmount).toLocaleString()}
-                        </div>
-                      </td>
-                      {/* FORMULARIO INLINE PARA ACTUALIZAR CONTRATO */}
-                      <td className="px-6 py-4">
-                        <form action={updateContractBuyer} className="flex items-center gap-2">
-                          <input type="hidden" name="contractId" value={contract.id} />
-                          <select 
-                            name="buyerProfileId"
-                            defaultValue={contract.buyerProfileId || ""}
-                            className="bg-black/50 border border-white/20 text-white text-sm rounded-md px-3 py-1.5 focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none w-full max-w-[200px]"
-                          >
-                            <option value="" disabled>Seleccionar comprador...</option>
-                            {allBuyers.map(buyer => (
-                              <option key={buyer.id} value={buyer.id}>
-                                {buyer.firstName} {buyer.lastName}
-                              </option>
-                            ))}
-                          </select>
-                          <button type="submit" className="bg-white/10 hover:bg-brand-accent hover:text-black text-white px-3 py-1.5 rounded-md text-xs font-bold transition-all">
-                            Guardar
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
+                  {contracts.map((contract) => {
+                    const currentBuyerId = contract.buyers && contract.buyers.length > 0 ? contract.buyers[0].id : "";
+                    
+                    return (
+                      <tr key={contract.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="block text-sm font-mono text-gray-300">{contract.id.slice(-8)}</span>
+                          <span className="inline-flex mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-brand-accent text-brand-dark uppercase">
+                            {contract.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-semibold text-white">{contract.property.address}</div>
+                          <div className="text-xs text-gray-500">{contract.property.city}, {contract.property.state}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-brand-accent">
+                            ${Number(contract.totalAmount).toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <form action={updateContractBuyer} className="flex items-center gap-2">
+                            <input type="hidden" name="contractId" value={contract.id} />
+                            <select 
+                              name="buyerProfileId"
+                              defaultValue={currentBuyerId}
+                              className="bg-black/50 border border-white/20 text-white text-sm rounded-md px-3 py-1.5 focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none w-full max-w-[200px]"
+                            >
+                              <option value="" disabled>Seleccionar comprador...</option>
+                              {allBuyers.map(buyer => (
+                                <option key={buyer.id} value={buyer.id}>
+                                  {buyer.firstName} {buyer.lastName}
+                                </option>
+                              ))}
+                            </select>
+                            <button type="submit" className="bg-white/10 hover:bg-brand-accent hover:text-black text-white px-3 py-1.5 rounded-md text-xs font-bold transition-all">
+                              Guardar
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {contracts.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No hay contratos registrados.</td>
@@ -237,18 +268,17 @@ export default async function RelationsAdminPage() {
             </div>
           </section>
 
-          {/* ================= SECCIÓN: ASIGNACIÓN RÁPIDA DE PROPIEDADES ================= */}
+          {/* ================= SECCIÓN: ASIGNACIÓN RÁPIDA (RENTAS Y DUEÑOS) ================= */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* 1. RENTA -> INQUILINO */}
+            {/* 1. RENTA -> CREAR LEASE Y ASIGNAR INQUILINO */}
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-8 w-2 bg-brand-accent"></div>
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider">Asignar Inquilino (Renta)</h2>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wider">Nuevo Contrato Renta</h2>
               </div>
               
-              <form action={updatePropertyProfile} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
-                <input type="hidden" name="profileType" value="renter" />
+              <form action={createLeaseAgreement} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
                 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">1. Propiedad</label>
@@ -256,7 +286,7 @@ export default async function RelationsAdminPage() {
                     <option value="">-- Selecciona propiedad --</option>
                     {rentedProperties.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.address} {p.renterProfileId ? '(Ocupada)' : ''}
+                        {p.address} {p.leases.length > 0 ? '(Ya tiene inquilino)' : ''}
                       </option>
                     ))}
                   </select>
@@ -274,24 +304,38 @@ export default async function RelationsAdminPage() {
                   </select>
                 </div>
 
+                {/* Campos Obligatorios para LeaseAgreement */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">Fecha de Inicio</label>
+                  <input type="date" name="startDate" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent" />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">Renta Mensual ($)</label>
+                  <input type="number" step="0.01" name="monthlyRent" required placeholder="Ej. 1200" className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent" />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400 font-medium">Depósito de Seguridad ($)</label>
+                  <input type="number" step="0.01" name="securityDeposit" placeholder="Opcional" className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent" />
+                </div>
+
                 <div className="mt-2">
                   <button type="submit" className="bg-white/10 hover:bg-brand-accent hover:text-black border border-white/10 text-white px-4 py-2 rounded-md text-sm font-bold transition-all w-full">
-                    Actualizar Inquilino
+                    Crear Lease & Asignar
                   </button>
                 </div>
               </form>
             </section>
 
-            {/* 2. RENTA -> DUEÑO (NUEVO) */}
+            {/* 2. RENTA -> DUEÑO (SELLER) */}
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-8 w-2 bg-brand-accent"></div>
                 <h2 className="text-lg font-bold text-white uppercase tracking-wider">Asignar Dueño (Renta)</h2>
               </div>
               
-              <form action={updatePropertyProfile} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
-                <input type="hidden" name="profileType" value="seller" />
-                
+              <form action={assignSeller} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">1. Propiedad</label>
                   <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">
@@ -324,16 +368,14 @@ export default async function RelationsAdminPage() {
               </form>
             </section>
 
-            {/* 3. VENTA -> DUEÑO */}
+            {/* 3. VENTA -> DUEÑO (SELLER) */}
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-8 w-2 bg-brand-accent"></div>
                 <h2 className="text-lg font-bold text-white uppercase tracking-wider">Asignar Dueño (Venta)</h2>
               </div>
               
-              <form action={updatePropertyProfile} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
-                <input type="hidden" name="profileType" value="seller" />
-                
+              <form action={assignSeller} className="bg-black/40 border border-white/10 p-5 rounded-xl shadow-xl flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">1. Propiedad</label>
                   <select name="propertyId" required className="bg-black border border-white/20 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-brand-accent">

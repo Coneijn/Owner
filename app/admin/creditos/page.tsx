@@ -8,7 +8,7 @@ export default async function CreditsManagerPage() {
   // Obtenemos los contratos con la información del comprador y la propiedad
   const contracts = await prisma.contract.findMany({
     include: {
-      buyer: true,
+      buyers: true, // <-- CORRECCIÓN: Cambiado 'buyer' por 'buyers'
       property: {
         select: {
           titleEn: true,
@@ -20,25 +20,39 @@ export default async function CreditsManagerPage() {
   });
 
   // Serializamos las fechas para evitar errores al pasarlo al Client Component
-  const serializedContracts = contracts.map(contract => ({
-    ...contract,
-    totalAmount: contract.totalAmount.toString(),
-    downPayment: contract.downPayment.toString(),
-    principalAmount: contract.principalAmount.toString(),
-    interestRate: contract.interestRate?.toString() || null,
-    monthlyTaxes: contract.monthlyTaxes?.toString() || null,
-    monthlyInsurance: contract.monthlyInsurance?.toString() || null,
-    monthlyServFee: contract.monthlyServFee?.toString() || null,
-    startDate: contract.startDate.toISOString(),
-    createdAt: contract.createdAt.toISOString(),
-    updatedAt: contract.updatedAt.toISOString(),
-    // Serializamos las fechas dentro de buyer
-    buyer: {
-        ...contract.buyer,
-        createdAt: contract.buyer.createdAt.toISOString(),
-        updatedAt: contract.buyer.updatedAt.toISOString(),
-    }
-  }));
+  const serializedContracts = contracts.map(contract => {
+    // Tomamos el primer comprador como principal, o null si no hay
+    const primaryBuyer = contract.buyers && contract.buyers.length > 0 ? contract.buyers[0] : null;
+
+    return {
+      ...contract,
+      totalAmount: contract.totalAmount.toString(),
+      downPayment: contract.downPayment.toString(),
+      principalAmount: contract.principalAmount.toString(),
+      interestRate: contract.interestRate?.toString() || null,
+      monthlyTaxes: contract.monthlyTaxes?.toString() || null,
+      monthlyInsurance: contract.monthlyInsurance?.toString() || null,
+      monthlyServFee: contract.monthlyServFee?.toString() || null,
+      startDate: contract.startDate.toISOString(),
+      createdAt: contract.createdAt.toISOString(),
+      updatedAt: contract.updatedAt.toISOString(),
+      
+      // Mantenemos la estructura 'buyer' para que el CreditsClient no se rompa,
+      // pasando solo el comprador principal.
+      buyer: primaryBuyer ? {
+          ...primaryBuyer,
+          createdAt: primaryBuyer.createdAt.toISOString(),
+          updatedAt: primaryBuyer.updatedAt.toISOString(),
+      } : null,
+      
+      // Opcional: También pasamos el arreglo completo serializado por si el Client lo necesita
+      buyers: contract.buyers.map(b => ({
+          ...b,
+          createdAt: b.createdAt.toISOString(),
+          updatedAt: b.updatedAt.toISOString(),
+      }))
+    };
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0f1c] p-4 sm:p-8 font-sans text-gray-200">

@@ -6,14 +6,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function ContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // Consultamos el contrato con todas sus relaciones, incluyendo los pagos (Payment)
+  
+  // CORRECCIÓN: Se cambió 'buyer' por 'buyers' en el include
   const contract = await prisma.contract.findUnique({
     where: { id: id },
     include: {
-      buyer: true,
+      buyers: true, // <-- Actualizado aquí
       property: true,
       payments: {
-        orderBy: { paymentDate: 'asc' } // Ordenamos los pagos por fecha de vencimiento
+        orderBy: { paymentDate: 'asc' }
       }
     }
   });
@@ -22,7 +23,6 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  // Helpers para formatear datos
   const formatMoney = (amount: any) => {
     if (amount === null || amount === undefined) return '$0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount));
@@ -32,6 +32,9 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     if (!date) return 'N/A';
     return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: '2-digit', timeZone: 'UTC' }).format(new Date(date));
   };
+
+  // Obtenemos el comprador principal (el primero en el arreglo)
+  const primaryBuyer = contract.buyers && contract.buyers.length > 0 ? contract.buyers[0] : null;
 
   return (
     <div className="min-h-screen bg-[#0a0f1c] p-4 sm:p-8 font-sans text-gray-200">
@@ -67,8 +70,18 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-gray-800 shadow-lg">
             <h2 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Buyer Info</h2>
             <div className="space-y-3 text-sm">
-              <p><span className="text-gray-400">Name:</span> <span className="text-white font-bold ml-2">{contract.buyer.firstName} {contract.buyer.lastName}</span></p>
-              <p><span className="text-gray-400">Phone:</span> <span className="text-white ml-2">{contract.buyer.phone || 'N/A'}</span></p>
+              {/* CORRECCIÓN: Accediendo al primer comprador del arreglo */}
+              {primaryBuyer ? (
+                <>
+                  <p><span className="text-gray-400">Name:</span> <span className="text-white font-bold ml-2">{primaryBuyer.firstName} {primaryBuyer.lastName}</span></p>
+                  <p><span className="text-gray-400">Phone:</span> <span className="text-white ml-2">{primaryBuyer.phone || 'N/A'}</span></p>
+                  {contract.buyers.length > 1 && (
+                     <p className="text-xs text-gray-500 italic mt-2">+ {contract.buyers.length - 1} co-buyer(s)</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-500 italic">No buyer assigned.</p>
+              )}
             </div>
           </div>
 
@@ -119,7 +132,6 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <tbody className="divide-y divide-gray-800">
                 {contract.payments && contract.payments.length > 0 ? (
                   contract.payments.map((payment: any, index: number) => {
-                    // Calculamos el total de impuestos, seguros y tarifas para agruparlo en la tabla
                     const extraFees = Number(payment.taxes || 0) + Number(payment.insurance || 0) + Number(payment.serviceFee || 0);
                     
                     return (
