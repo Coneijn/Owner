@@ -127,10 +127,13 @@ export default async function DashboardVendedor() {
   // B.1) Contratos de Venta (Loans)
   const rawContracts = await prisma.contract.findMany({
     where: { property: { sellerProfileId: sellerProfile.id } },
-    include: { property: true, buyers: true }, 
-    orderBy: { createdAt: 'desc' }
+    include: { 
+      property: true, 
+      buyers: true,
+      payments: { orderBy: { paymentDate: 'asc' } } // <-- INCLUIMOS LOS PAGOS
+    }, 
+     orderBy: { createdAt: 'desc' }
   });
-
   const formattedContracts = rawContracts.map((c) => ({
     ...c,
     type: 'LOAN', // Aseguramos el identificador para la tabla
@@ -156,11 +159,15 @@ export default async function DashboardVendedor() {
     } : null
   }));
 
-  // B.2) Acuerdos de Arrendamiento (Leases)
+ // B.2) Acuerdos de Arrendamiento (Leases)
   const rawLeases = await prisma.leaseAgreement.findMany({
     where: { property: { sellerProfileId: sellerProfile.id } },
-    include: { property: true, renters: true }, 
-    orderBy: { createdAt: 'desc' }
+    include: { 
+      property: true, 
+      renters: true,
+      payments: { orderBy: { paymentDate: 'asc' } } // <-- INCLUIMOS LOS PAGOS
+    }, 
+     orderBy: { createdAt: 'desc' }
   });
 
   const formattedLeases = rawLeases.map((l) => ({

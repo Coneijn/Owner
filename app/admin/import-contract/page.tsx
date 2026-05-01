@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Papa from "papaparse";
-import { processContractImport } from "@/app/actions/import-contract";
+import { processContractImport, simulatePaymentsForContract, simulatePaymentsForLease } from "@/app/actions/import-contract";
 
 export default function ImportContractPage() {
   const [propertyId, setPropertyId] = useState("");
@@ -10,6 +10,52 @@ export default function ImportContractPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Nuevos estados para pagos simulados en contratos nuevos
+  const [simulatedPaymentsNew, setSimulatedPaymentsNew] = useState(0);
+
+  // Nuevos estados para la sección de contratos existentes
+  const [existingContractId, setExistingContractId] = useState("");
+  const [existingContractType, setExistingContractType] = useState<"LOAN" | "LEASE">("LOAN");
+  const [simulatedPaymentsExisting, setSimulatedPaymentsExisting] = useState(1);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [messageExisting, setMessageExisting] = useState("");
+
+  // Manejador temporal para contratos existentes
+  const handleSimulateExisting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!existingContractId || simulatedPaymentsExisting <= 0) return;
+    
+    setLoadingExisting(true);
+    setMessageExisting("");
+    try {
+      let response;
+      
+      // Ejecutamos la simulación mes a mes en un bucle
+      for (let i = 0; i < simulatedPaymentsExisting; i++) {
+        if (existingContractType === "LOAN") {
+          // Mandamos a simular de 1 en 1. El backend solo debe:
+          // 1. Cambiar el estatus del pago actual a PAID
+          // 2. Crear el del mes siguiente en PENDING
+          response = await simulatePaymentsForContract(existingContractId, 1);
+        } else {
+          response = await simulatePaymentsForLease(existingContractId, 1);
+        }
+        
+        if (!response || !response.success) {
+          setMessageExisting(`Error en el avance del mes ${i + 1}: ${response?.error}`);
+          setLoadingExisting(false);
+          return; // Detenemos el bucle si falla un mes
+        }
+      }
+      
+      setMessageExisting(`Se procesaron ${simulatedPaymentsExisting} meses correctamente.`);
+    } catch (error) {
+      setMessageExisting("Error al intentar simular los pagos.");
+    }
+    setLoadingExisting(false);
+  };
+
+  
   // Función auxiliar para limpiar monedas: "$ 260,000 " -> 260000
   const cleanNumber = (str: string) => {
     if (!str) return 0;
@@ -62,10 +108,13 @@ const formatPhoneE164 = (phoneStr: string) => {
               monthlyInsurance: cleanNumber(data[10][1]),
               monthlyServFee: cleanNumber(data[11][1]),
             },
-            // Los pagos comienzan a partir de la fila 16 (índice 15 es la cabecera)
-            payments: data.slice(16).map((row) => {
+            payments: data.slice(16).map((row, index) => {
               const paymentDateObj = new Date(row[0]);
+              
+              // Verificamos si es pasado o si entra en la cantidad de simulados solicitados
               const isPastPayment = paymentDateObj < new Date();
+              const isSimulated = index < simulatedPaymentsNew;
+              const isPaid = isPastPayment || isSimulated;
               
               return {
                 paymentDate: paymentDateObj.toISOString(), 
@@ -73,12 +122,12 @@ const formatPhoneE164 = (phoneStr: string) => {
                 interest: cleanNumber(row[2]),
                 principal: cleanNumber(row[3]),
                 remainingBalance: cleanNumber(row[4]),
-                status: isPastPayment ? 'PAID' : 'PENDING',
-                paidAt: isPastPayment ? new Date(row[0]).toISOString() : null,
+                status: isPaid ? 'PAID' : 'PENDING',
+                paidAt: isPaid ? new Date(row[0]).toISOString() : null,
               };
             }),
           };
-
+          
           const response = await processContractImport(payload);
           
           if (response.success) {
@@ -114,8 +163,7 @@ const formatPhoneE164 = (phoneStr: string) => {
           />
           {/* Opcional: Reemplazar este input por un <select> que cargue tus propiedades */}
         </div>
-
-        <div>
+<div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Archivo CSV (Rental Tracking)
           </label>
@@ -127,6 +175,21 @@ const formatPhoneE164 = (phoneStr: string) => {
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
         </div>
+        
+        {/* NUEVO CAMPO: Pagos simulados para el nuevo contrato */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Simular Pagos Iniciales (Opcional)
+          </label>
+          <input
+            type="number"
+            min="0"
+            className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="Ej. 3 para marcar los primeros 3 meses como PAID"
+            value={simulatedPaymentsNew || ""}
+            onChange={(e) => setSimulatedPaymentsNew(Number(e.target.value))}
+          />
+        </div>
 
         <button
           type="submit"
@@ -135,10 +198,76 @@ const formatPhoneE164 = (phoneStr: string) => {
         >
           {loading ? "Procesando e Importando..." : "Crear Usuario y Cargar Contrato"}
         </button>
-
         {message && (
           <div className={`p-4 rounded ${message.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
             {message}
+          </div>
+        )}
+      </form>
+
+      <hr className="my-10 border-gray-300" />
+
+      {/* SECCIÓN NUEVA: Para contratos ya existentes */}
+      <h2 className="text-xl font-bold mb-6 text-gray-800">Simular Pagos en Contrato Existente</h2>
+      <form onSubmit={handleSimulateExisting} className="space-y-6">
+        <div className="flex gap-6 mb-2">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input 
+              type="radio" 
+              value="LOAN" 
+              checked={existingContractType === "LOAN"} 
+              onChange={() => setExistingContractType("LOAN")}
+              className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+            />
+            <span className="text-gray-700 font-medium">Venta (Loan)</span>
+          </label>
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input 
+              type="radio" 
+              value="LEASE" 
+              checked={existingContractType === "LEASE"} 
+              onChange={() => setExistingContractType("LEASE")}
+              className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+            />
+            <span className="text-gray-700 font-medium">Renta (Lease)</span>
+          </label>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            ID del Contrato / Lease
+          </label>
+          <input
+            type="text"
+            required
+            className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="Ej. clr456..."
+            value={existingContractId}
+            onChange={(e) => setExistingContractId(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Cantidad de Pagos a Simular
+          </label>
+          <input
+            type="number"
+            min="1"
+            required
+            className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+            value={simulatedPaymentsExisting}
+            onChange={(e) => setSimulatedPaymentsExisting(Number(e.target.value))}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loadingExisting}
+          className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded hover:bg-green-700 disabled:opacity-50"
+        >
+          {loadingExisting ? "Simulando pagos..." : "Simular Pagos"}
+        </button>
+        {messageExisting && (
+          <div className={`p-4 rounded ${messageExisting.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+            {messageExisting}
           </div>
         )}
       </form>

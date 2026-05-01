@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
-
+import { revalidatePath } from "next/cache";
 export async function processContractImport(data: any) {
   try {
     const { propertyId, clientInfo, loanInfo, payments } = data;
@@ -99,6 +99,116 @@ export async function processContractImport(data: any) {
     return { success: true, contractId: result.id };
   } catch (error: any) {
     console.error("Error importando contrato:", error);
+    return { success: false, error: error.message };
+  }
+}
+export async function simulatePaymentsForLease(leaseId: string, count: number) {
+  try {
+    // 1. Buscar el pago PENDING más antiguo (el actual)
+    const currentPayment = await prisma.rentalPayment.findFirst({
+      where: { leaseId: leaseId, status: 'PENDING' },
+      orderBy: { paymentDate: 'asc' }
+    });
+
+    if (!currentPayment) return { success: false, error: 'No hay pagos pendientes para avanzar.' };
+
+    // 2. Calcular la fecha del próximo mes
+    const nextPaymentDate = new Date(currentPayment.paymentDate);
+    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+
+    // 3. Ejecutar transacción atómica (Si una falla, ninguna se guarda)
+    await prisma.$transaction([
+      // A. Cambiar el estatus del actual a PAID
+      prisma.rentalPayment.update({
+        where: { id: currentPayment.id },
+        data: { status: 'PAID', paidAt: new Date() }
+      }),
+      // B. Crear el del siguiente mes en PENDING
+      prisma.rentalPayment.create({
+        data: {
+          leaseId: leaseId,
+          paymentDate: nextPaymentDate,
+          totalDue: currentPayment.totalDue,
+          serviceFee: currentPayment.serviceFee,
+          status: 'PENDING'
+        }
+      })
+    ]);
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function simulatePaymentsForContract(contractId: string, count: number) {
+  try {
+    const contract = await prisma.contract.findUnique({ where: { id: contractId } });
+    if (!contract) return { success: false, error: 'Contrato no encontrado.' };
+
+    // 1. Buscar el pago PENDING más antiguo (el actual)
+    const currentPayment = await prisma.payment.findFirst({
+      where: { contractId: contractId, status: 'PENDING' },
+      orderBy: { paymentDate: 'asc' }
+    });
+
+    if (!currentPayment) return { success: false, error: 'No hay pagos pendientes para avanzar.' };
+
+    // 2. Calcular matemáticas del siguiente mes basado en el saldo restante
+    const nextPaymentDate = new Date(currentPayment.paymentDate);
+    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+
+    const currentBalance = Number(currentPayment.remainingBalance);
+    const interestRate = Number(contract.interestRate || 0);
+    const monthlyInterestRate = interestRate > 0 ? (interestRate / 100) / 12 : 0;
+    
+    // Si la casa ya se terminó de pagar (Saldo 0), solo marcamos el último pago y ya no creamos otro.
+    if (currentBalance <= 0) {
+      await prisma.payment.update({
+        where: { id: currentPayment.id },
+        data: { status: 'PAID', paidAt: new Date() }
+      });
+      return { success: true, message: 'Contrato liquidado al 100%' };
+    }
+
+    // Calcular desglose de amortización para el nuevo mes
+    const newInterest = currentBalance * monthlyInterestRate;
+    const basePayment = Number(currentPayment.principal) + Number(currentPayment.interest); // La cuota fija base se mantiene
+    let newPrincipal = basePayment - newInterest;
+    let newRemainingBalance = currentBalance - newPrincipal;
+
+    // Ajuste por si es el último mes y sobra algún centavo suelto
+    if (newRemainingBalance < 0) {
+        newPrincipal = currentBalance;
+        newRemainingBalance = 0;
+    }
+
+    // 3. Ejecutar transacción atómica
+    await prisma.$transaction([
+      // A. Cambiar el estatus del actual a PAID
+      prisma.payment.update({
+        where: { id: currentPayment.id },
+        data: { status: 'PAID', paidAt: new Date() }
+      }),
+      // B. Crear el del siguiente mes en PENDING y con nuevo balance
+      prisma.payment.create({
+        data: {
+          contractId: contractId,
+          paymentDate: nextPaymentDate,
+          totalDue: currentPayment.totalDue,
+          principal: newPrincipal,
+          interest: newInterest,
+          taxes: currentPayment.taxes,
+          insurance: currentPayment.insurance,
+          serviceFee: currentPayment.serviceFee,
+          remainingBalance: newRemainingBalance,
+          status: 'PENDING'
+        }
+      })
+    ]);
+
+    return { success: true };
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }

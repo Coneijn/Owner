@@ -780,18 +780,8 @@ export async function assignPropertyClient(
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + leaseTerm);
 
-      const rentalPayments = [];
-      for (let i = 0; i < leaseTerm; i++) {
-        const paymentDate = new Date(startDate);
-        paymentDate.setMonth(paymentDate.getMonth() + i);
-
-        rentalPayments.push({
-          paymentDate: paymentDate,
-          totalDue: monthlyRent,
-          serviceFee: 0,
-          status: PaymentStatus.PENDING
-        });
-      }
+      // Generar ÚNICAMENTE el primer pago más próximo (coincide con el startDate)
+      const firstPaymentDate = new Date(startDate);
 
       await prisma.leaseAgreement.create({
         data: {
@@ -803,7 +793,12 @@ export async function assignPropertyClient(
           securityDeposit,
           isActive: true,
           payments: {
-            create: rentalPayments
+            create: {
+              paymentDate: firstPaymentDate,
+              totalDue: monthlyRent,
+              serviceFee: 0,
+              status: 'PENDING'
+            }
           }
         }
       });

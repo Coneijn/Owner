@@ -2,11 +2,10 @@ import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import DashboardRenterClient from './dashboard-renter-client';
-import { ChangePasswordForm, TwoFactorManager } from '@/app/components/ui/client-components'; 
+import { ChangePasswordForm, TwoFactorManager } from '@/app/components/ui/client-components';
 
 export default async function RentersDashboard() {
   const session = await auth();
-
   if (!session?.user?.email) {
     redirect('/');
   }
@@ -39,7 +38,6 @@ export default async function RentersDashboard() {
   // =========================================================================
   // 3. Lógica de Onboarding Secuencial (Contraseña -> 2FA)
   // =========================================================================
-  
   const needsPasswordChange = currentUser.forcePasswordChange === true;
   const needs2FA = currentUser.isTwoFactorEnabled === false;
 
@@ -79,41 +77,65 @@ export default async function RentersDashboard() {
   // 4. Consultas a Prisma para el Dashboard de Inquilino
   // =========================================================================
 
-  // Buscamos la propiedad asignada al inquilino a través de sus contratos activos (LeaseAgreement)
-  const propertyInfo = await prisma.property.findFirst({
-    where: { 
-      leases: {
+  // Buscamos el contrato activo (LeaseAgreement) del inquilino, 
+  // incluyendo la propiedad y TODO el historial de pagos (RentalPayment) ordenado por fecha.
+  const activeLease = await prisma.leaseAgreement.findFirst({
+    where: {
+      renters: {
         some: {
-          renters: {
-            some: {
-              id: currentUser.renterProfile.id
-            }
-          },
-          isActive: true
+          id: currentUser.renterProfile.id
+        }
+      },
+      isActive: true
+    },
+    include: {
+      property: true,
+      payments: {
+        orderBy: {
+          paymentDate: 'desc'
         }
       }
     }
   });
 
-  // Empaquetamos los datos simplificados (sin depender de contratos o pagos)
+  const propertyInfo = activeLease?.property;
+
+  // Mapeamos los pagos de la DB al formato que espera tu frontend para la tabla
+  const mappedTransactions = activeLease?.payments.map((payment) => ({
+    date: payment.paymentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }),
+    type: 'Rent Payment', 
+    amount: Number(payment.totalDue),
+    status: payment.status
+  })) || [];
+
+  // Buscamos si hay algún pago pendiente para alimentar la tarjeta principal de pago
+  const nextPendingPayment = activeLease?.payments.find(p => p.status === 'PENDING');
+
+  // Empaquetamos los datos con la información real de la base de datos
   const realRenterData = {
-    homeAddress: propertyInfo 
-      ? `${propertyInfo.address}, ${propertyInfo.city}, ${propertyInfo.state} ${propertyInfo.zipCode}` 
-      : 'Dirección pendiente de asignar',
+    homeAddress: propertyInfo
+       ? `${propertyInfo.address}, ${propertyInfo.city}, ${propertyInfo.state} ${propertyInfo.zipCode}`
+       : 'Dirección pendiente de asignar',
     propertyDetails: {
       bedrooms: propertyInfo?.bedrooms || 0,
       bathrooms: propertyInfo?.bathrooms || 0,
       image: propertyInfo?.mainImage || '',
     },
-    securityDeposit: Number(propertyInfo?.securityDeposit || 0),
-    nextPayment: Number(propertyInfo?.monthlyRent || 0), 
-    dueDate: new Date().toISOString(), // Fecha por defecto al no haber contrato
-    paymentId: null, // No aplica al no haber registro de pagos en DB
-    transactions: [], // Historial vacío por ahora
+    // Tomamos el depósito de seguridad del contrato (o de la propiedad como fallback)
+    securityDeposit: Number(activeLease?.securityDeposit || propertyInfo?.securityDeposit || 0),
+    
+    // Si hay un pago pendiente, mostramos ese total, si no, mostramos la renta mensual base
+    nextPayment: Number(nextPendingPayment?.totalDue || activeLease?.monthlyRent || propertyInfo?.monthlyRent || 0),
+    dueDate: nextPendingPayment?.paymentDate.toISOString() || new Date().toISOString(),
+    paymentId: nextPendingPayment?.id || null, // Pasamos el ID del pago real para Stripe
+    
+    // AQUÍ INYECTAMOS LOS HISTORIALES
+    transactions: mappedTransactions, 
+    
     paymentBreakdown: {
-      rent: Number(propertyInfo?.monthlyRent || 0),
-      services: 0,
-      lateFee: 0
+      rent: Number(activeLease?.monthlyRent || propertyInfo?.monthlyRent || 0),
+      services: Number(nextPendingPayment?.serviceFee || 0),
+      lateFee: Number(nextPendingPayment?.lateFee || 0)
     }
   };
 
@@ -140,10 +162,9 @@ export default async function RentersDashboard() {
             </form>
           </div>
         </header>
-
+        
         {/* CONTENIDO DEL DASHBOARD EN CHIQUITO */}
         <DashboardRenterClient data={realRenterData} />
-
       </main>
     </div>
   );

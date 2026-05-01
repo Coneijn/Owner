@@ -320,6 +320,17 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                       <span className="text-[10px] text-gray-500">
                         Started: {formatDate(contract?.startDate)}
                       </span>
+                      {/* Resumen de pagos generados */}
+                      {contract?.payments && (
+                        <div className="mt-1 pt-1 border-t border-gray-800 flex flex-col">
+                          <span className="text-[10px] text-[#f8ed1a] font-bold">
+                            {contract.payments.length} Pagos Generados
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {contract.payments.filter((p: any) => p.status === 'PAID').length} Pagados
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

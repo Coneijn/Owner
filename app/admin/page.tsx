@@ -55,15 +55,14 @@ export default async function AdminDashboard() {
     };
   });
 
-  // CONSULTA GLOBAL DE TODOS LOS CONTRATOS DE VENTA (LOANS)
-  const rawContracts = await prisma.contract.findMany({
+ const rawContracts = await prisma.contract.findMany({
     include: { 
-      property: { include: { sellerProfile: true } }, 
-      buyers: true 
-    }, 
-    orderBy: { createdAt: 'desc' }
+       property: { include: { sellerProfile: true } }, 
+       buyers: true,
+       payments: { orderBy: { paymentDate: 'asc' } } // <-- INCLUIMOS LOS PAGOS
+     },
+     orderBy: { createdAt: 'desc' }
   });
-
   const formattedContracts = rawContracts.map((c) => ({
     ...c,
     type: 'LOAN',
@@ -80,10 +79,11 @@ export default async function AdminDashboard() {
   // CONSULTA GLOBAL DE TODOS LOS ARRENDAMIENTOS (LEASES)
   const rawLeases = await prisma.leaseAgreement.findMany({
     include: { 
-      property: { include: { sellerProfile: true } }, 
-      renters: true 
-    }, 
-    orderBy: { createdAt: 'desc' }
+       property: { include: { sellerProfile: true } }, 
+       renters: true,
+       payments: { orderBy: { paymentDate: 'asc' } } // <-- INCLUIMOS LOS PAGOS
+     },
+     orderBy: { createdAt: 'desc' }
   });
 
   const formattedLeases = rawLeases.map((l) => ({
