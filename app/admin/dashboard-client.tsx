@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import DeletePropertyButton from '@/app/components/ui/delete-button';
 
 const formatMoney = (amount: number | unknown) => {
@@ -10,6 +11,16 @@ const formatMoney = (amount: number | unknown) => {
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(Number(amount));
+};
+
+const formatDate = (date: any) => {
+  if (!date) return '-';
+  try {
+    const d = new Date(date);
+    return d.toISOString().split('T')[0];
+  } catch (e) {
+    return '-';
+  }
 };
 
 const PropertySection = ({ title, items, icon, colorClass }: any) => {
@@ -194,9 +205,141 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
   );
 };
 
-export default function DashboardClient({ properties }: { properties: any[] }) {
+// Componente para renderizar la lista de Contratos/Créditos o Arrendamientos
+const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isLease?: boolean }) => {
+  const router = useRouter();
+
+  if (!contracts || contracts.length === 0) {
+    return (
+      <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl mt-6">
+        <p className="text-gray-500 text-lg">No {isLease ? 'lease agreements' : 'contracts or active loans'} found.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl mt-6">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-800">
+          <thead className="bg-[#111]">
+            <tr>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property & Type</th>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Seller Details</th>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{isLease ? 'Tenant Details' : 'Buyer Details'}</th>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Financial Terms</th>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
+            {contracts.map((contract: any) => {
+              const client = isLease 
+                ? (contract?.renters?.[0] || contract?.renter || contract?.buyers?.[0] || contract?.buyer)
+                : (contract?.buyers?.[0] || contract?.buyer);
+              
+              const seller = contract?.property?.sellerProfile;
+
+              return (
+                <tr 
+                  key={contract.id} 
+                  onClick={() => router.push(`/admin/agreements/${contract.id}?type=${isLease ? 'LEASE' : 'LOAN'}`)}
+                  className="hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  {/* Propiedad y Tipo de Contrato */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white max-w-[200px] truncate">
+                        {contract?.property?.titleEn || contract?.property?.titleEs || 'Property Name N/A'}
+                      </span>
+                      <span className="text-xs text-gray-500 mb-1">{contract?.property?.address || 'Address N/A'}</span>
+                      <span className={`w-fit px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                        contract?.type === 'LOAN' ? 'bg-[#f8ed1a] text-black' : 'bg-blue-500 text-white'
+                      }`}>
+                        {contract?.type || 'N/A'}
+                      </span>
+                    </div>
+                  </td>
+                  {/* Detalles del Vendedor */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                       {seller?.sellerImage && (
+                           <img src={seller.sellerImage} className="w-8 h-8 rounded-full object-cover border border-gray-600" alt="Seller" />
+                       )}
+                       <div className="flex flex-col">
+                         <span className="text-sm font-bold text-white">
+                           {seller?.sellerName || <span className="text-gray-600 italic">Dueño a Dueño</span>}
+                         </span>
+                         {seller?.phone && (
+                           <span className="text-xs text-gray-400">{seller.phone}</span>
+                         )}
+                       </div>
+                    </div>
+                  </td>
+                  {/* Detalles del Cliente */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white">
+                        {isLease 
+                          ? (client?.RenterName || 'Unknown Tenant') 
+                          : (`${client?.firstName || 'Unknown'} ${client?.lastName || 'Buyer'}`)
+                        }
+                      </span>
+                      {client?.phone && (
+                        <span className="text-xs text-gray-400">{client.phone}</span>
+                      )}
+                    </div>
+                  </td>
+                  {/* Términos Financieros */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm text-white font-bold">
+                        {isLease ? 'Rent: ' : 'Amt: '} {formatMoney(contract?.totalAmount || contract?.monthlyRent || 0)}
+                      </span>
+                      <div className="text-xs text-gray-500 flex gap-2">
+                        {isLease ? (
+                          <>
+                            {contract?.securityDeposit ? <span>Dep: {formatMoney(contract.securityDeposit)}</span> : null}
+                            {contract?.termInYears ? <span>Term: {contract.termInYears} mos</span> : null}
+                          </>
+                        ) : (
+                          <>
+                            {contract?.interestRate ? <span>Rate: {contract.interestRate}%</span> : null}
+                            {contract?.termInYears ? <span>Term: {contract.termInYears} yrs</span> : null}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  {/* Estado y Fechas */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      {contract?.isActive ? (
+                        <span className="text-[#529e14] text-xs font-bold uppercase">● Active</span>
+                      ) : (
+                        <span className="text-red-500 text-xs font-bold uppercase">● Inactive</span>
+                      )}
+                      <span className="text-[10px] text-gray-500">
+                        Started: {formatDate(contract?.startDate)}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default function DashboardClient({ properties = [], contracts = [] }: { properties: any[], contracts?: any[] }) {
   // 1. Estado para el input de búsqueda
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'properties' | 'contracts' | 'leases'>('properties');
+
+  // Separamos contratos de venta (Loans) y de arrendamiento (Leases)
+  const salesContracts = contracts.filter((c) => c.type === 'LOAN');
+  const leaseAgreements = contracts.filter((c) => c.type === 'RENTAL' || c.type === 'LEASE' || c.type !== 'LOAN');
 
   // 2. Filtramos la lista maestra de propiedades según la búsqueda (Título en/es, dirección, código postal)
   const filteredProperties = properties.filter((p) => {
@@ -222,68 +365,96 @@ export default function DashboardClient({ properties }: { properties: any[] }) {
   return (
     <div className="space-y-8">
       
-      {/* BARRA DE BÚSQUEDA */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <span className="text-gray-500 text-lg">🔍</span>
-        </div>
-        <input
-          type="text"
-          placeholder="Search properties by title, address, or zip code..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-gray-700 text-white rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a] transition-all shadow-lg"
-        />
+      {/* NAVEGACIÓN DE TABS */}
+      <div className="flex border-b border-gray-800 gap-6 overflow-x-auto whitespace-nowrap">
+        <button 
+          onClick={() => setActiveTab('properties')}
+          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors ${
+            activeTab === 'properties' 
+              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          All Properties
+        </button>
+        <button 
+          onClick={() => setActiveTab('contracts')}
+          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
+            activeTab === 'contracts' 
+              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          All Contracts
+          {salesContracts.length > 0 && (
+            <span className="bg-gray-800 text-white px-2 py-0.5 rounded-full text-[10px]">
+              {salesContracts.length}
+            </span>
+          )}
+        </button>
+        <button 
+          onClick={() => setActiveTab('leases')}
+          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
+            activeTab === 'leases' 
+              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          All Lease Agreements
+          {leaseAgreements.length > 0 && (
+            <span className="bg-gray-800 text-white px-2 py-0.5 rounded-full text-[10px]">
+              {leaseAgreements.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {filteredProperties.length === 0 && (
-          <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl">
-              <p className="text-gray-500 text-lg">No properties found matching "{searchTerm}".</p>
+      {/* CONTENIDO DE PROPIEDADES */}
+      {activeTab === 'properties' && (
+        <div className="space-y-8 animate-in fade-in duration-300">
+          {/* BARRA DE BÚSQUEDA */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <span className="text-gray-500 text-lg">🔍</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Search properties by title, address, or zip code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-gray-700 text-white rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a] transition-all shadow-lg"
+            />
           </div>
+
+          {filteredProperties.length === 0 && (
+              <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl">
+                  <p className="text-gray-500 text-lg">No properties found matching "{searchTerm}".</p>
+              </div>
+          )}
+
+          {/* Listas por Categoría */}
+          <PropertySection title="Available Properties" items={availableProps} icon="✅" colorClass="text-[#529e14]" />
+          <PropertySection title="Coming Soon" items={comingSoonProps} icon="⏳" colorClass="text-blue-400" />
+          <PropertySection title="Under Contract" items={underContractProps} icon="📝" colorClass="text-[#f8ed1a]" />
+          <PropertySection title="Sold History" items={soldProps} icon="💰" colorClass="text-red-500" />
+          <PropertySection title="Rented History" items={rentedProps} icon="🏠" colorClass="text-purple-400" />
+          <PropertySection title="Drafts" items={draftProps} icon="✏️" colorClass="text-orange-400" />
+        </div>
       )}
 
-      {/* Listas por Categoría */}
-      <PropertySection 
-        title="Available Properties" 
-        items={availableProps} 
-        icon="✅" 
-        colorClass="text-[#529e14]" 
-      />
-      
-      <PropertySection 
-        title="Coming Soon" 
-        items={comingSoonProps} 
-        icon="⏳" 
-        colorClass="text-blue-400" 
-      />
+      {/* CONTENIDO DE CONTRATOS */}
+      {activeTab === 'contracts' && (
+        <div className="animate-in fade-in duration-300">
+          <ContractSection contracts={salesContracts} isLease={false} />
+        </div>
+      )}
 
-      <PropertySection 
-        title="Under Contract" 
-        items={underContractProps} 
-        icon="📝" 
-        colorClass="text-[#f8ed1a]" 
-      />
-
-      <PropertySection 
-        title="Sold History" 
-        items={soldProps} 
-        icon="💰" 
-        colorClass="text-red-500" 
-      />
-
-      <PropertySection 
-        title="Rented History" 
-        items={rentedProps} 
-        icon="🏠" 
-        colorClass="text-purple-400" 
-      />
-
-      <PropertySection 
-        title="Drafts" 
-        items={draftProps} 
-        icon="✏️" 
-        colorClass="text-orange-400" 
-      />
+      {/* CONTENIDO DE RENTAS / LEASES */}
+      {activeTab === 'leases' && (
+        <div className="animate-in fade-in duration-300">
+          <ContractSection contracts={leaseAgreements} isLease={true} />
+        </div>
+      )}
     </div>
   );
 }

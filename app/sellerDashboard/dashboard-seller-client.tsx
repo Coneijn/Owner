@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import DeletePropertyButton from '@/app/components/ui/delete-button';
-
+import { useRouter } from 'next/navigation';
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -189,16 +189,17 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
   );
 };
 
-// Componente para renderizar la lista de Contratos/Créditos
-const ContractSection = ({ contracts }: { contracts: any[] }) => {
-  if (!contracts || contracts.length === 0) {
-    return (
-      <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl mt-6">
-        <p className="text-gray-500 text-lg">No contracts or active loans found.</p>
-      </div>
+// Componente para renderizar la lista de Contratos/Cr ditos 
+const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isLease?: boolean }) => {   
+  const router = useRouter();
+
+  if (!contracts || contracts.length === 0) {     
+    return (       
+      <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl mt-6">         
+        <p className="text-gray-500 text-lg">No {isLease ? 'lease agreements' : 'contracts or active loans'} found.</p>       
+      </div>     
     );
   }
-
   return (
     <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl mt-6">
       <div className="overflow-x-auto">
@@ -206,69 +207,91 @@ const ContractSection = ({ contracts }: { contracts: any[] }) => {
           <thead className="bg-[#111]">
             <tr>
               <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property & Type</th>
-              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Buyer Details</th>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{isLease ? 'Tenant Details' : 'Buyer Details'}</th>
               <th className="px-6 py-3 text-left text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Financial Terms</th>
               <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
-            {contracts.map((contract: any) => (
-              <tr key={contract.id} className="hover:bg-white/5 transition-colors">
-                {/* Propiedad y Tipo de Contrato */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white max-w-[200px] truncate">
-                      {contract?.property?.titleEn || contract?.property?.titleEs || 'Property Name N/A'}
-                    </span>
-                    <span className="text-xs text-gray-500 mb-1">{contract?.property?.address || 'Address N/A'}</span>
-                    <span className={`w-fit px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                      contract?.type === 'LOAN' ? 'bg-[#f8ed1a] text-black' : 'bg-blue-500 text-white'
-                    }`}>
-                      {contract?.type || 'N/A'}
-                    </span>
-                  </div>
-                </td>
+            {contracts.map((contract: any) => {
+              // Manejo robusto para buscar inquilinos o compradores dependiendo del contrato
+              const client = isLease 
+                 ? (contract?.renters?.[0] || contract?.renter || contract?.buyers?.[0] || contract?.buyer)
+                 : (contract?.buyers?.[0] || contract?.buyer);
+              
+              const paramType = contract.type === 'LOAN' ? 'LOAN' : 'LEASE';
 
-                {/* Detalles del Comprador */}
+              return (
+                <tr 
+                  key={contract.id} 
+                  onClick={() => router.push(`/sellerDashboard/agreements/${contract.id}?type=${paramType}`)}
+                  className="hover:bg-white/5 transition-colors cursor-pointer group"
+                >
+                  {/* Propiedad y Tipo de Contrato */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white max-w-[200px] truncate">
+                        {contract?.property?.titleEn || contract?.property?.titleEs || 'Property Name N/A'}
+                      </span>
+                      <span className="text-xs text-gray-500 mb-1">{contract?.property?.address || 'Address N/A'}</span>
+                      <span className={`w-fit px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                        contract?.type === 'LOAN' ? 'bg-[#f8ed1a] text-black' : 'bg-blue-500 text-white'
+                      }`}>
+                        {contract?.type || 'N/A'}
+                      </span>
+                    </div>
+                  </td>
+                  {/* Detalles del Cliente */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-white">
-                      {contract?.buyer?.firstName || 'Unknown'} {contract?.buyer?.lastName || 'Buyer'}
+                      {isLease 
+                        ? (client?.RenterName || 'Unknown Tenant') 
+                        : (`${client?.firstName || 'Unknown'} ${client?.lastName || 'Buyer'}`)
+                      }
                     </span>
-                    {contract?.buyer?.phone && (
-                      <span className="text-xs text-gray-400">{contract.buyer.phone}</span>
+                    {client?.phone && (
+                      <span className="text-xs text-gray-400">{client.phone}</span>
                     )}
                   </div>
                 </td>
-
                 {/* Términos Financieros */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col gap-1">
                     <span className="text-sm text-white font-bold">
-                      Amt: {formatMoney(contract?.totalAmount || 0)}
+                      {isLease ? 'Rent: ' : 'Amt: '} {formatMoney(contract?.totalAmount || contract?.monthlyRent || 0)}
                     </span>
                     <div className="text-xs text-gray-500 flex gap-2">
-                      {contract?.interestRate ? <span>Rate: {contract.interestRate}%</span> : null}
-                      {contract?.termInYears ? <span>Term: {contract.termInYears} yrs</span> : null}
+                      {isLease ? (
+                        <>
+                          {contract?.securityDeposit ? <span>Dep: {formatMoney(contract.securityDeposit)}</span> : null}
+                          {contract?.termInYears ? <span>Term: {contract.termInYears} mos</span> : null}
+                        </>
+                      ) : (
+                        <>
+                          {contract?.interestRate ? <span>Rate: {contract.interestRate}%</span> : null}
+                          {contract?.termInYears ? <span>Term: {contract.termInYears} yrs</span> : null}
+                        </>
+                      )}
                     </div>
                   </div>
                 </td>
-
-                {/* Estado y Fechas */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col gap-1">
-                    {contract?.isActive ? (
-                      <span className="text-[#529e14] text-xs font-bold uppercase">● Active</span>
-                    ) : (
-                      <span className="text-red-500 text-xs font-bold uppercase">● Inactive</span>
-                    )}
-                    <span className="text-[10px] text-gray-500">
-                      Started: {formatDate(contract?.startDate)}
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  {/* Estado y Fechas */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      {contract?.isActive ? (
+                        <span className="text-[#529e14] text-xs font-bold uppercase">● Active</span>
+                      ) : (
+                        <span className="text-red-500 text-xs font-bold uppercase">● Inactive</span>
+                      )}
+                      <span className="text-[10px] text-gray-500">
+                        Started: {formatDate(contract?.startDate)}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -278,7 +301,11 @@ const ContractSection = ({ contracts }: { contracts: any[] }) => {
 
 export default function DashboardVendedorClient({ properties = [], contracts = [] }: { properties: any[], contracts?: any[] }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'properties' | 'contracts'>('properties');
+  const [activeTab, setActiveTab] = useState<'properties' | 'contracts' | 'leases'>('properties');
+
+  // Separamos contratos de venta (Loans) y de arrendamiento (Leases)
+  const salesContracts = contracts.filter((c) => c.type === 'LOAN');
+  const leaseAgreements = contracts.filter((c) => c.type === 'RENTAL' || c.type === 'LEASE' || c.type !== 'LOAN');
 
   const filteredProperties = properties.filter((p) => {
     if (!searchTerm) return true;
@@ -303,7 +330,7 @@ export default function DashboardVendedorClient({ properties = [], contracts = [
     <div className="space-y-6">
       
       {/* NAVEGACIÓN DE TABS */}
-      <div className="flex border-b border-gray-800 gap-6">
+      <div className="flex border-b border-gray-800 gap-6 overflow-x-auto whitespace-nowrap">
         <button 
           onClick={() => setActiveTab('properties')}
           className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors ${
@@ -323,9 +350,24 @@ export default function DashboardVendedorClient({ properties = [], contracts = [
           }`}
         >
           Active Contracts
-          {contracts.length > 0 && (
+          {salesContracts.length > 0 && (
             <span className="bg-gray-800 text-white px-2 py-0.5 rounded-full text-[10px]">
-              {contracts.length}
+              {salesContracts.length}
+            </span>
+          )}
+        </button>
+        <button 
+          onClick={() => setActiveTab('leases')}
+          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
+            activeTab === 'leases' 
+              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Lease Agreements
+          {leaseAgreements.length > 0 && (
+            <span className="bg-gray-800 text-white px-2 py-0.5 rounded-full text-[10px]">
+              {leaseAgreements.length}
             </span>
           )}
         </button>
@@ -365,7 +407,14 @@ export default function DashboardVendedorClient({ properties = [], contracts = [
       {/* CONTENIDO DE CONTRATOS */}
       {activeTab === 'contracts' && (
         <div className="animate-in fade-in duration-300">
-          <ContractSection contracts={contracts} />
+          <ContractSection contracts={salesContracts} isLease={false} />
+        </div>
+      )}
+
+      {/* CONTENIDO DE RENTAS / LEASES */}
+      {activeTab === 'leases' && (
+        <div className="animate-in fade-in duration-300">
+          <ContractSection contracts={leaseAgreements} isLease={true} />
         </div>
       )}
     </div>

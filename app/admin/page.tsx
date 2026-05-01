@@ -55,6 +55,53 @@ export default async function AdminDashboard() {
     };
   });
 
+  // CONSULTA GLOBAL DE TODOS LOS CONTRATOS DE VENTA (LOANS)
+  const rawContracts = await prisma.contract.findMany({
+    include: { 
+      property: { include: { sellerProfile: true } }, 
+      buyers: true 
+    }, 
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const formattedContracts = rawContracts.map((c) => ({
+    ...c,
+    type: 'LOAN',
+    totalAmount: c.totalAmount ? Number(c.totalAmount) : 0,
+    downPayment: c.downPayment ? Number(c.downPayment) : 0,
+    principalAmount: c.principalAmount ? Number(c.principalAmount) : 0,
+    interestRate: c.interestRate ? Number(c.interestRate) : null,
+    property: c.property ? {
+      ...c.property,
+      price: c.property.price ? Number(c.property.price) : 0,
+    } : null
+  }));
+
+  // CONSULTA GLOBAL DE TODOS LOS ARRENDAMIENTOS (LEASES)
+  const rawLeases = await prisma.leaseAgreement.findMany({
+    include: { 
+      property: { include: { sellerProfile: true } }, 
+      renters: true 
+    }, 
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const formattedLeases = rawLeases.map((l) => ({
+    ...l,
+    type: 'LEASE',
+    monthlyRent: l.monthlyRent ? Number(l.monthlyRent) : 0,
+    securityDeposit: l.securityDeposit ? Number(l.securityDeposit) : null,
+    totalAmount: l.monthlyRent ? Number(l.monthlyRent) : 0, // Clave para compatibilidad de UI
+    property: l.property ? {
+      ...l.property,
+      price: l.property.price ? Number(l.property.price) : 0,
+    } : null
+  }));
+
+  const contracts = [...formattedContracts, ...formattedLeases].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   const totalProperties = properties.length;
   const availableProperties = properties.filter((p) => p.status === 'AVAILABLE').length;
   const soldProperties = properties.filter((p) => p.status === 'SOLD' || p.status === 'UNDER_CONTRACT').length;
@@ -82,6 +129,10 @@ export default async function AdminDashboard() {
     }
     return acc + income;
   }, 0);
+
+  // SANITIZACIÓN FINAL ANTIFALLOS: Elimina fechas y decimales (Decimal.js de Prisma) para Next.js
+  const safeProperties = JSON.parse(JSON.stringify(properties));
+  const safeContracts = JSON.parse(JSON.stringify(contracts));
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
@@ -182,7 +233,8 @@ export default async function AdminDashboard() {
           <StatCard title="Monthly Income Generated" value={formatMoney(monthlyIncomeGenerated)} icon="📈" color="text-[#f8ed1a]" />
         </div>
 
-        <DashboardClient properties={properties} />
+        {/* Pasamos los datos sanitizados (sin clases complejas) al Client Component */}
+        <DashboardClient properties={safeProperties} contracts={safeContracts} />
 
       </main>
     </div>

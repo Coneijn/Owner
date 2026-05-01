@@ -5,7 +5,7 @@ import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { PropertyStatus } from '@prisma/client';
+import { PropertyStatus, PaymentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 // lib/actions.ts (Solo la función authenticate)
@@ -775,19 +775,39 @@ export async function assignPropertyClient(
     if (clientType === 'RENTER') {
       const monthlyRent = parseFloat(formData.get('monthlyRent') as string || '0');
       const securityDeposit = parseFloat(formData.get('securityDeposit') as string || '0');
+      
+      const leaseTerm = parseInt(formData.get('leaseTerm') as string || '12');
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + leaseTerm);
+
+      const rentalPayments = [];
+      for (let i = 0; i < leaseTerm; i++) {
+        const paymentDate = new Date(startDate);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+
+        rentalPayments.push({
+          paymentDate: paymentDate,
+          totalDue: monthlyRent,
+          serviceFee: 0,
+          status: PaymentStatus.PENDING
+        });
+      }
 
       await prisma.leaseAgreement.create({
         data: {
           propertyId,
-          renters: { connect: profilesToConnect }, // <-- Relación Muchos-a-Muchos en Prisma
+          renters: { connect: profilesToConnect },
           startDate,
+          endDate, 
           monthlyRent,
           securityDeposit,
-          isActive: true
+          isActive: true,
+          payments: {
+            create: rentalPayments
+          }
         }
       });
 
-      // AQUÍ ES DONDE SE ACTUALIZA REALMENTE EL STATUS A RENTED
       await prisma.property.update({
         where: { id: propertyId },
         data: { status: 'RENTED', isForRent: true }

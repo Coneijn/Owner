@@ -124,14 +124,16 @@ export default async function DashboardVendedor() {
   });
 
   // B) Contratos (Créditos/Rentas) SOLO de este vendedor
+  // B.1) Contratos de Venta (Loans)
   const rawContracts = await prisma.contract.findMany({
     where: { property: { sellerProfileId: sellerProfile.id } },
-    include: { property: true, buyers: true }, // <-- Cambiamos 'buyer' por 'buyers'
+    include: { property: true, buyers: true }, 
     orderBy: { createdAt: 'desc' }
   });
 
-  const contracts = rawContracts.map((c) => ({
+  const formattedContracts = rawContracts.map((c) => ({
     ...c,
+    type: 'LOAN', // Aseguramos el identificador para la tabla
     totalAmount: c.totalAmount ? Number(c.totalAmount) : 0,
     downPayment: c.downPayment ? Number(c.downPayment) : 0,
     principalAmount: c.principalAmount ? Number(c.principalAmount) : 0,
@@ -153,6 +155,39 @@ export default async function DashboardVendedor() {
       commissionAmt: c.property.commissionAmt ? Number(c.property.commissionAmt) : null,
     } : null
   }));
+
+  // B.2) Acuerdos de Arrendamiento (Leases)
+  const rawLeases = await prisma.leaseAgreement.findMany({
+    where: { property: { sellerProfileId: sellerProfile.id } },
+    include: { property: true, renters: true }, 
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const formattedLeases = rawLeases.map((l) => ({
+    ...l,
+    type: 'LEASE', // Identificador de Renta
+    monthlyRent: l.monthlyRent ? Number(l.monthlyRent) : 0,
+    securityDeposit: l.securityDeposit ? Number(l.securityDeposit) : null,
+    totalAmount: l.monthlyRent ? Number(l.monthlyRent) : 0, // Clave para compatibilidad de UI
+    property: l.property ? {
+      ...l.property,
+      price: l.property.price ? Number(l.property.price) : 0,
+      previousPrice: l.property.previousPrice ? Number(l.property.previousPrice) : null,
+      downPayment: l.property.downPayment ? Number(l.property.downPayment) : 0,
+      interestRate: l.property.interestRate ? Number(l.property.interestRate) : 0,
+      taxes: l.property.taxes ? Number(l.property.taxes) : 0,
+      insurance: l.property.insurance ? Number(l.property.insurance) : 0,
+      monthlyRent: l.property.monthlyRent ? Number(l.property.monthlyRent) : 0,
+      securityDeposit: l.property.securityDeposit ? Number(l.property.securityDeposit) : null,
+      commissionPct: l.property.commissionPct ? Number(l.property.commissionPct) : null,
+      commissionAmt: l.property.commissionAmt ? Number(l.property.commissionAmt) : null,
+    } : null
+  }));
+
+  // Juntamos ambos historiales en una sola variable para pasarlo al componente visual
+  const contracts = [...formattedContracts, ...formattedLeases].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   // Métricas
   const totalProperties = properties.length;

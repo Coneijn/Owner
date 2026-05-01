@@ -168,6 +168,18 @@ export default function AssignClientForm({
                   className="w-full bg-[#0a0f1c] text-white border border-gray-700 p-2 rounded focus:ring-2 focus:ring-[#f8ed1a] outline-none" 
                 />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Lease Term (Months)</label>
+                <select 
+                  name="leaseTerm" 
+                  required 
+                  defaultValue="12"
+                  className="w-full bg-[#0a0f1c] text-white border border-gray-700 p-2 rounded focus:ring-2 focus:ring-[#f8ed1a] outline-none"
+                >
+                  <option value="6">6 Months</option>
+                  <option value="12">12 Months</option>
+                </select>
+              </div>
             </>
           ) : (
             <>
