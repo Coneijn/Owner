@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { useSearchParams } from 'next/navigation';
+import { pdf } from '@react-pdf/renderer';
+import AmortizationTemplate from './amortization-template';
 
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -20,9 +22,28 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
   const totalNextPayment = data.nextPayment + SERVICE_FEE;
   
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const searchParams = useSearchParams();
   const success = searchParams.get('success');
   const canceled = searchParams.get('canceled');
+
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      const blob = await pdf(<AmortizationTemplate data={data.fullAmortization} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Amortization_Table.pdf';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al generar tu tabla.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handlePayment = async () => {
     if (!data.paymentId) return;
@@ -259,8 +280,12 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
             </div>
 
           </div>
-          <button className="w-full mt-8 py-3 bg-transparent border border-gray-600 rounded-lg text-white hover:bg-white hover:text-black text-xs font-bold uppercase tracking-widest transition-colors duration-200">
-            Download Amortization Table
+          <button 
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="w-full mt-8 py-3 bg-transparent border border-gray-600 rounded-lg text-white hover:bg-white hover:text-black text-xs font-bold uppercase tracking-widest transition-colors duration-200 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDownloading ? 'Generando PDF...' : 'Download Amortization Table'}
           </button>
         </div>
 

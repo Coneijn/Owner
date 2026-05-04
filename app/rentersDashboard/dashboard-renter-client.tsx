@@ -33,7 +33,7 @@ export default function DashboardRenterClient({ data }: { data: any }) {
       const result = await response.json();
       
       if (result.url) {
-        window.location.href = result.url; // Redirigir a Stripe
+        window.location.href = result.url; 
       } else {
         console.error(result.error);
         alert('Hubo un error al generar el pago. Intenta de nuevo.');
@@ -46,7 +46,7 @@ export default function DashboardRenterClient({ data }: { data: any }) {
     }
   };
 
-  // Inicializar Chart.js para desglose de renta
+  
   useEffect(() => {
     if (chartRef.current) {
       if (chartInstance.current) {

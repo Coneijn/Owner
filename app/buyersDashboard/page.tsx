@@ -143,6 +143,16 @@ export default async function BuyersDashboard() {
   // Empaquetamos todo para enviarlo a tu Client Component
   const realBuyerData = {
     homeAddress: `${contract.property.address}, ${contract.property.city}, ${contract.property.state} ${contract.property.zipCode}`,
+    fullAmortization: [...contract.payments]
+      .sort((a, b) => a.paymentDate.getTime() - b.paymentDate.getTime())
+      .map(p => ({
+        date: p.paymentDate.toISOString(),
+        payment: Number(p.totalDue),
+        principal: Number(p.principal),
+        interest: Number(p.interest),
+        balance: Number(p.remainingBalance),
+        status: p.status
+      })),
     outstandingBalance: outstandingBalance,
     interestRate: Number(contract.interestRate || 0),
     nextPayment: pendingPayment ? Number(pendingPayment.totalDue) : 0,
