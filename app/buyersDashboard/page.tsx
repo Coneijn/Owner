@@ -147,7 +147,7 @@ export default async function BuyersDashboard() {
       .sort((a, b) => a.paymentDate.getTime() - b.paymentDate.getTime())
       .map(p => ({
         date: p.paymentDate.toISOString(),
-        payment: Number(p.totalDue),
+        payment: Number(p.totalDue), 
         principal: Number(p.principal),
         interest: Number(p.interest),
         balance: Number(p.remainingBalance),

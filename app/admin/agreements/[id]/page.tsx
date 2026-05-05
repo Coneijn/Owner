@@ -251,10 +251,9 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
                     const taxes = Number(payment.taxes || 0);
                     const insurance = Number(payment.insurance || 0);
                     
-                    // Solo sumamos el Service Fee fijo si es una compra (!isLease)
-                    const serviceFee = isLease ? Number(payment.serviceFee || 0) : SERVICE_FEE;
+                    const serviceFee = Number(payment.serviceFee || 0);
                     const escrow = taxes + insurance + serviceFee;
-                    const totalDue = isLease ? Number(payment.totalDue || 0) : Number(payment.totalDue || 0) + SERVICE_FEE;
+                    const totalDue = Number(payment.totalDue || 0);
                     
                     const remaining = Number(payment.remainingBalance || 0);
                     const lateFee = Number(payment.lateFee || 0);

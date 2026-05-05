@@ -13,7 +13,7 @@ const formatMoney = (amount: number) => {
     maximumFractionDigits: 2,
   }).format(amount);
 };
-const SERVICE_FEE = 39;
+const SERVICE_FEE = 0;//se vuelve inecesario ya que se arreglo al crear el contrato
 
 export default function DashboardBuyerClient({ data }: { data: any }) {
   const chartRef = useRef<HTMLCanvasElement>(null);

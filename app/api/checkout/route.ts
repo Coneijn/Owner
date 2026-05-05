@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       productDescription = `Pago de principal, intereses e impuestos`;
       
       // SUMAMOS EL SERVICE_FEE PARA COMPRADORES
-      const totalAmountWithFee = Number(buyerPayment.totalDue) + SERVICE_FEE;
+      const totalAmountWithFee = Number(buyerPayment.totalDue);
       unitAmount = Math.round(totalAmountWithFee * 100);
       paymentType = 'SALE';
     } else {

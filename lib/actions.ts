@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PropertyStatus, PaymentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { SERVICE_FEE } from '@/lib/utils';
 
 // lib/actions.ts (Solo la función authenticate)
 export async function authenticate(
@@ -771,7 +772,6 @@ export async function assignPropertyClient(
       if (coProfileId) profilesToConnect.push({ id: coProfileId });
     }
 
-    // 5. ASIGNACIÓN A LA PROPIEDAD Y CREACIÓN DE CONTRATOS
     if (clientType === 'RENTER') {
       const monthlyRent = parseFloat(formData.get('monthlyRent') as string || '0');
       const securityDeposit = parseFloat(formData.get('securityDeposit') as string || '0');
@@ -780,7 +780,6 @@ export async function assignPropertyClient(
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + leaseTerm);
 
-      // Generar ÚNICAMENTE el primer pago más próximo (coincide con el startDate)
       const firstPaymentDate = new Date(startDate);
 
       await prisma.leaseAgreement.create({
@@ -795,8 +794,8 @@ export async function assignPropertyClient(
           payments: {
             create: {
               paymentDate: firstPaymentDate,
-              totalDue: monthlyRent,
-              serviceFee: 0,
+              totalDue: monthlyRent, // <-- Si no llevan fee extra en renta, lo dejamos igual
+              serviceFee: 0, 
               status: 'PENDING'
             }
           }
@@ -817,7 +816,6 @@ export async function assignPropertyClient(
       const principal = totalAmount - downPayment;
       const taxes = property.taxes ? Number(property.taxes) / 12 : 0; 
       const insurance = property.insurance ? Number(property.insurance) / 12 : 0; 
-
       const termInMonths = termInYears * 12;
       const monthlyInterestRate = interestRate > 0 ? (interestRate / 100) / 12 : 0;
 
@@ -832,7 +830,9 @@ export async function assignPropertyClient(
 
       const firstMonthInterest = principal * monthlyInterestRate;
       const firstMonthPrincipal = pmt - firstMonthInterest;
-      const totalDue = pmt + taxes + insurance;
+      
+      // AÑADIMOS EL SERVICE_FEE AL CÁLCULO DEL TOTAL DUE
+      const totalDue = pmt + taxes + insurance + SERVICE_FEE; 
       const newRemainingBalance = principal - firstMonthPrincipal;
 
       const firstPaymentDate = new Date(startDate);
@@ -841,7 +841,7 @@ export async function assignPropertyClient(
       await prisma.contract.create({
         data: {
           propertyId: propertyId,
-          buyers: { connect: profilesToConnect }, // <-- Relación Muchos-a-Muchos en Prisma
+          buyers: { connect: profilesToConnect },
           type: 'LOAN',
           totalAmount,
           downPayment,
@@ -850,6 +850,7 @@ export async function assignPropertyClient(
           termInYears,
           monthlyTaxes: taxes,
           monthlyInsurance: insurance,
+          monthlyServFee: SERVICE_FEE, // <-- GUARDAMOS EL FEE EN LA CABECERA
           startDate, 
           payments: {
             create: {
@@ -859,7 +860,7 @@ export async function assignPropertyClient(
               interest: firstMonthInterest > 0 ? firstMonthInterest : 0,
               taxes,
               insurance,
-              serviceFee: 0,
+              serviceFee: SERVICE_FEE, // <-- GUARDAMOS EL FEE REAL EN LA AMORTIZACIÓN
               remainingBalance: newRemainingBalance > 0 ? newRemainingBalance : 0,
               status: 'PENDING'
             }
@@ -867,7 +868,6 @@ export async function assignPropertyClient(
         }
       });
 
-      // AQUÍ ES DONDE SE ACTUALIZA REALMENTE EL STATUS A SOLD
       await prisma.property.update({
         where: { id: propertyId },
         data: { status: 'SOLD', isForSale: true }
