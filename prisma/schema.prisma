@@ -11,78 +11,98 @@ datasource db {
 // 2. Modelo de Usuario 
 // Busca tu modelo User y actualízalo así:
 model User {
-  id                  String   @id @default(cuid())
-  name                String?
-  email               String   @unique
-  password            String // Hash del password
-  role                Role     @default(ADMIN)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String // Hash del password
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Seguridad y Onboarding
-  twoFactorSecret     String? 
-  isTwoFactorEnabled  Boolean  @default(false)
-  forcePasswordChange Boolean  @default(true) // <-- NUEVO: Para el flujo de onboarding
+  twoFactorSecret     String?
+  isTwoFactorEnabled  Boolean         @default(false)
+  forcePasswordChange Boolean         @default(true) //  Para el flujo de onboarding
   auditLogs           AuditLog[]
   // Relaciones de Perfiles
   sellerProfile       SellerProfile?
-  agentProfile        AgentProfile?  // <-- NUEVO: Relación con el Agente
-  renterProfile       RenterProfile?       
-  buyerProfile        BuyerProfile?  // <-- NUEVO: Relación con el Comprador
+  agentProfile        AgentProfile? //  Relación con el Agente
+  renterProfile       RenterProfile?
+  buyerProfile        BuyerProfile? // Relación con el Comprador
+  webuserProfile      WebuserProfile?
+  // --- Relaciones de Mensajería Interna ---
+  sentMessages        Message[]       @relation("SentMessages")
+  receivedMessages    Message[]       @relation("ReceivedMessages")
 }
+
+model WebuserProfile {
+  id String @id @default(cuid())
+
+  // Relación con el usuario principal (Autenticación y Mensajes)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tiempos de registro
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model RenterProfile {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relación con el usuario (Autenticación)
-  userId      String?   @unique
-  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Datos públicos del rentero
-  RenterName  String?  // Nombre a mostrar públicamente
-  phone String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  RenterName String? // Nombre a mostrar públicamente
+  phone      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  leases          LeaseAgreement[]
+  leases LeaseAgreement[]
 }
+
 model SellerProfile {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relación con el usuario (Autenticación)
-  userId      String?   @unique
-  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Datos públicos del vendedor
-  sellerName  String?  // Nombre a mostrar públicamente
-  sellerImage String?  // Avatar público
+  sellerName  String? // Nombre a mostrar públicamente
+  sellerImage String? // Avatar público
   sellerType  String   @default("OWNER")
-  phone String?
+  phone       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relación 1-a-Muchos con las propiedades
-  properties  Property[]
+  properties Property[]
 }
+
 // NUEVO MODELO: Perfil para Agentes que refieren clientes
 model AgentProfile {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relación con el usuario (Autenticación)
-  userId      String?  @unique
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Datos del agente
-  agentName   String?
-  agentPhone  String?
-  agentImage  String?
-  company     String?  // Opcional, por si trabajan para una agencia
-  
+  agentName  String?
+  agentPhone String?
+  agentImage String?
+  company    String? // Opcional, por si trabajan para una agencia
+
   // Notas internas sobre comisiones o acuerdos
   commissionNotes String? @db.Text
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 // 3. Modelo de Propiedad 
 model Property {
   id        String   @id @default(cuid())
@@ -105,15 +125,15 @@ model Property {
   descriptionEs String @db.Text
 
   // --- Datos Financieros (Venta) ---
-  isForSale    Boolean @default(true)
-  price        Decimal? @db.Decimal(10, 2) 
+  isForSale Boolean  @default(true)
+  price     Decimal? @db.Decimal(10, 2)
 
-  previousPrice Decimal? @db.Decimal(10, 2)
+  previousPrice     Decimal?  @db.Decimal(10, 2)
   lastPriceChangeAt DateTime?
 
-  downPayment  Decimal? @db.Decimal(10, 2) 
-  interestRate Decimal? @db.Decimal(5, 2) 
-  taxes        Decimal? @db.Decimal(10, 2) 
+  downPayment  Decimal? @db.Decimal(10, 2)
+  interestRate Decimal? @db.Decimal(5, 2)
+  taxes        Decimal? @db.Decimal(10, 2)
   insurance    Decimal? @db.Decimal(10, 2)
 
   // --- Datos Financieros (Renta / Lease) [NUEVO] ---
@@ -128,13 +148,13 @@ model Property {
   zipCode      String
   phoneNumber  String?
   calendarLink String?
-  
+
   // CAMPOS DE UBICACIÓN 
-  latitude      Float?
-  longitude     Float?
-  lockboxCode   String?
+  latitude        Float?
+  longitude       Float?
+  lockboxCode     String?
   lockboxAccesses LockboxAccess[] // Relación con los magic links generados
-  availableDate DateTime?
+  availableDate   DateTime?
 
   // --- Especificaciones Técnicas ---
   bedrooms  Int
@@ -151,34 +171,34 @@ model Property {
 
   // --- SEO de la Página (Meta Tags) ---
   seoTitleEn       String?
-  seoDescriptionEn String? @db.Text
+  seoDescriptionEn String?  @db.Text
   seoTitleEs       String?
-  seoDescriptionEs String? @db.Text
-  focusKeywordEn String?
-  focusKeywordEs String?
+  seoDescriptionEs String?  @db.Text
+  focusKeywordEn   String?
+  focusKeywordEs   String?
   // --- Características Extra ---
-  features String[]
+  features         String[]
 
   // --- Sección "Conoce a tu Vendedor" ---
-  showSeller  Boolean @default(false)
+  showSeller      Boolean        @default(false)
   sellerProfileId String?
   sellerProfile   SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: SetNull)
-  
+
   //contenido para agentes 
   emoji              String?
   condition          String?
-  commissionPct      Decimal? @db.Decimal(5, 2)
-  commissionAmt      Decimal? @db.Decimal(10, 2)
-  commissionNote     String?  @db.Text
+  commissionPct      Decimal?            @db.Decimal(5, 2)
+  commissionAmt      Decimal?            @db.Decimal(10, 2)
+  commissionNote     String?             @db.Text
   showingSteps       String[]
-  showingNotes       String?  @db.Text
+  showingNotes       String?             @db.Text
   buyerTags          String[]
   buyerIncome        String?
   buyerCredit        String?
   buyerFinancing     String?
   marketingMaterials MarketingMaterial[]
-  contracts Contract[]
-  leases          LeaseAgreement[]
+  contracts          Contract[]
+  leases             LeaseAgreement[]
 }
 
 //Usado por el agente
@@ -195,12 +215,12 @@ model MarketingMaterial {
 
 // 4. Modelo de Blog Post (Actualizado)
 model Post {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  slug        String   @unique
-  isPublished Boolean  @default(false)
+  slug        String  @unique
+  isPublished Boolean @default(false)
 
   // Contenido Bilingüe
   titleEn   String
@@ -228,7 +248,7 @@ model Post {
   seoTitleEs     String?
   seoDescEs      String?
   focusKeywordEs String? // Keyword principal ES
-  isCaseStudy Boolean @default(false) // <-- NUEVO: Para el blog de casos de estudio
+  isCaseStudy    Boolean @default(false) //  Para el blog de casos de estudio
 }
 
 // 5. Modelo de Imágenes para el Blog [NUEVO]
@@ -240,64 +260,68 @@ model PostImage {
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
+
 // NUEVO MODELO: Registro de Auditoría Centralizado (Para Accesos y Cambios en Plataforma)
 model AuditLog {
-  id           String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // 1. QUÉ pasó
-  action       String   // Ej: "MAGIC_LINK_GENERATED", "PROPERTY_UPDATED", "PROPERTY_DELETED"
-  entityType   String?  // Ej: "LOCKBOX", "PROPERTY", "SELLER_PROFILE"
-  entityId     String?  // El ID del registro que fue modificado o creado
-  
+  action     String // Ej: "MAGIC_LINK_GENERATED", "PROPERTY_UPDATED", "PROPERTY_DELETED"
+  entityType String? // Ej: "LOCKBOX", "PROPERTY", "SELLER_PROFILE"
+  entityId   String? // El ID del registro que fue modificado o creado
+
   // 2. QUIÉN lo hizo (Actor Interno: Admin / Seller)
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   // 3. QUIÉN lo hizo (Actor Externo: Cliente desde GHL)
   contactPhone String?
   contactName  String?
-  
+
   // 4. CONTEXTO (Datos fijos por si la propiedad o el usuario son eliminados en el futuro)
-  propertyId   String?  // Relación suave (solo el ID como texto)
-  address      String?  
-  details      String?  @db.Text // Aquí puedes guardar qué campos cambiaron (en formato JSON o texto)
-  
-  createdAt    DateTime @default(now())
+  propertyId String? // Relación suave (solo el ID como texto)
+  address    String?
+  details    String? @db.Text // Aquí puedes guardar qué campos cambiaron (en formato JSON o texto)
+
+  createdAt DateTime @default(now())
 }
+
 // NUEVO MODELO: Sesión temporal segura para la vista del Dropdown
 model SelectionSession {
-  id           String   @id @default(cuid())
-  token        String   @unique // Token corto para la URL (ej. misitio.com/seleccionar/abc-123)
-  
+  id    String @id @default(cuid())
+  token String @unique // Token corto para la URL (ej. misitio.com/seleccionar/abc-123)
+
   // Datos del solicitante guardados de forma segura (No van en la URL)
-  contactPhone String   // Aquí sí lo hacemos obligatorio
+  contactPhone String // Aquí sí lo hacemos obligatorio
   contactName  String?
-  
+
   // Control de tiempo y uso
-  expiresAt    DateTime // Le puedes dar más tiempo, ej. 30 minutos o 1 hora
-  isUsed       Boolean  @default(false) // Se marca true cuando eligen la casa
-  
-  createdAt    DateTime @default(now())
+  expiresAt DateTime // Le puedes dar más tiempo, ej. 30 minutos o 1 hora
+  isUsed    Boolean  @default(false) // Se marca true cuando eligen la casa
+
+  createdAt DateTime @default(now())
 }
+
 // NUEVO MODELO: Sistema de Magic Links para Códigos de Lockbox
 model LockboxAccess {
-  id          String   @id @default(cuid())
-  token       String   @unique // El hash único para la URL (ej. misitio.com/access/ab12cd34)
-  
+  id    String @id @default(cuid())
+  token String @unique // El hash único para la URL (ej. misitio.com/access/ab12cd34)
+
   // Relación con la propiedad
-  propertyId  String
-  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   // Datos del solicitante (Viene de GHL)
   contactName  String?
-  contactPhone String? 
-  
+  contactPhone String?
+
   // Control de tiempo y uso
-  expiresAt   DateTime // Se calculará como now() + 5 minutos al crearlo
-  isUsed      Boolean  @default(false) // Para invalidarlo si ya lo abrieron y se salieron
-  
-  createdAt   DateTime @default(now())
+  expiresAt DateTime // Se calculará como now() + 5 minutos al crearlo
+  isUsed    Boolean  @default(false) // Para invalidarlo si ya lo abrieron y se salieron
+
+  createdAt DateTime @default(now())
 }
+
 // 6. Modelo de Imágenes de Propiedades (Existente)
 model PropertyImage {
   id  String @id @default(cuid())
@@ -317,48 +341,46 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
-
-
 // ---  Perfil del Comprador  ---
 model BuyerProfile {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relación con el usuario (Autenticación)
-  userId      String?  @unique
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Datos del cliente (Cabecera del CSV)
-  firstName   String
-  lastName    String
-  phone       String?
+  firstName        String
+  lastName         String
+  phone            String?
   // El email ya vive en el modelo User principal
-  stripeCustomerID String? @unique
+  stripeCustomerID String?    @unique
   // Relación con sus contratos de propiedades
-  contracts   Contract[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  contracts        Contract[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 // --- NUEVO: Términos del Préstamo o Renta (Cabecera y Resumen del CSV) ---
 model Contract {
-  id              String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relaciones
-  propertyId      String
-  property        Property @relation(fields: [propertyId], references: [id])
-  
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+
   // Arreglo de compradores (Muchos a Muchos)
-  buyers          BuyerProfile[] 
+  buyers BuyerProfile[]
 
   // Tipo de contrato
-  type            ContractType @default(LOAN) 
+  type ContractType @default(LOAN)
 
   // Datos Financieros (Términos iniciales)
   totalAmount     Decimal  @db.Decimal(12, 2) // Valor total de la propiedad/préstamo
   downPayment     Decimal  @db.Decimal(12, 2) // Enganche inicial
   principalAmount Decimal  @db.Decimal(12, 2) // Capital original a financiar
-  interestRate    Decimal? @db.Decimal(5, 2)  // Tasa de interés (ej. 8.5)
-  termInYears     Int?     // Plazo en años (ej. 15 o 30)
+  interestRate    Decimal? @db.Decimal(5, 2) // Tasa de interés (ej. 8.5)
+  termInYears     Int? // Plazo en años (ej. 15 o 30)
   startDate       DateTime // Fecha de inicio del contrato
 
   // Cuotas Fijas Mensuales Adicionales (Escrow/Servicios)
@@ -366,98 +388,129 @@ model Contract {
   monthlyInsurance Decimal? @db.Decimal(10, 2)
   monthlyServFee   Decimal? @db.Decimal(10, 2) // Tarifa de servicio
 
-  isActive        Boolean  @default(true)
+  isActive Boolean @default(true)
 
   // Historial de amortización
-  payments        Payment[]
+  payments Payment[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 model LeaseAgreement {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Relaciones Explícitas (A quién y de qué propiedad)
-  propertyId      String
-  property        Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+
   // Arreglo de inquilinos (Muchos a Muchos)
-  renters         RenterProfile[]
+  renters RenterProfile[]
 
   // Condiciones del contrato (El historial "congelado" de esta transacción)
   startDate       DateTime
   endDate         DateTime? // Opcional, por si el contrato es mes a mes sin fecha de fin
-  monthlyRent     Decimal  @db.Decimal(10, 2)
-  securityDeposit Decimal? @db.Decimal(10, 2)
-  isActive        Boolean  @default(true) // Para saber si es el contrato actual o uno viejo
+  monthlyRent     Decimal   @db.Decimal(10, 2)
+  securityDeposit Decimal?  @db.Decimal(10, 2)
+  isActive        Boolean   @default(true) // Para saber si es el contrato actual o uno viejo
 
   // Relación 1-a-Muchos: Todos los pagos asociados a ESTE contrato en específico
-  payments        RentalPayment[]
+  payments RentalPayment[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 // --- NUEVO: Modelo para Enlaces de Primer Acceso / Magic Links ---
 model VerificationToken {
   id         String   @id @default(cuid())
-  identifier String   // Guardaremos el email aquí
+  identifier String // Guardaremos el email aquí
   token      String   @unique
   expires    DateTime
 
   @@unique([identifier, token])
 }
+
 // --- NUEVO: Tabla de Amortización (Las filas detalladas de tus CSV) ---
 model Payment {
-  id            String   @id @default(cuid())
-  
-  contractId    String
-  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
 
-  paymentDate   DateTime // Fecha en la que toca el pago o se realizó
-  
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  paymentDate DateTime // Fecha en la que toca el pago o se realizó
+
   // Desglose del pago mensual
-  totalDue      Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes en total
-  principal     Decimal  @db.Decimal(10, 2) // Cuánto va a capital
-  interest      Decimal  @db.Decimal(10, 2) // Cuánto va a intereses
-  taxes         Decimal? @db.Decimal(10, 2) // Impuestos de este mes
-  insurance     Decimal? @db.Decimal(10, 2) // Seguro de este mes
-  serviceFee    Decimal? @db.Decimal(10, 2) // Tarifa de servicio de este mes
-  lateFee       Decimal? @db.Decimal(10, 2) @default(0) // Penalizaciones por atraso
-  
+  totalDue   Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes en total
+  principal  Decimal  @db.Decimal(10, 2) // Cuánto va a capital
+  interest   Decimal  @db.Decimal(10, 2) // Cuánto va a intereses
+  taxes      Decimal? @db.Decimal(10, 2) // Impuestos de este mes
+  insurance  Decimal? @db.Decimal(10, 2) // Seguro de este mes
+  serviceFee Decimal? @db.Decimal(10, 2) // Tarifa de servicio de este mes
+  lateFee    Decimal? @default(0) @db.Decimal(10, 2) // Penalizaciones por atraso
+
   // Saldo restante DESPUÉS de este pago
-  remainingBalance Decimal @db.Decimal(12, 2) 
+  remainingBalance Decimal @db.Decimal(12, 2)
 
   // Control de estado
-  status        PaymentStatus @default(PENDING) 
-  paidAt        DateTime?     // Fecha real en que el cliente pagó
+  status PaymentStatus @default(PENDING)
+  paidAt DateTime? // Fecha real en que el cliente pagó
 
   stripePaymentIntentID String? @unique
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 model RentalPayment {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Relación Explícita con el Contrato (Ya no va directo a la propiedad/rentero)
-  leaseId         String
-  lease           LeaseAgreement @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  leaseId String
+  lease   LeaseAgreement @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 
-  paymentDate     DateTime // Fecha en la que toca el pago
-  
+  paymentDate DateTime // Fecha en la que toca el pago
+
   // Desglose del pago
-  totalDue        Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes
-  serviceFee      Decimal? @db.Decimal(10, 2) // Tarifa de servicio (plataforma)
-  lateFee         Decimal? @db.Decimal(10, 2) @default(0) // Penalizaciones
-  
-  // Control de estado
-  status          PaymentStatus @default(PENDING) 
-  paidAt          DateTime?     // Fecha real en la que el cliente pagó
-  stripePaymentIntentID String? @unique
+  totalDue   Decimal  @db.Decimal(10, 2) // Lo que debe pagar este mes
+  serviceFee Decimal? @db.Decimal(10, 2) // Tarifa de servicio (plataforma)
+  lateFee    Decimal? @default(0) @db.Decimal(10, 2) // Penalizaciones
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  // Control de estado
+  status                PaymentStatus @default(PENDING)
+  paidAt                DateTime? // Fecha real en la que el cliente pagó
+  stripePaymentIntentID String?       @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+model Message {
+  id String @id @default(cuid())
+
+  // Relación: Quién envía (Remitente)
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Relación: Quién recibe (Destinatario)
+  recipientId String
+  recipient   User   @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  // Contenido del mensaje
+  content String @db.Text // Se usa @db.Text por si los mensajes son muy largos
+
+  // Estado del mensaje (Como lo sugirió Alexis)
+  isRead Boolean @default(false)
+
+  // Fecha y hora
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Opcional: Para optimizar consultas si en el futuro tienen muchos mensajes
+  @@index([recipientId, isRead])
+  @@index([senderId])
+}
+
 // 7. Enums
 enum Role {
   ADMIN
@@ -473,6 +526,7 @@ enum PropertyStatus {
   DRAFT
   COMING_SOON
 }
+
 // --- NUEVOS ENUMS ---
 enum ContractType {
   LOAN

@@ -141,17 +141,29 @@ export default async function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             
-            <div className="flex items-center gap-3 group">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                  <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 group">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
+                    <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-white text-lg font-black uppercase tracking-tight leading-none">
+                      Admin <span className="text-[#f8ed1a]">Panel</span>
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">v1.1 Dashboard</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                  <span className="text-white text-lg font-black uppercase tracking-tight leading-none">
-                    Admin <span className="text-[#f8ed1a]">Panel</span>
-                  </span>
-                  <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">v1.1 Dashboard</span>
-              </div>
+
+              {/* Botón de Mensajes */}
+              <Link 
+                href="/chat"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white text-xs font-bold uppercase tracking-wide transition-all shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
+                Mensajes
+              </Link>
             </div>
+            
             
             <div className="flex items-center gap-6">
               

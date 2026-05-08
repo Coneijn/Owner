@@ -222,6 +222,25 @@ export default async function DashboardVendedor() {
               Manage your properties and monitor your real estate portfolio.
             </p>
           </div>
+          <Link 
+              href="/chat"
+              className="bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all flex items-center gap-2 shadow-lg"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/>
+              </svg>
+              <span>Mensajes</span>
+            </Link>
           <div className="flex gap-4">
             <Link href="/sellerDashboard/properties/new" className="bg-[#529e14] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[#529e14]/20 hover:bg-[#438210] transition-colors">
               + New Listing

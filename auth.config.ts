@@ -8,7 +8,11 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnAdmin = nextUrl.pathname.startsWith('/admin');
+      const isOnChat = nextUrl.pathname.startsWith('/chat');
       const isLoginPage = nextUrl.pathname === '/login';
+
+      // Bloqueo preventivo: Si intenta entrar al chat sin sesión, al login
+      if (isOnChat && !isLoggedIn) return false;
 
       // Extraemos el rol y los perfiles inyectados en la sesión
       // Usamos @ts-ignore temporalmente si no has extendido los tipos de NextAuth

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import DashboardRenterClient from './dashboard-renter-client';
 import { ChangePasswordForm, TwoFactorManager } from '@/app/components/ui/client-components';
-
+import Link from 'next/link';
 export default async function RentersDashboard() {
   const session = await auth();
   if (!session?.user?.email) {
@@ -154,6 +154,25 @@ export default async function RentersDashboard() {
               <span className="text-[#529e14]">📍</span> {realRenterData.homeAddress}
             </p>
           </div>
+          <Link 
+              href="/chat"
+              className="bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all flex items-center gap-2 shadow-lg"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/>
+              </svg>
+              <span>Mensajes</span>
+            </Link>
           <div className="flex gap-4">
             <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
               <button className="bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">
