@@ -3,14 +3,17 @@
 import { useState } from "react"
 import { sendMessage } from "@/app/actions/chat-actions"
 import Link from "next/link"
+import { logoutAction } from "@/lib/user-actions" // Usamos la nueva Server Action
 
-export default function ChatClient({ currentUserId, initialMessages, contacts }: any) {
+// Agregamos isWebUser a los props
+export default function ChatClient({ currentUserId, initialMessages, contacts, isWebUser }: any) {
   const [activeContact, setActiveContact] = useState<any>(null)
   const [text, setText] = useState("")
 
   const chatMessages = initialMessages.filter((m: any) => 
-    (m.senderId === currentUserId && m.recipientId === activeContact?.id) ||
-    (m.senderId === activeContact?.id && m.recipientId === currentUserId)
+    ((m.senderId === currentUserId && m.recipientId === activeContact?.id) ||
+    (m.senderId === activeContact?.id && m.recipientId === currentUserId)) &&
+    m.content !== "--initiate conversation--" // Ocultamos el mensaje técnico
   )
 
   const handleSend = async (e: React.FormEvent) => {
@@ -27,12 +30,24 @@ export default function ChatClient({ currentUserId, initialMessages, contacts }:
       <div className="w-80 border-r border-gray-200 bg-brand-header text-white flex flex-col">
         <div className="p-4 font-bold text-lg border-b border-gray-800 bg-brand-dark text-brand-accent shadow-sm z-10 flex items-center justify-between">
           <span>Mensajes Internos</span>
-          <Link 
-            href="/login" 
-            className="text-[10px] uppercase tracking-wider bg-brand-header text-gray-400 px-2 py-1 rounded border border-gray-700 hover:text-brand-accent hover:border-brand-accent transition-all duration-200"
-          >
-            ← Volver
-          </Link>
+          
+          {isWebUser ? (
+            <form action={logoutAction}>
+              <button 
+                type="submit"
+                className="text-[10px] uppercase tracking-wider bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/30 hover:bg-red-500/20 hover:border-red-500 transition-all duration-200"
+              >
+                Cerrar Sesión
+              </button>
+            </form>
+          ) : (
+            <Link 
+              href="/login" 
+              className="text-[10px] uppercase tracking-wider bg-brand-header text-gray-400 px-2 py-1 rounded border border-gray-700 hover:text-brand-accent hover:border-brand-accent transition-all duration-200"
+            >
+              ← Volver
+            </Link>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {contacts.map((c: any) => (

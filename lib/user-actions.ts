@@ -1,7 +1,7 @@
 // lib/user-actions.ts
 'use server';
 
-import { auth } from '@/auth';
+import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
@@ -251,4 +251,54 @@ export async function disableTwoFactor() {
   } catch (error) {
     return { error: "Error al desactivar 2FA." };
   }
+}
+export async function registerWebUser(prevState: any, formData: FormData) {
+  try {
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    const password = formData.get('password') as string;
+
+    if (!email || !password || !name || !phone) {
+      return { error: 'Todos los campos son obligatorios.' };
+    }
+
+    // 1. Validar que el correo no exista
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (existingUser) {
+      return { error: 'El correo electrónico ya está registrado.' };
+    }
+
+    // 2. Encriptar contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3. Crear el usuario y su perfil anidado (WebuserProfile)
+    await prisma.user.create({
+      data: {
+        name,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        role: 'USER', // Rol base de acuerdo a tu Enum
+        webuserProfile: {
+          create: {
+            phone: phone,
+          }
+        }
+      }
+    });
+
+    return { success: true, message: 'Cuenta creada exitosamente.' };
+  } catch (error) {
+    console.error('Error registrando usuario web:', error);
+    return { error: 'Ocurrió un error al crear la cuenta. Intenta de nuevo.' };
+  }
+}
+// ==========================================
+// CERRAR SESIÓN (SERVER ACTION)
+// ==========================================
+export async function logoutAction() {
+  await signOut({ redirectTo: '/' });
 }

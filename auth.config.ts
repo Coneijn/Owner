@@ -32,6 +32,11 @@ export const authConfig = {
         if (profiles.includes('BUYER')) return new URL('/buyersDashboard', nextUrl);
         
         if (profiles.includes('RENTER')) return new URL('/rentersDashboard', nextUrl);
+        if (profiles.includes('WEB_USER')) {
+          const chatUrl = new URL('/chat', nextUrl);
+          chatUrl.search = nextUrl.search; // <--- COPIAMOS LOS PARÁMETROS (initId)
+          return chatUrl;
+        }
         // 3. Fallback: Si no tiene perfiles asignados, lo mandamos a la página de inicio
         return new URL('/', nextUrl);
       };

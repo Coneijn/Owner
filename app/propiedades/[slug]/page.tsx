@@ -11,6 +11,7 @@ import PropertyFinancials from '@/app/components/PropertyFinancials';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
 import StaticPropertyMap from '@/app/components/StaticPropertyMap';
 import DOMPurify from 'isomorphic-dompurify';
+import { auth } from '@/auth'; // <--- IMPORTANTE: Agregamos esto para leer la sesión
 
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -37,6 +38,7 @@ const DICTIONARY = {
     year: "Año",
     interestedTitle: "¿TE INTERESA ESTA CASA?",
     interestedSub: "Agenda una visita hoy mismo o habla con nuestro asistente virtual.",
+    btnChat: "COMUNICATE CON EL DUEÑO",
     btnSchedule: "AGENDAR RECORRIDO",
     btnApply: "COMPRAR AHORA",
     btnCall: "LLAMAR AHORA",
@@ -70,6 +72,7 @@ const DICTIONARY = {
     year: "Year Built",
     interestedTitle: "INTERESTED IN THIS HOME?",
     interestedSub: "Schedule a visit today or talk to our AI assistant.",
+    btnChat: "MESSAGE THE OWNER",
     btnSchedule: "SCHEDULE HOME TOUR",
     btnApply: "BUY NOW",
     btnCall: "CALL NOW",
@@ -148,6 +151,18 @@ export default async function PropertyDetailPage(props: Props) {
   });
 
   if (!property) notFound();
+
+  // --- LÓGICA DE MENSAJES DUEÑO A DUEÑO ---
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
+  const ownerId = property?.sellerProfile?.userId;
+  
+  // Si no está logueado, lo mandamos a signup con el retorno al chat inicializado
+  const chatTarget = `/chat?initId=${ownerId}`;
+  const messageLink = isLoggedIn 
+      ? chatTarget 
+      : `/signup?callbackUrl=${encodeURIComponent(chatTarget)}`;
+  // ----------------------------------------
 
   const price = property.price?.toNumber() ?? 0;
   const downPayment = property.downPayment?.toNumber() ?? 0;
@@ -331,6 +346,9 @@ export default async function PropertyDetailPage(props: Props) {
                                 </div>
                                 
                                 <div className="space-y-3">
+                                    <Link href={messageLink} className="w-full flex items-center justify-center bg-transparent border-2 border-white/20 text-white hover:bg-white/10 font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300 shadow-sm">
+                                        💬 {t.btnChat}
+                                    </Link>
                                     <a href={bookingLink} target="_blank" rel="noopener noreferrer" className="w-full bg-[#529e14] hover:bg-[#458510] text-white font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3">
                                         📅 {t.btnSchedule}
                                     </a>

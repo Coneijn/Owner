@@ -31,7 +31,8 @@ export const { auth, signIn, signOut } = NextAuth({
               sellerProfile: true, 
               buyerProfile: true, 
               agentProfile: true, 
-              renterProfile: true
+              renterProfile: true,
+              webuserProfile: true
             }
           });
           
@@ -67,6 +68,7 @@ export const { auth, signIn, signOut } = NextAuth({
           if (user.buyerProfile) userProfiles.push('BUYER');
            if (user.agentProfile) userProfiles.push('AGENT');
            if (user.renterProfile) userProfiles.push('RENTER');
+          if (user.webuserProfile) userProfiles.push('WEB_USER');
 
           // 3. Retornamos la información vital, inyectando el rol y los perfiles
           return {
