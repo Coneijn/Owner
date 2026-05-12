@@ -44,11 +44,14 @@ export async function createTestUser(testCode: string, userType: UserProfileType
     switch (userType) {
       case 'ADMIN':
         userData.role = 'ADMIN';
+        userData.name = `Admin Prueba ${testCode}`;
         break;
       case 'STAFF':
         userData.role = 'STAFF';
+        userData.name = `Staff Prueba ${testCode}`;
         break;
       case 'SELLER':
+        userData.name = `Vendedor Prueba ${testCode}`;
         userData.sellerProfile = {
           create: {
             sellerName: `Vendedor Prueba ${testCode}`,
@@ -57,6 +60,7 @@ export async function createTestUser(testCode: string, userType: UserProfileType
         };
         break;
       case 'AGENT':
+        userData.name = `Agente Prueba ${testCode}`;
         userData.agentProfile = {
           create: {
             agentName: `Agente Prueba ${testCode}`
@@ -64,6 +68,7 @@ export async function createTestUser(testCode: string, userType: UserProfileType
         };
         break;
       case 'RENTER':
+        userData.name = `Rentero Prueba ${testCode}`;
         userData.renterProfile = {
           create: {
             RenterName: `Rentero Prueba ${testCode}`
@@ -71,6 +76,7 @@ export async function createTestUser(testCode: string, userType: UserProfileType
         };
         break;
       case 'BUYER':
+        userData.name = `Comprador Prueba ${testCode}`;
         userData.buyerProfile = {
           create: {
             // Nota: En tu schema, BuyerProfile exige firstName y lastName obligatoriamente

@@ -1,19 +1,70 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { sendMessage } from "@/app/actions/chat-actions"
 import Link from "next/link"
-import { logoutAction } from "@/lib/user-actions" // Usamos la nueva Server Action
+import { logoutAction } from "@/lib/user-actions" 
 
-// Agregamos isWebUser a los props
 export default function ChatClient({ currentUserId, initialMessages, contacts, isWebUser }: any) {
   const [activeContact, setActiveContact] = useState<any>(null)
   const [text, setText] = useState("")
+  const [messages, setMessages] = useState(initialMessages)
+  
+  // 1. Estado para que la lista de contactos crezca dinámicamente
+  const [localContacts, setLocalContacts] = useState(contacts)
 
-  const chatMessages = initialMessages.filter((m: any) => 
+  // Estado para los IDs de contactos con mensajes no leídos (punto rojo)
+  const [unreadContactIds, setUnreadContactIds] = useState<string[]>([])
+  
+  // Usamos un ref para que el SSE sepa quién es el contacto activo sin reiniciar la conexión
+  const activeContactRef = useRef(activeContact)
+  useEffect(() => {
+    activeContactRef.current = activeContact
+  }, [activeContact])
+
+  // Lógica de SSE
+  useEffect(() => {
+    const eventSource = new EventSource(`/api/chat/stream?userId=${currentUserId}`)
+
+    eventSource.onmessage = (event) => {
+      const newMessage = JSON.parse(event.data)
+      
+      setMessages((prev: any) => {
+        if (prev.some((m: any) => m.id === newMessage.id)) return prev
+        return [...prev, newMessage]
+      })
+
+      // LÓGICA PARA APARECER NUEVOS CONTACTOS AUTOMÁTICAMENTE
+      // Identificamos quién es la otra persona en este mensaje
+      const otherUser = newMessage.senderId === currentUserId ? newMessage.recipient : newMessage.sender
+      
+      if (otherUser) {
+        setLocalContacts((prev: any) => {
+          // Si el usuario ya está en nuestra barra lateral, no hacemos nada
+          if (prev.some((c: any) => c.id === otherUser.id)) return prev
+          // Si es un usuario nuevo, lo inyectamos al principio de la lista
+          return [otherUser, ...prev]
+        })
+      }
+
+      // LÓGICA DEL PUNTO ROJO:
+      // Si el mensaje es de otro (no es mío) Y no es del contacto que tengo abierto ahora
+      if (
+        newMessage.senderId !== currentUserId && 
+        newMessage.senderId !== activeContactRef.current?.id
+      ) {
+        setUnreadContactIds(prev => Array.from(new Set([...prev, newMessage.senderId])))
+      }
+    }
+
+    return () => eventSource.close()
+  }, [currentUserId])
+
+  // 3. Filtramos leyendo de nuestro estado 'messages' actualizado
+  const chatMessages = messages.filter((m: any) => 
     ((m.senderId === currentUserId && m.recipientId === activeContact?.id) ||
     (m.senderId === activeContact?.id && m.recipientId === currentUserId)) &&
-    m.content !== "--initiate conversation--" // Ocultamos el mensaje técnico
+    m.content !== "--initiate conversation--" 
   )
 
   const handleSend = async (e: React.FormEvent) => {
@@ -29,7 +80,7 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
       {/* Sidebar de Contactos */}
       <div className="w-80 border-r border-gray-200 bg-brand-header text-white flex flex-col">
         <div className="p-4 font-bold text-lg border-b border-gray-800 bg-brand-dark text-brand-accent shadow-sm z-10 flex items-center justify-between">
-          <span>Mensajes Internos</span>
+          <span>In-app messages</span>
           
           {isWebUser ? (
             <form action={logoutAction}>
@@ -37,7 +88,7 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
                 type="submit"
                 className="text-[10px] uppercase tracking-wider bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/30 hover:bg-red-500/20 hover:border-red-500 transition-all duration-200"
               >
-                Cerrar Sesión
+                Close session
               </button>
             </form>
           ) : (
@@ -45,24 +96,36 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
               href="/login" 
               className="text-[10px] uppercase tracking-wider bg-brand-header text-gray-400 px-2 py-1 rounded border border-gray-700 hover:text-brand-accent hover:border-brand-accent transition-all duration-200"
             >
-              ← Volver
+              ← Back
             </Link>
           )}
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {contacts.map((c: any) => (
+          {/* Usamos localContacts que es el estado que sí se actualiza */}
+          {localContacts.map((c: any) => (
             <div 
               key={c.id} 
-              onClick={() => setActiveContact(c)}
+              onClick={() => {
+                setActiveContact(c)
+                // Limpiamos el punto rojo de este contacto al seleccionarlo
+                setUnreadContactIds(prev => prev.filter(id => id !== c.id))
+              }}
               className={`p-4 cursor-pointer transition-colors duration-200 ${
                 activeContact?.id === c.id 
                   ? 'bg-brand-dark border-r-4 border-brand-accent' 
                   : 'hover:bg-gray-800'
               }`}
             >
-              <p className={`font-semibold ${activeContact?.id === c.id ? 'text-brand-accent' : 'text-gray-100'}`}>
-                {c.name || 'Usuario'}
-              </p>
+              <div className="flex justify-between items-center">
+                <p className={`font-semibold ${activeContact?.id === c.id ? 'text-brand-accent' : 'text-gray-100'}`}>
+                  {c.name || 'Usuario'}
+                </p>
+                
+                {/* Círculo rojo de notificación */}
+                {unreadContactIds.includes(c.id) && (
+                  <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                )}
+              </div>
               <p className={`text-xs ${activeContact?.id === c.id ? 'text-gray-300' : 'text-gray-400'}`}>
                 {c.role}
               </p>
@@ -99,12 +162,12 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
             <form onSubmit={handleSend} className="p-4 border-t border-gray-200 bg-white flex gap-3">
               <input 
                 className="flex-1 border border-gray-300 rounded-full px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-dark bg-gray-50 text-brand-dark transition-all" 
-                placeholder="Escribe un mensaje..."
+                placeholder="write a message..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
               <button className="bg-brand-dark text-brand-accent px-8 py-2.5 rounded-full font-bold hover:brightness-125 transition-all shadow-md active:scale-95">
-                Enviar
+                Send
               </button>
             </form>
           </>
@@ -112,7 +175,7 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
           <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
             <div className="text-center">
               <div className="text-4xl mb-3 opacity-50">💬</div>
-              <p>Selecciona un contacto para empezar a chatear</p>
+              <p>Select a contact to start chatting</p>
             </div>
           </div>
         )}

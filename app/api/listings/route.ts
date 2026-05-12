@@ -13,6 +13,8 @@ export async function GET() {
       },
       select: {
         id: true,
+        slug: true,
+        lockboxCode: true,
         address: true,
         city: true,
         state: true,
@@ -68,6 +70,8 @@ export async function GET() {
       // 4. Construir la respuesta final enriquecida
       return {
         id: p.id,
+        slug: p.slug,
+        accessCode: p.lockboxCode || null,
         address: fullAddress,
         price: Number(p.price) || null,
         // Default genérico para el script original de Spencer

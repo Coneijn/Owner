@@ -2,6 +2,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from "next/cache"
+import { chatEmitter } from "@/lib/chat-events"
 
 const prisma = new PrismaClient()
 
@@ -23,9 +24,19 @@ export async function getUserMessages(userId: string) {
 
 export async function sendMessage(senderId: string, recipientId: string, content: string) {
   try {
-    await prisma.message.create({
-      data: { senderId, recipientId, content }
+    // Guardamos el mensaje e incluimos los datos de los usuarios (igual que en getUserMessages)
+    const newMessage = await prisma.message.create({
+      data: { senderId, recipientId, content },
+      include: {
+        sender: { select: { id: true, name: true, email: true } },
+        recipient: { select: { id: true, name: true, email: true } }
+      }
     })
+    
+    // Disparamos el evento por nuestro túnel a AMBOS usuarios (quien envía y quien recibe)
+    chatEmitter.emit(`message-${recipientId}`, newMessage)
+    chatEmitter.emit(`message-${senderId}`, newMessage)
+
     revalidatePath('/chat')
     return { success: true }
   } catch (error) {
