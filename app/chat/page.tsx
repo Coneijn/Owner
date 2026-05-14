@@ -3,11 +3,11 @@ import { redirect } from "next/navigation"
 import ChatClient from "./chat-client"
 import { getUserMessages, getChatContacts } from "@/app/actions/chat-actions"
 import { prisma } from "@/lib/prisma"
-import { sendMessage } from "@/app/actions/chat-actions" // Asegúrate de importar esto
+import { sendMessage } from "@/app/actions/chat-actions"
 
 export default async function ChatPage({ searchParams }: { searchParams: Promise<{ initId?: string }> }) {
   const session = await auth()
-  const { initId } = await searchParams; // Obtenemos el ID del dueño si viene de una propiedad
+  const { initId } = await searchParams; 
   
   if (!session?.user?.id) {
     redirect("/login")
@@ -24,6 +24,13 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
     getChatContacts(userId)
   ])
 
+  // Saber si el usuario actual es ADMIN
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
+  const isAdmin = currentUser?.role === 'ADMIN';
+
   // 1. Obtener los IDs de los usuarios con los que ya hay mensajes
   const activeContactIds = new Set(
     messages.map((m: any) => 
@@ -39,8 +46,17 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   // 2. Filtrar la lista de contactos para dejar solo los activos
   let activeContacts = contacts.filter((c: any) => activeContactIds.has(c.id))
 
+  // --- NUEVA LÓGICA: INYECTAR BUZÓN DE SOPORTE PARA USUARIOS NORMALES ---
+  if (!isAdmin) {
+    activeContacts.unshift({
+      id: 'soporte-general',
+      name: 'Soporte de Plataforma',
+      email: 'soporte@tuplataforma.com',
+      role: 'ADMIN'
+    });
+  }
+
   // --- GARANTÍA DE CONTACTO PARA WEB USERS ---
-  // Si venimos de una propiedad y el dueño no está en la lista "activa", lo inyectamos manualmente
   if (initId && !activeContacts.find(c => c.id === initId)) {
     const targetUser = await prisma.user.findUnique({ 
       where: { id: initId },

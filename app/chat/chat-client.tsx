@@ -10,19 +10,14 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
   const [text, setText] = useState("")
   const [messages, setMessages] = useState(initialMessages)
   
-  // 1. Estado para que la lista de contactos crezca dinámicamente
   const [localContacts, setLocalContacts] = useState(contacts)
-
-  // Estado para los IDs de contactos con mensajes no leídos (punto rojo)
   const [unreadContactIds, setUnreadContactIds] = useState<string[]>([])
   
-  // Usamos un ref para que el SSE sepa quién es el contacto activo sin reiniciar la conexión
   const activeContactRef = useRef(activeContact)
   useEffect(() => {
     activeContactRef.current = activeContact
   }, [activeContact])
 
-  // Lógica de SSE
   useEffect(() => {
     const eventSource = new EventSource(`/api/chat/stream?userId=${currentUserId}`)
 
@@ -34,21 +29,18 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
         return [...prev, newMessage]
       })
 
-      // LÓGICA PARA APARECER NUEVOS CONTACTOS AUTOMÁTICAMENTE
-      // Identificamos quién es la otra persona en este mensaje
+      // Identificamos quién es la otra persona
       const otherUser = newMessage.senderId === currentUserId ? newMessage.recipient : newMessage.sender
       
       if (otherUser) {
         setLocalContacts((prev: any) => {
-          // Si el usuario ya está en nuestra barra lateral, no hacemos nada
           if (prev.some((c: any) => c.id === otherUser.id)) return prev
-          // Si es un usuario nuevo, lo inyectamos al principio de la lista
+          // No queremos inyectar al propio usuario si se envía algo a null
+          if (otherUser.id === currentUserId) return prev;
           return [otherUser, ...prev]
         })
       }
 
-      // LÓGICA DEL PUNTO ROJO:
-      // Si el mensaje es de otro (no es mío) Y no es del contacto que tengo abierto ahora
       if (
         newMessage.senderId !== currentUserId && 
         newMessage.senderId !== activeContactRef.current?.id
@@ -60,19 +52,39 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
     return () => eventSource.close()
   }, [currentUserId])
 
-  // 3. Filtramos leyendo de nuestro estado 'messages' actualizado
-  const chatMessages = messages.filter((m: any) => 
-    ((m.senderId === currentUserId && m.recipientId === activeContact?.id) ||
-    (m.senderId === activeContact?.id && m.recipientId === currentUserId)) &&
-    m.content !== "--initiate conversation--" 
-  )
+  // NUEVA LÓGICA DE FILTRADO
+  const chatMessages = messages.filter((m: any) => {
+    if (m.content === "--initiate conversation--") return false;
+
+    // CASO 1: Buzón de soporte (Si seleccionamos 'soporte-general')
+    if (activeContact?.id === 'soporte-general') {
+      return (
+        (m.senderId === currentUserId && m.recipientId === null) ||
+        (m.recipientId === currentUserId && m.sender?.role === 'ADMIN')
+      );
+    }
+
+    // CASO 2: Chats directos normales
+    const isDirectMessage = 
+      (m.senderId === currentUserId && m.recipientId === activeContact?.id) ||
+      (m.senderId === activeContact?.id && m.recipientId === currentUserId);
+      
+    // CASO 3: Ver mensajes a "null" que mandó un usuario que estamos revisando
+    const isToGeneralBox = 
+      (m.senderId === activeContact?.id && m.recipientId === null);
+
+    return isDirectMessage || isToGeneralBox;
+  });
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!text.trim() || !activeContact) return
     const content = text
     setText("")
-    await sendMessage(currentUserId, activeContact.id, content)
+    
+    // Si la conversación es "soporte-general", enviamos a null
+    const targetId = activeContact.id === 'soporte-general' ? null : activeContact.id;
+    await sendMessage(currentUserId, targetId, content)
   }
 
   return (
@@ -101,13 +113,11 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
           )}
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* Usamos localContacts que es el estado que sí se actualiza */}
           {localContacts.map((c: any) => (
             <div 
               key={c.id} 
               onClick={() => {
                 setActiveContact(c)
-                // Limpiamos el punto rojo de este contacto al seleccionarlo
                 setUnreadContactIds(prev => prev.filter(id => id !== c.id))
               }}
               className={`p-4 cursor-pointer transition-colors duration-200 ${
@@ -121,13 +131,12 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
                   {c.name || 'Usuario'}
                 </p>
                 
-                {/* Círculo rojo de notificación */}
                 {unreadContactIds.includes(c.id) && (
                   <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
                 )}
               </div>
               <p className={`text-xs ${activeContact?.id === c.id ? 'text-gray-300' : 'text-gray-400'}`}>
-                {c.role}
+                {c.role === 'ADMIN' && c.id === 'soporte-general' ? 'Equipo de Soporte' : c.role}
               </p>
             </div>
           ))}
@@ -182,5 +191,4 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
       </div>
     </div>
   )
-
 }
