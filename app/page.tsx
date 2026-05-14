@@ -3,6 +3,11 @@ import Header from '@/app/components/Header';
 import MapSplitView from './map/MapSplitView';
 import WhatsAppButton from './components/WhatsAppButton';
 export const dynamic = 'force-dynamic';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Dueño a Dueño 🏡 Houses 4 Sale',
+};
 
 export default async function MapPage(props: { 
   searchParams: Promise<{ 

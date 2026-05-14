@@ -1,6 +1,6 @@
 import SignUpForm from '@/app/components/signup-form';
 import Image from 'next/image';
-
+import { Suspense } from 'react';
 export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1a1a1a] px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
@@ -35,7 +35,9 @@ export default function SignUpPage() {
 
         {/* Form Card */}
         <div className="bg-white/5 backdrop-blur-md py-8 px-4 shadow-2xl rounded-2xl sm:px-10 border border-[#f8ed1a]/30 hover:border-[#f8ed1a] transition-colors duration-300">
-          <SignUpForm />
+          <Suspense fallback={<div className="text-center text-[#f8ed1a]">Cargando formulario...</div>}>
+            <SignUpForm />
+          </Suspense>
         </div>
         
       </div>

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 const baseUrl = "https://ownertodueno.com";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(baseUrl), // Asegúrate de tener baseUrl definido en tu archivo
+  metadataBase: new URL(baseUrl), 
   title: 'Discover Your 🏡CashFlow',
   description: 'Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.',
   robots: {
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: '/sellers', // Se mantiene el de la página actual
+    canonical: '/sellers', 
     languages: {
       'es': '/',           
       'en': '/?lang=en',   

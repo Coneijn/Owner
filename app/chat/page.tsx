@@ -15,9 +15,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
 
   const userId = session.user.id
 
-  // --- INICIALIZACIÓN DE CONVERSACIÓN ---
   if (initId && initId !== userId) {
-    // Enviamos un texto clave para inicializar en BD
     await sendMessage(userId, initId, "--initiate conversation--"); 
   }
 
