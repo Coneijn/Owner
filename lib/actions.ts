@@ -8,7 +8,6 @@ import { revalidatePath } from 'next/cache';
 import { PropertyStatus, PaymentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { SERVICE_FEE } from '@/lib/utils';
-import crypto from 'crypto';
 
 // lib/actions.ts (Solo la función authenticate)
 export async function authenticate(
@@ -716,55 +715,14 @@ export async function assignPropertyClient(
       return { success: false, message: 'Faltan datos obligatorios del cliente titular.' };
     }
 
-    // --- HELPER ACTUALIZADO PARA ENVIAR MAGIC LINK ---
-    const sendMagicLinkToGHL = async (userEmail: string, userPhone: string, userId: string) => {
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
-
-      // Creamos el token en la base de datos
-      await prisma.verificationToken.create({
-        data: {
-          identifier: userEmail,
-          token: token,
-          expires: expiresAt
-        }
-      });
-
-      const accessUrl = `${process.env.NEXT_PUBLIC_APP_URL}/welcome/${token}`;
-
-      // URL del Webhook de GHL para dar la bienvenida a Buyers/Renters
-      // Reemplaza esto con el Webhook que tienes configurado para este Workflow en GHL
-      const ghlBuyerWebhookUrl = "https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/vFyEIl0Xeh3Qf5Q3paQN"; 
-      
-      try {
-        await fetch(ghlBuyerWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: userEmail,
-            phone: userPhone,
-            magic_link: accessUrl,
-            website_user_id: userId,
-            client_type: clientType 
-          }),
-        });
-        console.log(`Magic link enviado a GHL para: ${userEmail}`);
-      } catch (error) {
-        console.error("Error notificando a GHL sobre el nuevo usuario:", error);
-      }
-    };
-
     // --- FUNCIÓN INTERNA PARA CREAR/BUSCAR USUARIOS Y PERFILES ---
     const getOrCreateProfile = async (uEmail: string, uFirstName: string, uLastName: string, uPhone: string) => {
-      let isNewUser = false; // Bandera para saber si lo acabamos de crear
-
       let targetUser = await prisma.user.findUnique({
         where: { email: uEmail },
         include: { renterProfile: true, buyerProfile: true }
       });
 
       if (!targetUser) {
-        isNewUser = true; // El usuario NO existía
         const temporaryPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
         targetUser = await prisma.user.create({
           data: {
@@ -798,12 +756,6 @@ export async function assignPropertyClient(
           profileId = targetUser.buyerProfile.id;
         }
       }
-
-      // Si es un usuario recién creado, generamos y enviamos el Magic Link a GHL
-      if (isNewUser) {
-        await sendMagicLinkToGHL(uEmail, uPhone, targetUser.id);
-      }
-
       return profileId;
     };
 
