@@ -776,6 +776,8 @@ export async function assignPropertyClient(
           },
           include: { renterProfile: true, buyerProfile: true }
         });
+      }else{
+        console.log("Correo duplicado en la bdd no se creo el usuario")
       }
 
       let profileId = '';
