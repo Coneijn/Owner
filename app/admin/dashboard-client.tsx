@@ -205,7 +205,7 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
   );
 };
 
-// Componente para renderizar la lista de Contratos/Créditos o Arrendamientos
+// Component to render the list of Contracts/Loans or Lease Agreements
 const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isLease?: boolean }) => {
   const router = useRouter();
 
@@ -216,6 +216,14 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
       </div>
     );
   }
+
+  const handleDelete = (e: React.MouseEvent, contractId: string) => {
+    e.stopPropagation(); // Prevents the row click event from triggering the router push
+    if (window.confirm("Are you sure you want to delete this agreement? This action cannot be undone.")) {
+      // TODO: Implement your deletion API call here
+      console.log("Deleting contract with ID:", contractId);
+    }
+  };
 
   return (
     <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl mt-6">
@@ -228,6 +236,7 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
               <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{isLease ? 'Tenant Details' : 'Buyer Details'}</th>
               <th className="px-6 py-3 text-left text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Financial Terms</th>
               <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-3 text-right text-[10px] font-black text-red-500 uppercase tracking-widest">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
@@ -238,13 +247,18 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
               
               const seller = contract?.property?.sellerProfile;
 
+              // 👇 Detectamos si el cliente es "Unknown" (Falta el perfil o faltan los campos clave)
+              const isUnknown = isLease 
+                ? !client?.RenterName 
+                : (!client?.firstName && !client?.lastName);
+
               return (
                 <tr 
                   key={contract.id} 
                   onClick={() => router.push(`/admin/agreements/${contract.id}?type=${isLease ? 'LEASE' : 'LOAN'}`)}
                   className="hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  {/* Propiedad y Tipo de Contrato */}
+                  {/* Property and Contract Type */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-white max-w-[200px] truncate">
@@ -258,7 +272,8 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                       </span>
                     </div>
                   </td>
-                  {/* Detalles del Vendedor */}
+                  
+                  {/* Seller Details */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                        {seller?.sellerImage && (
@@ -266,7 +281,7 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                        )}
                        <div className="flex flex-col">
                          <span className="text-sm font-bold text-white">
-                           {seller?.sellerName || <span className="text-gray-600 italic">Dueño a Dueño</span>}
+                           {seller?.sellerName || <span className="text-gray-600 italic">Dueño a Dueño Team</span>}
                          </span>
                          {seller?.phone && (
                            <span className="text-xs text-gray-400">{seller.phone}</span>
@@ -274,21 +289,42 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                        </div>
                     </div>
                   </td>
-                  {/* Detalles del Cliente */}
+                  
+                  {/* Client Details */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-1">
                       <span className="text-sm font-bold text-white">
                         {isLease 
                           ? (client?.RenterName || 'Unknown Tenant') 
-                          : (`${client?.firstName || 'Unknown'} ${client?.lastName || 'Buyer'}`)
+                          : (client ? `${client.firstName || 'Unknown'} ${client.lastName || 'Buyer'}` : 'Unknown Buyer')
                         }
                       </span>
-                      {client?.phone && (
-                        <span className="text-xs text-gray-400">{client.phone}</span>
+                      
+                      {/* Si el cliente es desconocido, mostramos el botón de asignar */}
+                      {isUnknown ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Evita redirigir a los detalles del contrato
+                            router.push(`/admin/properties/${contract?.propertyId || contract?.property?.id}/assign?type=${isLease ? 'RENTED' : 'SOLD'}`);
+                          }}
+                          className="mt-1 w-fit bg-[#f8ed1a] text-black text-[10px] font-black px-2 py-0.5 rounded uppercase hover:bg-yellow-400 transition-colors tracking-wide"
+                        >
+                          Assign {isLease ? 'Tenant' : 'Buyer'}
+                        </button>
+                      ) : (
+                        <>
+                          {client?.user?.email && (
+                            <span className="text-xs text-gray-400">{client.user.email}</span>
+                          )}
+                          {client?.phone && (
+                            <span className="text-xs text-gray-400">{client.phone}</span>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
-                  {/* Términos Financieros */}
+                  
+                  {/* Financial Terms */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col gap-1">
                       <span className="text-sm text-white font-bold">
@@ -309,7 +345,8 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                       </div>
                     </div>
                   </td>
-                  {/* Estado y Fechas */}
+                  
+                  {/* Status and Dates */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col gap-1">
                       {contract?.isActive ? (
@@ -320,18 +357,28 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                       <span className="text-[10px] text-gray-500">
                         Started: {formatDate(contract?.startDate)}
                       </span>
-                      {/* Resumen de pagos generados */}
+                      {/* Generated payments summary */}
                       {contract?.payments && (
                         <div className="mt-1 pt-1 border-t border-gray-800 flex flex-col">
                           <span className="text-[10px] text-[#f8ed1a] font-bold">
-                            {contract.payments.length} Pagos Generados
+                            {contract.payments.length} Generated Payments
                           </span>
                           <span className="text-[10px] text-gray-400">
-                            {contract.payments.filter((p: any) => p.status === 'PAID').length} Pagados
+                            {contract.payments.filter((p: any) => p.status === 'PAID').length} Paid
                           </span>
                         </div>
                       )}
                     </div>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button 
+                      onClick={(e) => handleDelete(e, contract.id)}
+                      className="text-red-500 hover:text-red-400 font-bold uppercase text-[10px] tracking-wide transition-colors"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               );

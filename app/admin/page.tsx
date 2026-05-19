@@ -55,13 +55,23 @@ export default async function AdminDashboard() {
     };
   });
 
- const rawContracts = await prisma.contract.findMany({
+  const rawContracts = await prisma.contract.findMany({
     include: { 
-       property: { include: { sellerProfile: true } }, 
-       buyers: true,
-       payments: { orderBy: { paymentDate: 'asc' } } // <-- INCLUIMOS LOS PAGOS
-     },
-     orderBy: { createdAt: 'desc' }
+      property: { 
+        include: { 
+          sellerProfile: true 
+        } 
+      }, 
+       buyers: {
+        include: {
+          user: true, 
+        }
+      },
+      payments: { 
+        orderBy: { paymentDate: 'asc' } 
+      }
+    },
+    orderBy: { createdAt: 'desc' }
   });
   const formattedContracts = rawContracts.map((c) => ({
     ...c,
@@ -76,14 +86,24 @@ export default async function AdminDashboard() {
     } : null
   }));
 
-  // CONSULTA GLOBAL DE TODOS LOS ARRENDAMIENTOS (LEASES)
   const rawLeases = await prisma.leaseAgreement.findMany({
     include: { 
-       property: { include: { sellerProfile: true } }, 
-       renters: true,
-       payments: { orderBy: { paymentDate: 'asc' } } // <-- INCLUIMOS LOS PAGOS
-     },
-     orderBy: { createdAt: 'desc' }
+      property: { 
+        include: { 
+          sellerProfile: true 
+        } 
+      }, 
+      // 👇 Actualizamos esta sección para incluir el modelo User
+      renters: {
+        include: {
+          user: true
+        }
+      },
+      payments: { 
+        orderBy: { paymentDate: 'asc' } 
+      }
+    },
+    orderBy: { createdAt: 'desc' }
   });
 
   const formattedLeases = rawLeases.map((l) => ({
