@@ -717,7 +717,14 @@ export async function assignPropertyClient(
     }
 
     // --- HELPER ACTUALIZADO PARA ENVIAR MAGIC LINK ---
-    const sendMagicLinkToGHL = async (userEmail: string, userPhone: string, userId: string) => {
+    // --- HELPER ACTUALIZADO PARA ENVIAR MAGIC LINK CON NOMBRE ---
+    const sendMagicLinkToGHL = async (
+      userEmail: string, 
+      userPhone: string, 
+      userId: string,
+      userFirstName: string, // 👇 Agregamos Nombre
+      userLastName: string   // 👇 Agregamos Apellido
+    ) => {
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
@@ -733,7 +740,6 @@ export async function assignPropertyClient(
       const accessUrl = `${process.env.AUTH_URL}/welcome/${token}`;
 
       // URL del Webhook de GHL para dar la bienvenida a Buyers/Renters
-      // Reemplaza esto con el Webhook que tienes configurado para este Workflow en GHL
       const ghlBuyerWebhookUrl = "https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/vFyEIl0Xeh3Qf5Q3paQN"; 
       
       try {
@@ -741,6 +747,8 @@ export async function assignPropertyClient(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            first_name: userFirstName, // 👇 Enviamos el primer nombre a GHL
+            last_name: userLastName,   // 👇 Enviamos el apellido a GHL
             email: userEmail,
             phone: userPhone,
             magic_link: accessUrl,
@@ -800,10 +808,9 @@ export async function assignPropertyClient(
           profileId = targetUser.buyerProfile.id;
         }
       }
-
-      // Si es un usuario recién creado, generamos y enviamos el Magic Link a GHL
+      // Si es un usuario recién creado, generamos y enviamos el Magic Link a GHL con su nombre
       if (isNewUser) {
-        await sendMagicLinkToGHL(uEmail, uPhone, targetUser.id);
+        await sendMagicLinkToGHL(uEmail, uPhone, targetUser.id, uFirstName, uLastName);
       }
 
       return profileId;
