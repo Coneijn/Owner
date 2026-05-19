@@ -39,6 +39,15 @@ export default function LoginPage() {
           
           <LoginForm />
           
+          <div className="mt-4 text-center">
+            <Link 
+              href="/reset-password" 
+              className="text-xs text-gray-400 hover:text-[#f8ed1a] transition-colors font-medium tracking-wide uppercase"
+            >
+              I've forgotten my password
+            </Link>
+          </div>
+          
         </div>
         
         {/* Back Link */}
