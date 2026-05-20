@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
+import crypto from 'crypto';
 import { 
   generateTwoFactorSecret, 
   generateQrFromSecret, 
@@ -301,4 +302,50 @@ export async function registerWebUser(prevState: any, formData: FormData) {
 // ==========================================
 export async function logoutAction() {
   await signOut({ redirectTo: '/' });
+}
+
+// ==========================================
+// 6. ENVIAR MAGIC LINK DE RESETEO (ADMIN)
+// ==========================================
+export async function sendAdminMagicLink(userId: string) {
+  const session = await auth();
+  if (!session?.user?.email) return { error: 'No autorizado' };
+
+  try {
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!targetUser) return { error: 'Usuario no encontrado.' };
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); 
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: targetUser.email,
+        token: token,
+        expires: expiresAt
+      }
+    });
+
+    const recoveryUrl = `${process.env.AUTH_URL}/reset-password/${token}`;
+    const ghlRecoveryWebhookUrl = "https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/91a3c262-5ff7-4a96-9699-2a47ad3c2d7d"; 
+    
+    await fetch(ghlRecoveryWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: targetUser.email,
+        name: targetUser.name,
+        magic_link: recoveryUrl,
+        action_type: 'PASSWORD_RECOVERY_ADMIN'
+      }),
+    });
+
+    return { success: true, message: `Magic Link enviado a ${targetUser.email}` };
+  } catch (error) {
+    console.error("Error al enviar Magic Link:", error);
+    return { error: 'Ocurrió un error al enviar el enlace.' };
+  }
 }

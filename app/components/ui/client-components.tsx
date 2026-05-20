@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import { 
-  changePassword,       // Antes updateOwnPassword
-  createUser,           // Antes createNewUser
-  deleteUser,           // Nuevo
-  resetUserPassword,    // Antes adminResetPassword
+  changePassword,
+  createUser,
+  deleteUser,
+  resetUserPassword,
+  sendAdminMagicLink,
   setupTwoFactor,
   confirmTwoFactor,
   disableTwoFactor
@@ -365,14 +366,14 @@ interface User {
 export function UserListTable({ users, currentUserEmail }: { users: User[], currentUserEmail: string | null | undefined }) {
     const [resetMsg, setResetMsg] = useState<{userId: string, msg: string} | null>(null);
 
-    const handleReset = async (userId: string) => {
-        if(!confirm('Are you sure? This will generate a new random password.')) return;
+    const handleSendMagicLink = async (userId: string) => {
+        if(!confirm('¿Estás seguro de enviar un Magic Link de recuperación a este usuario?')) return;
         
-        const result = await resetUserPassword(userId);
-        if(result.success && result.newPassword) {
-            setResetMsg({ userId, msg: `New Password: ${result.newPassword}` });
+        const result = await sendAdminMagicLink(userId);
+        if(result.success) {
+            setResetMsg({ userId, msg: result.message || 'Enviado correctamente' });
         } else {
-            alert('Error resetting password');
+            alert(result.error || 'Error al enviar el enlace');
         }
     };
 
@@ -440,14 +441,14 @@ export function UserListTable({ users, currentUserEmail }: { users: User[], curr
                             <td className="px-6 py-4 text-right space-x-3">
                                 {currentUserEmail !== user.email && (
                                     <>
-                                        <button 
-                                            onClick={() => handleReset(user.id)}
-                                            className="text-blue-400 hover:text-blue-300 font-bold text-xs uppercase hover:underline"
-                                        >
-                                            Reset Pass
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDelete(user.id)}
+                                    <button 
+                                        onClick={() => handleSendMagicLink(user.id)}
+                                        className="text-blue-400 hover:text-blue-300 font-bold text-xs uppercase hover:underline"
+                                    >
+                                        Magic Link
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDelete(user.id)}
                                             className="text-red-500 hover:text-red-400 font-bold text-xs uppercase hover:underline"
                                         >
                                             Remove
