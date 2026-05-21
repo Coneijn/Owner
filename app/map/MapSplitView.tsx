@@ -10,7 +10,7 @@ import FloatingSearch from './ui/FloatingSearch';
 import FilterModal from './ui/FilterModal';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils'; 
 import MapFloatingButtons from './ui/MapFloatingButtons';
-
+import MapErrorBoundary from './MapErrorBoundary';
 // INTERFAZ DE PROPIEDADES (Actualizada con los campos de fechas y Prisma)
 export interface PropertyProps {
   id: string;
@@ -206,13 +206,15 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
 
      {/* MAP CONTAINER */}
      <div className="absolute inset-0 w-full h-full lg:relative lg:flex-1 z-0 bg-[#0a0f1c] relative">
-         <MapLoader 
-            properties={properties} 
-            lang={lang} 
-            highlightedProperty={highlighted} 
-            onMarkerClick={handleMarkerClick}
-            searchType={searchType}
-         />
+         <MapErrorBoundary>
+             <MapLoader 
+                properties={properties} 
+                lang={lang} 
+                highlightedProperty={highlighted} 
+                onMarkerClick={handleMarkerClick}
+                searchType={searchType}
+             />
+         </MapErrorBoundary>
          
          <div className="hidden lg:flex flex-col gap-2 absolute top-6 left-4 right-4 z-[50] justify-center transition-all duration-300 ease-out pointer-events-none">
             <div className="pointer-events-auto self-start ml-2"> 

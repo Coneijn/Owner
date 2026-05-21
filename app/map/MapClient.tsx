@@ -364,43 +364,52 @@ useEffect(() => {
     return heatmapData;
   }, [searchType, heatmapData]);
 
-  // --- INTEGRACIÓN DE DECK.GL (CON ERROR BOUNDARY) ---
+  // --- INTEGRACIÓN DE DECK.GL (CON PROTECCIÓN CONTRA CRASHES) ---
   useEffect(() => {
-    // Si no hay mapa o si el heatmap ya falló previamente, no intentamos dibujarlo
     if (!map || heatmapFailed) return;
 
-    const overlay = new GoogleMapsOverlay({
-      // El "Error Boundary" interno de deck.gl
-      onError: (error: Error) => {
-        console.warn("Error de WebGPU/Shader detectado. Desactivando mapa de calor para este dispositivo:", error.message);
-        setHeatmapFailed(true); // Actualizamos el estado para no volver a intentar
-        overlay.setMap(null);   // Retiramos la capa rota del mapa
-      },
-      layers: [
-        new HeatmapLayer({
-          id: 'heatmap-layer',
-          data: activeHeatmapData as any,
-          getPosition: (d: any) => d.position,
-          getWeight: (d: any) => d.weight,
-          radiusPixels: 40,
-          intensity: 1,
-          threshold: 0.05,
-          colorRange: [
-            [248, 237, 26, 0],
-            [184, 176, 19, 76],
-            [218, 208, 22, 127],
-            [248, 237, 26, 178],
-            [248, 237, 26, 230],
-            [255, 255, 200, 255]
-          ]
-        })
-      ]
-    });
+    let overlay: GoogleMapsOverlay | null = null;
 
-    overlay.setMap(map);
+    try {
+      overlay = new GoogleMapsOverlay({
+        onError: (error: Error) => {
+          console.warn("Error asíncrono de Deck.gl:", error.message);
+          setHeatmapFailed(true);
+          if (overlay) overlay.setMap(null);
+        },
+        layers: [
+          new HeatmapLayer({
+            id: 'heatmap-layer',
+            data: activeHeatmapData as any,
+            getPosition: (d: any) => d.position,
+            getWeight: (d: any) => d.weight,
+            radiusPixels: 40,
+            intensity: 1,
+            threshold: 0.05,
+            colorRange: [
+              [248, 237, 26, 0],
+              [184, 176, 19, 76],
+              [218, 208, 22, 127],
+              [248, 237, 26, 178],
+              [248, 237, 26, 230],
+              [255, 255, 200, 255]
+            ]
+          })
+        ]
+      });
+
+      overlay.setMap(map); 
+
+    } catch (error) {
+      console.error("Error síncrono fatal al cargar el mapa de calor:", error);
+      setHeatmapFailed(true);
+      if (overlay) overlay.setMap(null);
+    }
 
     return () => {
-      overlay.setMap(null);
+      if (overlay) {
+        overlay.setMap(null);
+      }
     };
   }, [map, activeHeatmapData, heatmapFailed]);
   // Lógica para determinar si es Nuevo o Editado
