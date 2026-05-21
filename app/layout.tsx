@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: '/sellers', 
+    canonical: '/', 
     languages: {
       'es': '/',           
       'en': '/?lang=en',   
