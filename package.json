@@ -11,6 +11,9 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.969.0",
     "@aws-sdk/s3-request-presigner": "^3.969.0",
+    "@deck.gl/aggregation-layers": "^9.3.2",
+    "@deck.gl/google-maps": "^9.3.2",
+    "@deck.gl/layers": "^9.3.2",
     "@otplib/preset-default": "^12.0.1",
     "@react-google-maps/api": "^2.20.8",
     "@react-pdf/renderer": "^4.5.1",
@@ -18,6 +21,7 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
+    "deck.gl": "^9.3.2",
     "dotenv": "^17.2.3",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",

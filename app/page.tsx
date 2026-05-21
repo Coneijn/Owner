@@ -7,6 +7,12 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Dueño a Dueño 🏡 Houses 4 Sale',
+  openGraph: {
+    title: 'Dueño a Dueño 🏡 Houses 4 Sale'},
+  twitter: {
+    title: 'Dueño a Dueño 🏡 Houses 4 Sale'
+  }
+  
 };
 
 export default async function MapPage(props: { 
