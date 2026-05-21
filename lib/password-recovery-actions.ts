@@ -23,9 +23,9 @@ export async function requestPasswordRecovery(formData: FormData) {
       return { success: true, message: 'Si el correo existe, se ha enviado un enlace.' };
     }
 
-    // 2. Generar el token de seguridad (Expiración en 2 horas para mayor seguridad)
+    // 2. Generar el token de seguridad (Expiración en 48 horas)
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); 
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); 
 
     // Guardar el token en la base de datos
     await prisma.verificationToken.create({

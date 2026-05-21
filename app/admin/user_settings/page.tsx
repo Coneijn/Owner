@@ -133,9 +133,7 @@ export default async function UserSettingsPage() {
             <div className="mt-4 flex gap-3 p-4 bg-gray-900/30 rounded-lg border border-gray-800">
                 <span className="text-xl">ℹ️</span>
                 <p className="text-xs text-gray-500 leading-relaxed">
-                    <strong>Admin Note:</strong> Resetting a password generates a one-time random secure string. 
-                    You must share this string with the user immediately via a secure channel (Slack, Signal, or in-person). 
-                    It cannot be retrieved later from the database.
+                    <strong>Admin Note:</strong> Al enviar un Magic Link, el sistema generará un token único válido por 48 horas y se enviará automáticamente al correo del usuario a través del CRM, permitiéndole crear una nueva contraseña de forma segura.
                 </p>
             </div>
         </section>

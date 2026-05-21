@@ -1,6 +1,8 @@
 'use client';
 import { useState, useCallback, useEffect, Fragment, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, HeatmapLayer } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView } from '@react-google-maps/api';
+import { GoogleMapsOverlay } from '@deck.gl/google-maps';
+import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
 
@@ -346,22 +348,54 @@ useEffect(() => {
     }
   };
   const heatmapData = useMemo(() => {
-    if (!isLoaded || typeof window === 'undefined' || !window.google) {
-      return [];
-    }
     return Object.entries(sellerData).map(([zip, count]) => {
       const coords = ZIP_COORDS[zip];
       if (!coords) return null;
       return {
-        location: new window.google.maps.LatLng(coords.lat, coords.lng),
-        weight: count // A mayor frecuencia, mayor intensidad
+        position: [coords.lng, coords.lat], // Deck.gl usa un simple arreglo [Longitud, Latitud]
+        weight: count
       };
-    }).filter(Boolean) as google.maps.visualization.WeightedLocation[];
-  }, [isLoaded]);
+    }).filter(Boolean);
+  }, []); 
+
   const activeHeatmapData = useMemo(() => {
-    if (searchType !== 'sold' || !isLoaded || !window.google) return [];
+    if (searchType !== 'sold') return [];
     return heatmapData;
-  }, [searchType, isLoaded, heatmapData]);
+  }, [searchType, heatmapData]);
+
+  // --- INTEGRACIÓN DE DECK.GL ---
+  useEffect(() => {
+    if (!map) return;
+
+    const overlay = new GoogleMapsOverlay({
+      layers: [
+        new HeatmapLayer({
+          id: 'heatmap-layer',
+          data: activeHeatmapData as any,
+          getPosition: (d: any) => d.position,
+          getWeight: (d: any) => d.weight,
+          radiusPixels: 40,
+          intensity: 1,
+          threshold: 0.05,
+          // deck.gl usa arreglos [R, G, B, Alpha(0-255)] en lugar de strings 'rgba()'
+          colorRange: [
+            [248, 237, 26, 0],
+            [184, 176, 19, 76],
+            [218, 208, 22, 127],
+            [248, 237, 26, 178],
+            [248, 237, 26, 230],
+            [255, 255, 200, 255]
+          ]
+        })
+      ]
+    });
+
+    overlay.setMap(map);
+
+    return () => {
+      overlay.setMap(null);
+    };
+  }, [map, activeHeatmapData]);
   // Lógica para determinar si es Nuevo o Editado
   const checkSpecialStatus = (property: PropertyProps) => {
     const now = new Date();
@@ -583,24 +617,7 @@ useEffect(() => {
             </div>
           </InfoWindow>
         )}
-{isLoaded && (
-      <HeatmapLayer
-        data={activeHeatmapData}
-        options={{
-          radius: 40,
-          opacity: 0.9,
-          gradient: [
-            'rgba(248, 237, 26, 0)',
-            'rgba(184, 176, 19, 0.3)',
-            'rgba(218, 208, 22, 0.5)',
-            'rgba(248, 237, 26, 0.7)',
-            'rgba(248, 237, 26, 0.9)',
-            'rgba(255, 255, 200, 1)',
-            'rgba(255, 255, 255, 1)'
-          ]
-        }}
-      />
-    )}
+{/* La capa de Heatmap de deck.gl ahora se inyecta de forma invisible mediante GoogleMapsOverlay en el useEffect de arriba, por lo que borramos la etiqueta nativa de Google Maps. */}
 
     {/* Los marcadores de detección SÍ se condicionan por searchType */}
     {searchType === 'sold' && Object.entries(sellerData).map(([zip, count]) => {
