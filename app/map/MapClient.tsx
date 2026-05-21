@@ -1,8 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect, Fragment, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView } from '@react-google-maps/api';
-import { GoogleMapsOverlay } from '@deck.gl/google-maps';
-import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, HeatmapLayer } from '@react-google-maps/api';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
 
@@ -245,7 +243,6 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
 const [clickedZip, setClickedZip] = useState<{zip: string, count: number, lat: number, lng: number} | null>(null);  // Estado para controlar el Zoom
   const [currentZoom, setCurrentZoom] = useState(12); // Inicializado en 12 para coincidir con el mapa
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
-  const [heatmapFailed, setHeatmapFailed] = useState(false);
   
   // 1. RECARGA DE IMÁGENES PARA EVITAR PARPADEO
   useEffect(() => {
@@ -292,6 +289,7 @@ useEffect(() => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    version: "3.64",//parche temporal para funcionamiento de  heatmap con la nueva versión 
     libraries // IMPORTANTE: Cargar librería de visualización
   });
 
@@ -349,69 +347,23 @@ useEffect(() => {
     }
   };
   const heatmapData = useMemo(() => {
+    if (!isLoaded || typeof window === 'undefined' || !window.google) {
+      return [];
+    }
     return Object.entries(sellerData).map(([zip, count]) => {
       const coords = ZIP_COORDS[zip];
       if (!coords) return null;
       return {
-        position: [coords.lng, coords.lat], // Deck.gl usa un simple arreglo [Longitud, Latitud]
-        weight: count
+        location: new window.google.maps.LatLng(coords.lat, coords.lng),
+        weight: count // A mayor frecuencia, mayor intensidad
       };
-    }).filter(Boolean);
-  }, []); 
+    }).filter(Boolean) as google.maps.visualization.WeightedLocation[];
+  }, [isLoaded]);
 
   const activeHeatmapData = useMemo(() => {
-    if (searchType !== 'sold') return [];
+    if (searchType !== 'sold' || !isLoaded || !window.google) return [];
     return heatmapData;
-  }, [searchType, heatmapData]);
-
-  // --- INTEGRACIÓN DE DECK.GL (CON PROTECCIÓN CONTRA CRASHES) ---
-  useEffect(() => {
-    if (!map || heatmapFailed) return;
-
-    let overlay: GoogleMapsOverlay | null = null;
-
-    try {
-      overlay = new GoogleMapsOverlay({
-        onError: (error: Error) => {
-          console.warn("Error asíncrono de Deck.gl:", error.message);
-          setHeatmapFailed(true);
-          if (overlay) overlay.setMap(null);
-        },
-        layers: [
-          new HeatmapLayer({
-            id: 'heatmap-layer',
-            data: activeHeatmapData as any,
-            getPosition: (d: any) => d.position,
-            getWeight: (d: any) => d.weight,
-            radiusPixels: 40,
-            intensity: 1,
-            threshold: 0.05,
-            colorRange: [
-              [248, 237, 26, 0],
-              [184, 176, 19, 76],
-              [218, 208, 22, 127],
-              [248, 237, 26, 178],
-              [248, 237, 26, 230],
-              [255, 255, 200, 255]
-            ]
-          })
-        ]
-      });
-
-      overlay.setMap(map); 
-
-    } catch (error) {
-      console.error("Error síncrono fatal al cargar el mapa de calor:", error);
-      setHeatmapFailed(true);
-      if (overlay) overlay.setMap(null);
-    }
-
-    return () => {
-      if (overlay) {
-        overlay.setMap(null);
-      }
-    };
-  }, [map, activeHeatmapData, heatmapFailed]);
+  }, [searchType, isLoaded, heatmapData]);
   // Lógica para determinar si es Nuevo o Editado
   const checkSpecialStatus = (property: PropertyProps) => {
     const now = new Date();
@@ -633,7 +585,24 @@ useEffect(() => {
             </div>
           </InfoWindow>
         )}
-{/* La capa de Heatmap de deck.gl ahora se inyecta de forma invisible mediante GoogleMapsOverlay en el useEffect de arriba, por lo que borramos la etiqueta nativa de Google Maps. */}
+{isLoaded && (
+      <HeatmapLayer
+        data={activeHeatmapData}
+        options={{
+          radius: 40,
+          opacity: 0.9,
+          gradient: [
+            'rgba(248, 237, 26, 0)',
+            'rgba(184, 176, 19, 0.3)',
+            'rgba(218, 208, 22, 0.5)',
+            'rgba(248, 237, 26, 0.7)',
+            'rgba(248, 237, 26, 0.9)',
+            'rgba(255, 255, 200, 1)',
+            'rgba(255, 255, 255, 1)'
+          ]
+        }}
+      />
+    )}
 
     {/* Los marcadores de detección SÍ se condicionan por searchType */}
     {searchType === 'sold' && Object.entries(sellerData).map(([zip, count]) => {
