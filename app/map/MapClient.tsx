@@ -245,6 +245,7 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
 const [clickedZip, setClickedZip] = useState<{zip: string, count: number, lat: number, lng: number} | null>(null);  // Estado para controlar el Zoom
   const [currentZoom, setCurrentZoom] = useState(12); // Inicializado en 12 para coincidir con el mapa
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
+  const [heatmapFailed, setHeatmapFailed] = useState(false);
   
   // 1. RECARGA DE IMÁGENES PARA EVITAR PARPADEO
   useEffect(() => {
@@ -363,11 +364,18 @@ useEffect(() => {
     return heatmapData;
   }, [searchType, heatmapData]);
 
-  // --- INTEGRACIÓN DE DECK.GL ---
+  // --- INTEGRACIÓN DE DECK.GL (CON ERROR BOUNDARY) ---
   useEffect(() => {
-    if (!map) return;
+    // Si no hay mapa o si el heatmap ya falló previamente, no intentamos dibujarlo
+    if (!map || heatmapFailed) return;
 
     const overlay = new GoogleMapsOverlay({
+      // El "Error Boundary" interno de deck.gl
+      onError: (error: Error) => {
+        console.warn("Error de WebGPU/Shader detectado. Desactivando mapa de calor para este dispositivo:", error.message);
+        setHeatmapFailed(true); // Actualizamos el estado para no volver a intentar
+        overlay.setMap(null);   // Retiramos la capa rota del mapa
+      },
       layers: [
         new HeatmapLayer({
           id: 'heatmap-layer',
@@ -377,7 +385,6 @@ useEffect(() => {
           radiusPixels: 40,
           intensity: 1,
           threshold: 0.05,
-          // deck.gl usa arreglos [R, G, B, Alpha(0-255)] en lugar de strings 'rgba()'
           colorRange: [
             [248, 237, 26, 0],
             [184, 176, 19, 76],
@@ -395,7 +402,7 @@ useEffect(() => {
     return () => {
       overlay.setMap(null);
     };
-  }, [map, activeHeatmapData]);
+  }, [map, activeHeatmapData, heatmapFailed]);
   // Lógica para determinar si es Nuevo o Editado
   const checkSpecialStatus = (property: PropertyProps) => {
     const now = new Date();
