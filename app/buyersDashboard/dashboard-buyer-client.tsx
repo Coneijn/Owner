@@ -18,6 +18,24 @@ const SERVICE_FEE = 0;//se vuelve inecesario ya que se arreglo al crear el contr
 export default function DashboardBuyerClient({ data }: { data: any }) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
+
+  const [showAll, setShowAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(data.transactions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  
+  // Mostramos 3 por defecto, o páginas de 10 si showAll es true
+  const displayedTransactions = showAll 
+    ? data.transactions.slice(startIndex, startIndex + itemsPerPage) 
+    : data.transactions.slice(0, 3);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
   
   const totalNextPayment = data.nextPayment + SERVICE_FEE;
   
@@ -195,7 +213,14 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
         <div className="lg:col-span-2 bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-xl flex flex-col">
           <div className="p-6 border-b border-gray-800 bg-[#111] flex justify-between items-center">
             <h3 className="font-black text-xl text-white uppercase tracking-wide">Recent Transactions</h3>
-            <button className="text-[#f8ed1a] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">View All</button>
+            {!showAll && data.transactions.length > 3 && (
+              <button 
+                onClick={() => setShowAll(true)}
+                className="text-[#f8ed1a] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
+              >
+                View All
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-800">
@@ -209,7 +234,7 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {data.transactions.map((tx: any, index: number) => (
+                {displayedTransactions.map((tx: any, index: number) => (
                   <tr key={index} className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4 text-gray-400 text-sm whitespace-nowrap font-mono">{tx.date}</td>
                     <td className="px-6 py-4 text-white text-sm font-bold whitespace-nowrap">{tx.type}</td>
@@ -221,6 +246,31 @@ export default function DashboardBuyerClient({ data }: { data: any }) {
               </tbody>
             </table>
           </div>
+
+          {/* CONTROLES DE PAGINACIÓN */}
+          {showAll && totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800 bg-gray-900/50">
+              <span className="text-xs text-gray-500">
+                Showing <span className="font-bold text-white">{startIndex + 1}</span> to <span className="font-bold text-white">{Math.min(startIndex + itemsPerPage, data.transactions.length)}</span> of {data.transactions.length}
+              </span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-xs font-bold uppercase rounded bg-gray-800 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+                >
+                  Prev
+                </button>
+                <button 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-xs font-bold uppercase rounded bg-gray-800 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
           <div className="p-4 bg-[#151515] border-t border-gray-800 text-xs flex items-center gap-2 text-gray-400 font-mono">
             <span className="text-[#f8ed1a]">ℹ️</span>
             <span>Note: {formatMoney(data.paymentBreakdown.escrow)} of each payment goes to Escrow (Taxes & Insurance).</span>
