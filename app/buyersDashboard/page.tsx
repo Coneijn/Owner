@@ -123,11 +123,10 @@ export default async function BuyersDashboard() {
     );
   }
 
-  // Lógica para separar el pago pendiente actual y los pagos históricos
   const pendingPayment = [...contract.payments].reverse().find(p => p.status === 'PENDING') || contract.payments[0];
   const allPaidTransactions = contract.payments.filter(p => p.status === 'PAID');
-  const paidTransactions = allPaidTransactions.slice(0, 3); // Últimos 3 pagos para la tabla inferior
-
+  const paidTransactions = allPaidTransactions;
+  
   // Cálculos financieros
   // La deuda actual real es el balance que quedó DESPUÉS del último pago que SÍ fue exitoso ('PAID')
   const lastPaidPayment = allPaidTransactions[0]; // Como prisma ordenó 'desc', el [0] es el pago exitoso más reciente

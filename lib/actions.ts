@@ -703,7 +703,10 @@ export async function assignPropertyClient(
     const lastName = formData.get('lastName') as string;
     const phone = formData.get('phone') as string;
     const startDateString = formData.get('startDate') as string;
-    const startDate = startDateString ? new Date(startDateString) : new Date();
+    
+    // Configuramos la fecha de inicio a medianoche para evitar problemas de zona horaria
+    const startDate = startDateString ? new Date(`${startDateString}T00:00:00`) : new Date();
+    const currentDate = new Date();
 
     // Datos del Co-propietario
     const hasCoOwner = formData.get('hasCoOwner') === 'on';
@@ -829,15 +832,40 @@ export async function assignPropertyClient(
       if (coProfileId) profilesToConnect.push({ id: coProfileId });
     }
 
+    // 5. LÓGICA DE PAGOS Y CONTRATOS
+    // Calculamos meses pasados desde la fecha de inicio
+    let monthsToGenerate = (currentDate.getFullYear() - startDate.getFullYear()) * 12 + (currentDate.getMonth() - startDate.getMonth());
+    if (monthsToGenerate < 0) monthsToGenerate = 0; 
+    
+    // Generamos pagos hasta el mes actual + 1 mes pendiente
+    const totalPaymentsToGenerate = monthsToGenerate + 1; 
+
     if (clientType === 'RENTER') {
       const monthlyRent = parseFloat(formData.get('monthlyRent') as string || '0');
       const securityDeposit = parseFloat(formData.get('securityDeposit') as string || '0');
-      
       const leaseTerm = parseInt(formData.get('leaseTerm') as string || '12');
+      
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + leaseTerm);
 
-      const firstPaymentDate = new Date(startDate);
+      const paymentsToCreate = [];
+
+      // Generación iterativa de pagos de renta
+      for (let i = 0; i < totalPaymentsToGenerate; i++) {
+        const paymentDate = new Date(startDate);
+        paymentDate.setMonth(startDate.getMonth() + i);
+        
+        // Si la fecha del pago es anterior a hoy, se marca como pagado
+        const isPaid = paymentDate < currentDate;
+
+        paymentsToCreate.push({
+          paymentDate: paymentDate,
+          totalDue: monthlyRent,
+          serviceFee: 0, 
+          status: isPaid ? PaymentStatus.PAID : PaymentStatus.PENDING,
+          paidAt: isPaid ? paymentDate : null
+        });
+      }
 
       await prisma.leaseAgreement.create({
         data: {
@@ -849,12 +877,7 @@ export async function assignPropertyClient(
           securityDeposit,
           isActive: true,
           payments: {
-            create: {
-              paymentDate: firstPaymentDate,
-              totalDue: monthlyRent, // <-- Si no llevan fee extra en renta, lo dejamos igual
-              serviceFee: 0, 
-              status: 'PENDING'
-            }
+            create: paymentsToCreate
           }
         }
       });
@@ -885,15 +908,37 @@ export async function assignPropertyClient(
         }
       }
 
-      const firstMonthInterest = principal * monthlyInterestRate;
-      const firstMonthPrincipal = pmt - firstMonthInterest;
-      
-      // AÑADIMOS EL SERVICE_FEE AL CÁLCULO DEL TOTAL DUE
       const totalDue = pmt + taxes + insurance + SERVICE_FEE; 
-      const newRemainingBalance = principal - firstMonthPrincipal;
+      
+      let currentBalance = principal;
+      const paymentsToCreate = [];
 
-      const firstPaymentDate = new Date(startDate);
-      firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+      // Generación iterativa de amortización para meses pasados y el actual
+      for (let i = 1; i <= totalPaymentsToGenerate; i++) {
+        const paymentDate = new Date(startDate);
+        // El primer pago es 1 mes después de la firma
+        paymentDate.setMonth(startDate.getMonth() + i);
+
+        // Si la fecha del pago es anterior a hoy, consideramos que ya se pagó en tiempo
+        const isPaid = paymentDate < currentDate;
+
+        const currentInterest = currentBalance * monthlyInterestRate;
+        const currentPrincipal = pmt - currentInterest;
+        currentBalance = currentBalance - currentPrincipal;
+
+        paymentsToCreate.push({
+          paymentDate: paymentDate,
+          totalDue: totalDue > 0 ? totalDue : 0,
+          principal: currentPrincipal > 0 ? currentPrincipal : 0,
+          interest: currentInterest > 0 ? currentInterest : 0,
+          taxes,
+          insurance,
+          serviceFee: SERVICE_FEE,
+          remainingBalance: currentBalance > 0 ? currentBalance : 0,
+          status: isPaid ? PaymentStatus.PAID : PaymentStatus.PENDING,
+          paidAt: isPaid ? paymentDate : null
+        });
+      }
 
       await prisma.contract.create({
         data: {
@@ -907,20 +952,10 @@ export async function assignPropertyClient(
           termInYears,
           monthlyTaxes: taxes,
           monthlyInsurance: insurance,
-          monthlyServFee: SERVICE_FEE, // <-- GUARDAMOS EL FEE EN LA CABECERA
+          monthlyServFee: SERVICE_FEE,
           startDate, 
           payments: {
-            create: {
-              paymentDate: firstPaymentDate,
-              totalDue: totalDue > 0 ? totalDue : 0,
-              principal: firstMonthPrincipal > 0 ? firstMonthPrincipal : 0,
-              interest: firstMonthInterest > 0 ? firstMonthInterest : 0,
-              taxes,
-              insurance,
-              serviceFee: SERVICE_FEE, // <-- GUARDAMOS EL FEE REAL EN LA AMORTIZACIÓN
-              remainingBalance: newRemainingBalance > 0 ? newRemainingBalance : 0,
-              status: 'PENDING'
-            }
+            create: paymentsToCreate
           }
         }
       });
