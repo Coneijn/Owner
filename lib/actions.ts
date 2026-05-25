@@ -867,6 +867,21 @@ export async function assignPropertyClient(
         });
       }
 
+      // --- NUEVO: VALIDADOR DE LLENADO PARA RENTAS ---
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+
+      paymentsToCreate.forEach(payment => {
+        const pDate = new Date(payment.paymentDate);
+        pDate.setHours(0, 0, 0, 0);
+
+        if (pDate <= todayMidnight) {
+          payment.status = PaymentStatus.PAID;
+          payment.paidAt = payment.paymentDate;
+        }
+      });
+      // ------------------------------------------------
+
       await prisma.leaseAgreement.create({
         data: {
           propertyId,
@@ -939,6 +954,21 @@ export async function assignPropertyClient(
           paidAt: isPaid ? paymentDate : null
         });
       }
+
+      // --- NUEVO: VALIDADOR DE LLENADO PARA COMPRAS ---
+      const todayMidnightBuyer = new Date();
+      todayMidnightBuyer.setHours(0, 0, 0, 0);
+
+      paymentsToCreate.forEach(payment => {
+        const pDate = new Date(payment.paymentDate);
+        pDate.setHours(0, 0, 0, 0);
+
+        if (pDate <= todayMidnightBuyer) {
+          payment.status = PaymentStatus.PAID;
+          payment.paidAt = payment.paymentDate;
+        }
+      });
+      // ------------------------------------------------
 
       await prisma.contract.create({
         data: {

@@ -23,14 +23,17 @@ const formatDate = (date: any) => {
 
 const SERVICE_FEE = 39;
 
-export default async function AgreementDetailsPage(props: { params: Promise<{ id: string }>, searchParams: Promise<{ type?: string }> }) {
+export default async function AgreementDetailsPage(props: { params: Promise<{ id: string }>, searchParams: Promise<{ type?: string, page?: string }> }) {
   const session = await auth();
   if (!session?.user) redirect('/login');
 
   const params = await props.params;
   const searchParams = await props.searchParams;
   const { id } = params;
-  const { type } = searchParams;
+  const { type, page } = searchParams;
+
+  const currentPage = Number(page) || 1;
+  const ITEMS_PER_PAGE = 10;
 
   if (!type || (type !== 'LOAN' && type !== 'LEASE')) {
     notFound();
@@ -41,14 +44,14 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
   let payments: any[] = [];
   const isLease = type === 'LEASE';
 
-  // Buscar en la base de datos según el tipo
+  // Buscar en la base de datos según el tipo (ordenando descendentemente)
   if (isLease) {
     agreement = await prisma.leaseAgreement.findUnique({
       where: { id },
       include: {
         property: { include: { sellerProfile: true } },
         renters: true,
-        payments: { orderBy: { paymentDate: 'asc' } }
+        payments: { orderBy: { paymentDate: 'desc' } }
       }
     });
     if (agreement) {
@@ -61,7 +64,7 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
       include: {
         property: { include: { sellerProfile: true } },
         buyers: true,
-        payments: { orderBy: { paymentDate: 'asc' } }
+        payments: { orderBy: { paymentDate: 'desc' } }
       }
     });
     if (agreement) {
@@ -69,6 +72,10 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
       payments = agreement.payments;
     }
   }
+
+  // Lógica de Paginación en memoria (para no afectar el progreso general)
+  const totalPages = Math.ceil(payments.length / ITEMS_PER_PAGE);
+  const paginatedPayments = payments.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (!agreement || !agreement.property) notFound();
 
@@ -238,14 +245,14 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
-                {payments.length === 0 ? (
+                {paginatedPayments.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-10 text-center text-gray-500 text-sm italic">
                       No payments recorded yet.
                     </td>
                   </tr>
                 ) : (
-                  payments.map((payment: any) => {
+                  paginatedPayments.map((payment: any) => {
                     const principal = Number(payment.principal || 0);
                     const interest = Number(payment.interest || 0);
                     const taxes = Number(payment.taxes || 0);
@@ -301,6 +308,41 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
               </tbody>
             </table>
           </div>
+        {/* Controles de Paginación */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-gray-800 flex items-center justify-between bg-[#111]">
+              <div className="text-xs text-gray-400">
+                Página <span className="font-bold text-white">{currentPage}</span> de <span className="font-bold text-white">{totalPages}</span>
+              </div>
+              <div className="flex gap-2">
+                {currentPage > 1 ? (
+                  <Link 
+                    href={`/admin/agreements/${id}?type=${type}&page=${currentPage - 1}`}
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded transition-colors"
+                  >
+                    Anterior
+                  </Link>
+                ) : (
+                  <button disabled className="px-3 py-1.5 bg-gray-900 text-gray-600 text-xs font-bold rounded cursor-not-allowed">
+                    Anterior
+                  </button>
+                )}
+                
+                {currentPage < totalPages ? (
+                  <Link 
+                    href={`/admin/agreements/${id}?type=${type}&page=${currentPage + 1}`}
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded transition-colors"
+                  >
+                    Siguiente
+                  </Link>
+                ) : (
+                  <button disabled className="px-3 py-1.5 bg-gray-900 text-gray-600 text-xs font-bold rounded cursor-not-allowed">
+                    Siguiente
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
       </main>

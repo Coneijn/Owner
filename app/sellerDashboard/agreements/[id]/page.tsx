@@ -98,7 +98,17 @@ export default async function SellerAgreementDetailsPage(props: { params: Promis
     paidPrincipal = paidPayments.reduce((acc, p) => acc + Number(p.principal), 0);
     progressPct = (paidPrincipal / Number(agreement.principalAmount)) * 100;
   }
-
+const serializedPayments = payments.map((payment) => ({
+    ...payment,
+    totalDue: payment.totalDue ? Number(payment.totalDue) : 0,
+    principal: payment.principal ? Number(payment.principal) : 0,
+    interest: payment.interest ? Number(payment.interest) : 0,
+    taxes: payment.taxes ? Number(payment.taxes) : 0,
+    insurance: payment.insurance ? Number(payment.insurance) : 0,
+    serviceFee: payment.serviceFee ? Number(payment.serviceFee) : 0,
+    lateFee: payment.lateFee ? Number(payment.lateFee) : 0,
+    remainingBalance: payment.remainingBalance ? Number(payment.remainingBalance) : 0,
+  }));
   return (
     <div className="min-h-screen bg-[#111111] text-gray-200 font-sans pb-20">
       {/* Header */}
@@ -218,7 +228,7 @@ export default async function SellerAgreementDetailsPage(props: { params: Promis
         </div>
 
         {/* Payments Table (Client Component for Pagination) */}
-        <PaymentHistoryClient payments={payments} isLease={isLease} />
+        <PaymentHistoryClient payments={serializedPayments} isLease={isLease} />
       </main>
     </div>
   );
