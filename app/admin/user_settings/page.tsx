@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChangePasswordForm, CreateUserForm, UserListTable, TwoFactorManager } from '../../components/ui/client-components';
+import { ChangePasswordForm, TwoFactorManager } from '../../components/ui/client-components';
 
 export default async function UserSettingsPage() {
   const session = await auth();
@@ -16,12 +16,6 @@ export default async function UserSettingsPage() {
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: { isTwoFactorEnabled: true, email: true, role:true }
-  });
-
-  // 2. Obtener todos los usuarios para la tabla
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    select: { id: true, name: true, email: true, role: true, createdAt: true, isTwoFactorEnabled: true }, 
   });
 
   return (
@@ -38,9 +32,21 @@ export default async function UserSettingsPage() {
               User <span className="text-[#f8ed1a]">Settings</span>
             </span>
           </div>
-          <Link href="/admin" className="text-sm font-bold text-gray-400 hover:text-white transition-colors">
-            Exit to Dashboard
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* ACTIVO: Personal Settings */}
+            <Link href="/admin/user_settings" className="text-xs sm:text-sm font-bold text-[#f8ed1a] uppercase tracking-wide border border-[#f8ed1a]/50 bg-[#f8ed1a]/10 px-3 py-1.5 rounded-lg cursor-default pointer-events-none">
+              🔒 Personal Settings
+            </Link>
+            
+            {/* INACTIVO: Team Management */}
+            <Link href="/admin/team_management" className="text-xs sm:text-sm font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wide px-3 py-1.5 rounded-lg hover:bg-gray-800">
+              👥 Team Management
+            </Link>
+            
+            <Link href="/admin" className="text-sm font-bold text-gray-400 hover:text-white transition-colors ml-2 border-l border-gray-800 pl-4 sm:pl-6">
+              Go to dashboard
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -96,49 +102,7 @@ export default async function UserSettingsPage() {
             </div>
         </section>
 
-        {/* 2. SECCIÓN: CREAR USUARIO */}
-        <section className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 shadow-2xl relative overflow-hidden group hover:border-gray-700 transition-colors">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#529e14] opacity-5 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
-            
-            <div className="relative z-10">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2 flex items-center gap-3">
-                    👤 Add Administrator
-                </h2>
-                <p className="text-sm text-gray-400 mb-8 max-w-lg">
-                    Create a new access credential for a team member. They will have full admin privileges.
-                </p>
-                
-                <div className="max-w-xl">
-                    <CreateUserForm />
-                </div>
-            </div>
-        </section>
-
-        {/* 3. SECCIÓN: LISTA DE USUARIOS */}
-        <section className="pt-8 border-t border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Team Management</h2>
-                    <p className="text-sm text-gray-400 mt-1">View active users and reset passwords if needed.</p>
-                </div>
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
-                    {users.length} Users Active
-                </div>
-            </div>
-
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-lg overflow-hidden">
-                <UserListTable users={users} currentUserEmail={session.user.email} />
-            </div>
-            
-            <div className="mt-4 flex gap-3 p-4 bg-gray-900/30 rounded-lg border border-gray-800">
-                <span className="text-xl">ℹ️</span>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                    <strong>Admin Note:</strong> Al enviar un Magic Link, el sistema generará un token único válido por 48 horas y se enviará automáticamente al correo del usuario a través del CRM, permitiéndole crear una nueva contraseña de forma segura.
-                </p>
-            </div>
-        </section>
-
-      </main>
+        </main>
     </div>
   );
 }

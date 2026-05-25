@@ -323,6 +323,7 @@ export function CreateUserForm() {
             <option value="seller">Seller</option>
             <option value="agent">Agent</option>
             <option value="buyer">Buyer</option>
+            <option value="renter">Renter</option>
             </select>
         </div>
       </div>

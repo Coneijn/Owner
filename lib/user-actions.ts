@@ -120,6 +120,13 @@ export async function createUser(formData: FormData) {
             }
           }
         }),
+        ...(rawRole === 'renter' && {
+          renterProfile: {
+            create: {
+              RenterName: name
+            }
+          }
+        }),
 
       },
     });
