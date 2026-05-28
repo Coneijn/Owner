@@ -1039,3 +1039,25 @@ export async function deleteAgreement(contractId: string, isLease: boolean) {
     return { success: false, message: 'Error al eliminar el contrato.' };
   }
 }
+// Agregar al final de lib/actions.ts
+export async function togglePaymentStatus(paymentId: string, currentStatus: PaymentStatus) {
+  try {
+    const newStatus = currentStatus === 'PENDING' ? PaymentStatus.PAID : PaymentStatus.PENDING;
+    const paidAt = newStatus === 'PAID' ? new Date() : null;
+
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: newStatus,
+        paidAt: paidAt,
+      },
+    });
+
+    // Revalidamos las rutas de administración para refrescar los datos en pantalla
+    revalidatePath('/admin');
+    return { success: true, newStatus };
+  } catch (error) {
+    console.error('Error toggling payment status:', error);
+    return { success: false, message: 'No se pudo actualizar el estado del pago.' };
+  }
+}

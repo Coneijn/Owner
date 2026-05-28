@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-
+import PaymentStatusToggle from '@/app/components/ui/payment-status-toggle';
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -271,11 +271,11 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
                           {formatDate(payment.paymentDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {payment.status === 'PAID' && <span className="bg-[#529e14]/20 text-[#529e14] px-2 py-1 rounded text-[10px] font-black uppercase">Paid</span>}
-                          {payment.status === 'PENDING' && <span className="bg-gray-800 text-gray-400 px-2 py-1 rounded text-[10px] font-black uppercase">Pending</span>}
-                          {payment.status === 'LATE' && <span className="bg-red-900/20 text-red-500 px-2 py-1 rounded text-[10px] font-black uppercase">Late</span>}
-                          {payment.status === 'PARTIAL' && <span className="bg-orange-900/20 text-orange-400 px-2 py-1 rounded text-[10px] font-black uppercase">Partial</span>}
-                        </td>
+  <PaymentStatusToggle 
+    paymentId={payment.id} 
+    initialStatus={payment.status} 
+  />
+</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-[#f8ed1a]">
                           {formatMoney(totalDue)}
                         </td>
