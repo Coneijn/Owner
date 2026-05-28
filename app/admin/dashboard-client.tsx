@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DeletePropertyButton from '@/app/components/ui/delete-button';
-
+import { deleteAgreement } from '@/lib/actions';
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -217,11 +217,13 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
     );
   }
 
-  const handleDelete = (e: React.MouseEvent, contractId: string) => {
-    e.stopPropagation(); // Prevents the row click event from triggering the router push
+  const handleDelete = async (e: React.MouseEvent, contractId: string) => {
+    e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this agreement? This action cannot be undone.")) {
-      // TODO: Implement your deletion API call here
-      console.log("Deleting contract with ID:", contractId);
+      const response = await deleteAgreement(contractId, isLease);
+      if (!response.success) {
+        alert(response.message);
+      }
     }
   };
 

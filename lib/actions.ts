@@ -1018,4 +1018,24 @@ export async function assignPropertyClient(
     console.error('Error assigning property client:', error);
     return { success: false, message: 'Ocurrió un error al procesar la asignación.' };
   }
+}// Agregar al final de lib/actions.ts
+export async function deleteAgreement(contractId: string, isLease: boolean) {
+  try {
+    if (isLease) {
+      await prisma.leaseAgreement.delete({
+        where: { id: contractId },
+      });
+    } else {
+      await prisma.contract.delete({
+        where: { id: contractId },
+      });
+    }
+    
+    // Recargar la página para reflejar los cambios
+    revalidatePath('/admin');
+    return { success: true, message: 'Contrato eliminado correctamente.' };
+  } catch (error) {
+    console.error('Error deleting agreement:', error);
+    return { success: false, message: 'Error al eliminar el contrato.' };
+  }
 }
