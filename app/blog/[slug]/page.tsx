@@ -4,29 +4,23 @@ import Image from 'next/image';
 import Header from '@/app/components/Header';
 import sanitizeHtml from 'sanitize-html';
 
-export default async function BlogPostPage({
-  params,
-  searchParams,
-}: { 
+export default async function BlogPostPage(props: { 
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
 }) {
-  // 1. Resolvemos las promesas de los parámetros (Estándar Next.js 15+)
-  const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
+  const resolvedParams = await props.params;
+  const resolvedSearchParams = await props.searchParams;
 
   const slug = resolvedParams?.slug;
   const lang = resolvedSearchParams?.lang;
 
-  // 2. VALIDACIÓN CRÍTICA: Si por alguna razón de red o del servidor el slug llega undefined, 
-  // enviamos a la página de 404 Not Found antes de que Prisma haga explotar el servidor.
+  // Validación previa para asegurar que el slug no tumbe el servidor con Prisma
   if (!slug) {
     notFound();
   }
 
   const currentLang = lang === 'en' ? 'en' : 'es';
 
-  // 3. Ahora Prisma es seguro porque garantizamos que 'slug' tiene un valor válido
   const post = await prisma.post.findUnique({ where: { slug } });
 
   if (!post || !post.isPublished) notFound();
@@ -35,7 +29,7 @@ export default async function BlogPostPage({
   const rawContent = currentLang === 'en' ? post.contentEn : post.contentEs;
   const authorBio = currentLang === 'en' ? post.authorBioEn : post.authorBioEs;
 
-  // Configuración de Sanitización
+  // Configuración de Sanitización de HTML
   const sanitizedContent = sanitizeHtml(rawContent, {
     allowedTags: [
       'b', 'i', 'em', 'strong', 'a', 'p', 
@@ -60,47 +54,13 @@ export default async function BlogPostPage({
           {title}
         </h1>
 
-        {/* --- SECCIÓN DEL AUTOR (Integrada de nuestra charla anterior) --- */}
-        {post.authorName && (
-          <div className="flex items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
-            {post.authorImage ? (
-              <Image 
-                src={post.authorImage} 
-                alt={post.authorName} 
-                width={48} 
-                height={48} 
-                className="rounded-full object-cover w-12 h-12"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                <span className="text-xl font-bold text-gray-400">
-                  {post.authorName.charAt(0)}
-                </span>
-              </div>
-            )}
-            
-            <div className="flex flex-col">
-               <span className="text-gray-400 text-sm">
-                 {currentLang === 'en' ? 'Written by' : 'Escrito por'}
-               </span>
-               <span className="text-white font-bold">{post.authorName}</span>
-               
-               {authorBio && (
-                 <span className="text-gray-300 text-sm mt-1">
-                   {authorBio}
-                 </span>
-               )}
-            </div>
-          </div>
-        )}
-        {/* --- FIN SECCIÓN DEL AUTOR --- */}
-
         {post.mainImage && (
           <div className="relative w-full h-64 md:h-96 rounded-2xl overflow-hidden mb-10 shadow-2xl border border-gray-800">
             <Image src={post.mainImage} alt={title} fill className="object-cover" />
           </div>
         )}
 
+        {/* Contenido del Post */}
         <div className="prose prose-invert prose-lg max-w-none 
           prose-p:text-gray-300 prose-p:leading-relaxed
           prose-headings:font-bold prose-headings:uppercase
@@ -112,6 +72,45 @@ export default async function BlogPostPage({
           
           <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
         </div>
+
+        {/* --- SECCIÓN DEL AUTOR AL FINAL DEL POST --- */}
+        {post.authorName && (
+          <div className="flex items-center gap-5 mt-14 p-6 bg-gray-800/30 rounded-xl border border-gray-800/80 shadow-xl">
+            {/* Renderizado de la foto del autor */}
+            {post.authorImage ? (
+              <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 border border-gray-700">
+                <Image 
+                  src={post.authorImage} 
+                  alt={post.authorName} 
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center shrink-0 border border-gray-600">
+                <span className="text-2xl font-bold text-gray-300">
+                  {post.authorName.charAt(0)}
+                </span>
+              </div>
+            )}
+            
+            <div className="flex flex-col">
+               <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">
+                 {currentLang === 'en' ? 'Written by' : 'Escrito por'}
+               </span>
+               <span className="text-white font-bold text-lg">{post.authorName}</span>
+               
+               {/* Mostrar la biografía sólo si fue añadida en la base de datos */}
+               {authorBio && (
+                 <p className="text-gray-400 text-sm mt-1 leading-relaxed">
+                   {authorBio}
+                 </p>
+               )}
+            </div>
+          </div>
+        )}
+        {/* --- FIN SECCIÓN DEL AUTOR --- */}
+
       </main>
       <footer className="bg-[#1a1a1a] text-white py-12 border-t border-gray-800 text-center mt-12">
         <p className="text-gray-500 text-sm">© 2026 Dueño a Dueño.</p>
