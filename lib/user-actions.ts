@@ -266,12 +266,16 @@ export async function registerWebUser(prevState: any, formData: FormData) {
     const email = formData.get('email') as string;
     const phone = formData.get('phone') as string;
     const password = formData.get('password') as string;
+    
+    // Capturamos los nuevos campos
+    const downPayment = formData.get('downPayment') as string;
+    const zipCode = formData.get('zipCode') as string;
 
     if (!email || !password || !name || !phone) {
       return { error: 'Todos los campos son obligatorios.' };
     }
 
-    // 1. Validar que el correo no exista
+    // 1. Validar que el correo no exista en BD
     const existingUser = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -280,16 +284,40 @@ export async function registerWebUser(prevState: any, formData: FormData) {
       return { error: 'El correo electrónico ya está registrado.' };
     }
 
-    // 2. Encriptar contraseña
+    // 2. Enviar datos al Inbound Webhook de GoHighLevel
+    try {
+      const ghlWebhookUrl = "https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/1e04ebc2-f662-4524-9afa-dcb9b8c4b943";
+      
+      await fetch(ghlWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: name.split(' ')[0] || '', 
+          last_name: name.split(' ').slice(1).join(' ') || '',
+          full_name: name,
+          email: email.toLowerCase(),
+          phone: phone,
+          down_payment: downPayment,
+          zip_code: zipCode,
+          source: 'Dueño a Dueño Web Signup'
+        }),
+      });
+      console.log(`[GHL] Datos enviados exitosamente para: ${email}`);
+    } catch (webhookError) {
+      console.error('[GHL] Error enviando al webhook:', webhookError);
+      // No retornamos el error para no bloquear la creación de la cuenta si GHL llega a fallar
+    }
+
+    // 3. Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Crear el usuario y su perfil anidado (WebuserProfile)
+    // 4. Crear el usuario y su perfil anidado (WebuserProfile)
     await prisma.user.create({
       data: {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: 'USER', // Rol base de acuerdo a tu Enum
+        role: 'USER', 
         webuserProfile: {
           create: {
             phone: phone,
