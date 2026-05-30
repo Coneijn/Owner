@@ -2,25 +2,40 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Header from '@/app/components/Header';
-// 1. Import sanitize-html instead of DOMPurify
 import sanitizeHtml from 'sanitize-html';
 
-export default async function BlogPostPage(props: { 
+export default async function BlogPostPage({
+  params,
+  searchParams,
+}: { 
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
 }) {
-  const { slug } = await props.params;
-  const { lang } = await props.searchParams;
+  // 1. Resolvemos las promesas de los parámetros (Estándar Next.js 15+)
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+
+  const slug = resolvedParams?.slug;
+  const lang = resolvedSearchParams?.lang;
+
+  // 2. VALIDACIÓN CRÍTICA: Si por alguna razón de red o del servidor el slug llega undefined, 
+  // enviamos a la página de 404 Not Found antes de que Prisma haga explotar el servidor.
+  if (!slug) {
+    notFound();
+  }
+
   const currentLang = lang === 'en' ? 'en' : 'es';
 
+  // 3. Ahora Prisma es seguro porque garantizamos que 'slug' tiene un valor válido
   const post = await prisma.post.findUnique({ where: { slug } });
 
   if (!post || !post.isPublished) notFound();
 
   const title = currentLang === 'en' ? post.titleEn : post.titleEs;
   const rawContent = currentLang === 'en' ? post.contentEn : post.contentEs;
+  const authorBio = currentLang === 'en' ? post.authorBioEn : post.authorBioEs;
 
-  // 2. Configuración de Sanitización
+  // Configuración de Sanitización
   const sanitizedContent = sanitizeHtml(rawContent, {
     allowedTags: [
       'b', 'i', 'em', 'strong', 'a', 'p', 
@@ -28,11 +43,10 @@ export default async function BlogPostPage(props: {
       'ul', 'ol', 'li', 'br', 'img', 'blockquote', 'code', 'pre', 'hr'
     ],
     allowedAttributes: {
-      '*': ['className', 'class'], // Allow classes on all elements
+      '*': ['className', 'class'], 
       'a': ['href', 'target', 'rel'],
       'img': ['src', 'alt', 'width', 'height']
     },
-    // Esto fuerza a que los enlaces externos se abran en nueva pestaña
     transformTags: {
       'a': sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' })
     }
@@ -45,6 +59,41 @@ export default async function BlogPostPage(props: {
         <h1 className="text-3xl md:text-5xl font-black text-white uppercase mb-8 leading-tight tracking-tight">
           {title}
         </h1>
+
+        {/* --- SECCIÓN DEL AUTOR (Integrada de nuestra charla anterior) --- */}
+        {post.authorName && (
+          <div className="flex items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
+            {post.authorImage ? (
+              <Image 
+                src={post.authorImage} 
+                alt={post.authorName} 
+                width={48} 
+                height={48} 
+                className="rounded-full object-cover w-12 h-12"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                <span className="text-xl font-bold text-gray-400">
+                  {post.authorName.charAt(0)}
+                </span>
+              </div>
+            )}
+            
+            <div className="flex flex-col">
+               <span className="text-gray-400 text-sm">
+                 {currentLang === 'en' ? 'Written by' : 'Escrito por'}
+               </span>
+               <span className="text-white font-bold">{post.authorName}</span>
+               
+               {authorBio && (
+                 <span className="text-gray-300 text-sm mt-1">
+                   {authorBio}
+                 </span>
+               )}
+            </div>
+          </div>
+        )}
+        {/* --- FIN SECCIÓN DEL AUTOR --- */}
 
         {post.mainImage && (
           <div className="relative w-full h-64 md:h-96 rounded-2xl overflow-hidden mb-10 shadow-2xl border border-gray-800">
