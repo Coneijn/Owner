@@ -7,6 +7,8 @@ declare module 'next-auth' {
   interface User extends DefaultUser {
     role: string;
     profiles: string[];
+    isImpersonating?: boolean;
+    originalUserId?: string;
   }
 
   // Qué propiedades extra estarán disponibles en el cliente usando useSession() o auth()
@@ -15,6 +17,8 @@ declare module 'next-auth' {
       id: string;
       role: string;
       profiles: string[];
+      isImpersonating?: boolean;
+      originalUserId?: string;
     } & DefaultSession['user'];
   }
 }
@@ -24,5 +28,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     role?: string;
     profiles?: string[];
+    isImpersonating?: boolean;
+    originalUserId?: string;
   }
 }

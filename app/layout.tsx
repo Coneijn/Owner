@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script"; 
 import "./globals.css";
 import ChatWidget from "./components/ChatWidget";
+import Providers from "./components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -120,18 +121,19 @@ export default function RootLayout({
           `}
         </Script>
 
-        {/* --- 2. GOOGLE ADS TAG --- */}
+        {/* --- 2. GOOGLE ADS & ANALYTICS TAGS --- */}
         <Script 
           src="https://www.googletagmanager.com/gtag/js?id=AW-17843139208"
           strategy="afterInteractive"
         />
-        <Script id="google-ads-tag" strategy="afterInteractive">
+        <Script id="google-ads-analytics-tag" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
 
             gtag('config', 'AW-17843139208');
+            gtag('config', 'G-19MQCBRS78');
           `}
         </Script>
 
@@ -146,7 +148,9 @@ export default function RootLayout({
           />
         </noscript>
 
-        {children}
+        <Providers>
+          {children}
+        </Providers>
 
         {/* --- 4. LEADCONNECTOR CHAT WIDGET (GLOBAL) --- */}
         <ChatWidget />

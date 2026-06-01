@@ -58,13 +58,27 @@ export const authConfig = {
       return true;
     },
     
-    async jwt({ token, user }) {
-      // Cuando el usuario inicia sesión, pasamos la info del usuario al token
+    async jwt({ token, user, trigger, session }) {
+      // Cuando usamos el update() de NextAuth (para impersonar o restaurar sesión)
+      if (trigger === 'update' && session?.user) {
+        token.sub = session.user.id;
+        token.role = session.user.role;
+        token.profiles = session.user.profiles;
+        token.isImpersonating = session.user.isImpersonating;
+        token.originalUserId = session.user.originalUserId;
+        return token;
+      }
+
+      // Cuando el usuario inicia sesión normalmente, pasamos la info del usuario al token
       if (user) {
         // @ts-ignore
         token.role = user.role;
         // @ts-ignore
-        token.profiles = user.profiles; // Guardamos el array de perfiles
+        token.profiles = user.profiles; 
+        // @ts-ignore
+        token.isImpersonating = user.isImpersonating;
+        // @ts-ignore
+        token.originalUserId = user.originalUserId;
       }
       return token;
     },
@@ -74,6 +88,8 @@ export const authConfig = {
         session.user.id = token.sub;
         session.user.role = token.role as string;
         session.user.profiles = token.profiles as string[]; 
+        if (token.isImpersonating !== undefined) session.user.isImpersonating = token.isImpersonating as boolean;
+        if (token.originalUserId !== undefined) session.user.originalUserId = token.originalUserId as string;
       }
       return session;
     },

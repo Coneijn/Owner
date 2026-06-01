@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useFormStatus } from 'react-dom';
 
+import ImpersonateButton from './impersonate-button';
+
 import { 
   changePassword,
   createUser,
@@ -442,6 +444,8 @@ export function UserListTable({ users, currentUserEmail }: { users: User[], curr
                             <td className="px-6 py-4 text-right space-x-3">
                                 {currentUserEmail !== user.email && (
                                     <>
+                                    <ImpersonateButton targetUserId={user.id} targetUserName={user.name || user.email || 'Usuario'} />
+                                    
                                     <button 
                                         onClick={() => handleSendMagicLink(user.id)}
                                         className="text-blue-400 hover:text-blue-300 font-bold text-xs uppercase hover:underline"

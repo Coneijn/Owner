@@ -74,14 +74,15 @@ export default async function BlogPostPage(props: {
         </div>
 
         {/* --- SECCIÓN DEL AUTOR AL FINAL DEL POST --- */}
-        {post.authorName && (
+        {(post.authorName || post.authorImage || authorBio) && (
           <div className="flex items-center gap-5 mt-14 p-6 bg-gray-800/30 rounded-xl border border-gray-800/80 shadow-xl">
             {/* Renderizado de la foto del autor */}
             {post.authorImage ? (
               <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 border border-gray-700">
+                {/* Regresamos al componente Image optimizado de Next.js */}
                 <Image 
                   src={post.authorImage} 
-                  alt={post.authorName} 
+                  alt={post.authorName || 'Autor'} 
                   fill
                   className="object-cover"
                 />
@@ -89,7 +90,7 @@ export default async function BlogPostPage(props: {
             ) : (
               <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center shrink-0 border border-gray-600">
                 <span className="text-2xl font-bold text-gray-300">
-                  {post.authorName.charAt(0)}
+                  {post.authorName ? post.authorName.charAt(0).toUpperCase() : 'A'}
                 </span>
               </div>
             )}
@@ -98,13 +99,19 @@ export default async function BlogPostPage(props: {
                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">
                  {currentLang === 'en' ? 'Written by' : 'Escrito por'}
                </span>
-               <span className="text-white font-bold text-lg">{post.authorName}</span>
+               <span className="text-white font-bold text-lg">{post.authorName || 'Autor Anónimo'}</span>
                
-               {/* Mostrar la biografía sólo si fue añadida en la base de datos */}
+               {/* Mostrar la biografía renderizando HTML de forma segura */}
                {authorBio && (
-                 <p className="text-gray-400 text-sm mt-1 leading-relaxed">
-                   {authorBio}
-                 </p>
+                 <div 
+                   className="text-gray-400 text-sm mt-1 leading-relaxed prose prose-invert prose-p:my-1"
+                   dangerouslySetInnerHTML={{ 
+                     __html: sanitizeHtml(authorBio, {
+                       allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
+                       allowedAttributes: { 'a': ['href', 'target', 'rel'] }
+                     })
+                   }} 
+                 />
                )}
             </div>
           </div>
