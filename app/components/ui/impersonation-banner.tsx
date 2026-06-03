@@ -19,11 +19,11 @@ export default function ImpersonationBanner() {
       const originalUserId = session.user.originalUserId;
       
       if (!originalUserId) {
-        throw new Error("No hay un ID de administrador para restaurar.");
+        throw new Error("There's no admin ID to restore.");
       }
 
-      // 1. Obtenemos los datos limpios de nuestro admin
-      const adminData = await getRestoreAdminData(originalUserId);
+      // 1. Obtenemos los datos limpios de nuestro admin (sin enviar el ID desde el cliente)
+      const adminData = await getRestoreAdminData();
       
       // 2. Sobreescribimos la sesión
       await update({ user: adminData });
@@ -32,8 +32,8 @@ export default function ImpersonationBanner() {
       router.push('/admin');
       router.refresh();
     } catch (error) {
-      console.error('Error al restaurar la sesión:', error);
-      alert('Hubo un error al intentar volver a la cuenta de Admin.');
+      console.error('Error restoring session:', error);
+      alert('There was an error restoring your session.');
     } finally {
       setIsLoading(false);
     }
@@ -42,14 +42,14 @@ export default function ImpersonationBanner() {
   return (
     <div className="sticky top-0 w-full z-[9999] bg-red-600 text-white px-4 py-3 flex items-center justify-center gap-6 shadow-md">
       <span className="text-sm font-medium">
-        ⚠️ Estás navegando la plataforma como otro usuario.
+        ⚠️ You are browsing the platform as another user.
       </span>
       <button 
         onClick={handleRestore}
         disabled={isLoading}
         className="bg-white text-red-600 px-5 py-1.5 rounded-md text-sm font-black uppercase tracking-wide hover:bg-gray-100 transition-colors disabled:opacity-70"
       >
-        {isLoading ? 'Volviendo...' : 'Volver a mi cuenta Admin'}
+        {isLoading ? 'Restoring...' : 'Restore Admin Session'}
       </button>
     </div>
   );

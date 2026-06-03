@@ -47,11 +47,15 @@ export async function getImpersonationData(targetUserId: string) {
     isImpersonating: true,
   };
 }
-export async function getRestoreAdminData(originalUserId: string) {
-  // 1. Verificamos que tengamos un ID válido para volver
-  if (!originalUserId) {
-    throw new Error('No se encontró el ID original del administrador.');
+export async function getRestoreAdminData() {
+  const session = await auth();
+
+  // 1. Verificamos de forma segura en el servidor que el usuario actual sí está en modo impersonación
+  if (!session || !session.user.isImpersonating || !session.user.originalUserId) {
+    throw new Error('Operación no permitida o no estás suplantando a ningún usuario.');
   }
+
+  const originalUserId = session.user.originalUserId;
 
   // 2. Buscamos la info completa del Admin en la base de datos
   const adminUser = await prisma.user.findUnique({

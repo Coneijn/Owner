@@ -370,13 +370,13 @@ export function UserListTable({ users, currentUserEmail }: { users: User[], curr
     const [resetMsg, setResetMsg] = useState<{userId: string, msg: string} | null>(null);
 
     const handleSendMagicLink = async (userId: string) => {
-        if(!confirm('¿Estás seguro de enviar un Magic Link de recuperación a este usuario?')) return;
+        if(!confirm('Are you sure you want to send a magic link to this user?')) return;
         
         const result = await sendAdminMagicLink(userId);
         if(result.success) {
-            setResetMsg({ userId, msg: result.message || 'Enviado correctamente' });
+            setResetMsg({ userId, msg: result.message || 'Sent successfully' });
         } else {
-            alert(result.error || 'Error al enviar el enlace');
+            alert(result.error || 'Error sending the link');
         }
     };
 

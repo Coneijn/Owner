@@ -39,8 +39,8 @@ export default function ImpersonateButton({ targetUserId, targetUserName }: { ta
       router.refresh();
       
     } catch (error) {
-      console.error('Error al impersonar:', error);
-      alert('No tienes permisos o el usuario no existe.');
+      console.error('Error impersonating:', error);
+      alert('You do not have permission or the user does not exist.');
     } finally {
       setIsLoading(false);
     }
@@ -50,10 +50,10 @@ export default function ImpersonateButton({ targetUserId, targetUserName }: { ta
     <button
       onClick={handleImpersonate}
       disabled={isLoading}
-      title={targetUserName ? `Ver la plataforma como ${targetUserName}` : 'Ver como este usuario'}
+      title={targetUserName ? `Watch the platform as ${targetUserName}` : 'Watch the platform as this user'}
       className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
-      {isLoading ? 'Cambiando...' : 'Ver cómo'}
+      {isLoading ? 'Changing...' : 'Watch as'}
     </button>
   );
 }

@@ -119,7 +119,7 @@ export default async function TeamManagementPage(props: { searchParams: Promise<
                 {totalPages > 1 && (
                   <div className="p-4 border-t border-gray-800 flex items-center justify-between bg-gray-900/50">
                     <div className="text-xs text-gray-400">
-                      Página <span className="font-bold text-white">{currentPage}</span> de <span className="font-bold text-white">{totalPages}</span>
+                      page <span className="font-bold text-white">{currentPage}</span> of <span className="font-bold text-white">{totalPages}</span>
                     </div>
                     <div className="flex gap-2">
                       {currentPage > 1 ? (
@@ -127,11 +127,11 @@ export default async function TeamManagementPage(props: { searchParams: Promise<
                           href={`/admin/team_management?tab=${activeTab}&page=${currentPage - 1}`}
                           className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded transition-colors"
                         >
-                          Anterior
+                          Previous
                         </Link>
                       ) : (
                         <button disabled className="px-3 py-1.5 bg-gray-900/50 text-gray-600 text-xs font-bold rounded cursor-not-allowed">
-                          Anterior
+                          Previous
                         </button>
                       )}
                       
@@ -140,11 +140,11 @@ export default async function TeamManagementPage(props: { searchParams: Promise<
                           href={`/admin/team_management?tab=${activeTab}&page=${currentPage + 1}`}
                           className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded transition-colors"
                         >
-                          Siguiente
+                          Next
                         </Link>
                       ) : (
                         <button disabled className="px-3 py-1.5 bg-gray-900/50 text-gray-600 text-xs font-bold rounded cursor-not-allowed">
-                          Siguiente
+                          Next
                         </button>
                       )}
                     </div>
@@ -155,7 +155,7 @@ export default async function TeamManagementPage(props: { searchParams: Promise<
             <div className="mt-4 flex gap-3 p-4 bg-gray-900/30 rounded-lg border border-gray-800">
                 <span className="text-xl">ℹ️</span>
                 <p className="text-xs text-gray-500 leading-relaxed">
-                    <strong>Admin Note:</strong> Al enviar un Magic Link, el sistema generará un token único válido por 48 horas y se enviará automáticamente al correo del usuario a través del CRM, permitiéndole crear una nueva contraseña de forma segura.
+                    <strong>Admin Note:</strong> When sending a Magic Link, the system will generate a unique token valid for 48 hours and send it automatically to the user's email through the CRM, allowing them to create a new password in a secure manner.
                 </p>
             </div>
         </section>

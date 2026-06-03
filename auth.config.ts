@@ -61,11 +61,20 @@ export const authConfig = {
     async jwt({ token, user, trigger, session }) {
       // Cuando usamos el update() de NextAuth (para impersonar o restaurar sesión)
       if (trigger === 'update' && session?.user) {
-        token.sub = session.user.id;
-        token.role = session.user.role;
-        token.profiles = session.user.profiles;
-        token.isImpersonating = session.user.isImpersonating;
-        token.originalUserId = session.user.originalUserId;
+        // VALIDACIÓN DE SEGURIDAD CRÍTICA:
+        // Solo permitimos actualizar estos valores si el usuario actual ya es ADMIN
+        // o si ya está en modo "impersonating" (para poder regresar a su cuenta original)
+        if (token.role === 'ADMIN' || token.isImpersonating) {
+          token.sub = session.user.id;
+          token.role = session.user.role;
+          token.profiles = session.user.profiles;
+          token.isImpersonating = session.user.isImpersonating;
+          token.originalUserId = session.user.originalUserId;
+          
+          // Agregamos el name y email que faltaban
+          if (session.user.name) token.name = session.user.name;
+          if (session.user.email) token.email = session.user.email;
+        }
         return token;
       }
 
