@@ -169,6 +169,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    version: "3.64",
     libraries: libraries 
   });
 

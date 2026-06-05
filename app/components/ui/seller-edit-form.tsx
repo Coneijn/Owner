@@ -154,6 +154,7 @@ export default function SellerEditForm({ property }: { property: PropertyData })
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    version: "3.64",
     libraries: libraries
   });
 
