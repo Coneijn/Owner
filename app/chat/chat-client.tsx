@@ -41,11 +41,22 @@ export default function ChatClient({ currentUserId, initialMessages, contacts, i
         })
       }
 
-      if (
-        newMessage.senderId !== currentUserId && 
-        newMessage.senderId !== activeContactRef.current?.id
-      ) {
-        setUnreadContactIds(prev => Array.from(new Set([...prev, newMessage.senderId])))
+      // Si el mensaje es de OTRA persona (no es el usuario actual)
+      if (newMessage.senderId !== currentUserId) {
+        
+        // 1. Reproducir el tono de notificación
+        try {
+          const audio = new Audio('/notification.mp3');
+          // .catch maneja el error silencioso si el navegador bloquea el autoplay por políticas de interacción del usuario
+          audio.play().catch(e => console.log('Audio de notificación omitido (política del navegador o falta el mp3):', e));
+        } catch (error) {
+          console.error('Error al instanciar el audio:', error);
+        }
+
+        // 2. Si no estamos viendo el chat de esa persona actualmente, marcamos como no leído
+        if (newMessage.senderId !== activeContactRef.current?.id) {
+          setUnreadContactIds(prev => Array.from(new Set([...prev, newMessage.senderId])))
+        }
       }
     }
 
