@@ -192,7 +192,15 @@ export default async function BuyersDashboard() {
               <span className="text-[#529e14]">📍</span> {realBuyerData.homeAddress}
             </p>
           </div>
-          <Link 
+          <div className="flex items-center gap-3">
+            <Link
+              href="/comunidad"
+              className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-500 hover:bg-yellow-500 hover:text-black px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all flex items-center gap-2 shadow-lg"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <span>Comunidad</span>
+            </Link>
+            <Link 
               href="/chat"
               className="bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all flex items-center gap-2 shadow-lg"
             >
@@ -211,6 +219,7 @@ export default async function BuyersDashboard() {
               </svg>
               <span>Mensajes</span>
             </Link>
+          </div>
           <div className="flex gap-4">
             <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
               <button className="bg-[#1a1a1a] border border-gray-700 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-800 transition-colors">

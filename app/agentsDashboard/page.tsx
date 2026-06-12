@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 // Asegúrate de importar tu método de autenticación (NextAuth, Clerk, Supabase, etc.)
 // Ajusta la ruta de importación según tu configuración
 import { auth, signOut } from '@/auth';
+import Link from 'next/link';
 import AgentDashboardClient from "./agent-dashboard-client";
 import { ChangePasswordForm, TwoFactorManager } from "../components/ui/client-components";
 
@@ -151,6 +152,12 @@ export default async function AgentDashboardPage() {
           </span>
         </div>
         <div className="flex items-center gap-4">
+          <Link
+            href="/comunidad"
+            className="text-xs font-bold tracking-widest uppercase text-yellow-500 hover:text-yellow-400 transition-colors hidden sm:block"
+          >
+            COMUNIDAD
+          </Link>
           <div className="text-xs font-bold tracking-widest uppercase text-gray-500 hidden sm:block">
             Local Rep: <strong className="text-white">{currentUser.agentProfile.agentName || currentUser.name || 'Agente'}</strong>
           </div>

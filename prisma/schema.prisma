@@ -33,6 +33,12 @@ model User {
   // --- Relaciones de Mensajería Interna ---
   sentMessages        Message[]       @relation("SentMessages")
   receivedMessages    Message[]       @relation("ReceivedMessages")
+
+  // --- Relaciones de la Comunidad ---
+  communityPosts      CommunityPost[]
+  postLikes           PostLike[]
+  pollVotes           PollVote[]
+  communityComments   CommunityComment[]
 }
 
 model WebuserProfile {
@@ -509,6 +515,88 @@ model Message {
   // Opcional: Para optimizar consultas si en el futuro tienen muchos mensajes
   @@index([recipientId, isRead])
   @@index([senderId])
+}
+
+// --- NUEVOS MODELOS DE LA COMUNIDAD ---
+
+model CommunityPost {
+  id        String   @id @default(cuid())
+  
+  // Contenido del post
+  text      String?  @db.Text
+  imageUrl  String?
+  videoUrl  String?
+
+  // Autor
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Interacciones
+  likes     PostLike[]
+  options   PollOption[]
+  pollVotes PollVote[]
+  comments  CommunityComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  // Un usuario solo puede dar un "Me gusta" por publicación
+  @@unique([postId, userId])
+}
+
+model PollOption {
+  id        String   @id @default(cuid())
+  text      String
+  
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  votes     PollVote[]
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Referencia al post para asegurar que vote una sola vez por encuesta entera
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Un usuario solo puede votar una vez por encuesta
+  @@unique([postId, userId])
+}
+
+model CommunityComment {
+  id        String   @id @default(cuid())
+  text      String   @db.Text
+  
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 7. Enums
