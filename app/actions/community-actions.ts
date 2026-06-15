@@ -68,6 +68,25 @@ export async function createCommunityPost(formData: {
     throw new Error("No estás autenticado");
   }
 
+  // Función auxiliar de validación estricta de URL (HTTPS y dominios permitidos)
+  const isValidVideoUrl = (url: string | undefined | null): boolean => {
+    if (!url) return true; // Es opcional
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol !== 'https:') return false;
+      // Agregamos docs.google.com a la lista blanca
+      const validDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'drive.google.com', 'docs.google.com', 'dailymotion.com', 'www.dailymotion.com'];
+      return validDomains.includes(parsedUrl.hostname);
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Rechazar inmediatamente si intenta saltarse la seguridad del cliente
+  if (!isValidVideoUrl(formData.videoUrl)) {
+    return { success: false, error: "Enlace inválido o no seguro. Solo se permite HTTPS de YouTube, Google Drive/Docs o Dailymotion." };
+  }
+
   try {
     const newPost = await prisma.communityPost.create({
       data: {

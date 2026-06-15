@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ImageUpload, { ImageFile } from '@/app/components/ui/image-upload';
 import { createCommunityPost, getCommunityPosts, toggleLike, votePoll, addComment } from '@/app/actions/community-actions';
 
 // Función para extraer el ID de YouTube
 const getYouTubeId = (url: string) => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
 };
@@ -70,12 +71,20 @@ export default function ComunidadPage() {
       setVideoError('');
       return;
     }
-    // Validar Drive, YouTube o Dailymotion
-    const isValid = /youtube\.com|youtu\.be|drive\.google\.com|dailymotion\.com/.test(url.toLowerCase());
-    if (!isValid) {
-      setVideoError('Solo se permiten enlaces de YouTube, Google Drive o Dailymotion.');
-    } else {
-      setVideoError('');
+    
+    try {
+      const parsedUrl = new URL(url);
+      const validDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'drive.google.com', 'docs.google.com', 'dailymotion.com', 'www.dailymotion.com'];
+      
+      if (parsedUrl.protocol !== 'https:') {
+        setVideoError('El enlace debe ser una conexión segura (https://).');
+      } else if (!validDomains.includes(parsedUrl.hostname)) {
+        setVideoError('Dominio no permitido. Usa YouTube, Google Drive/Docs o Dailymotion.');
+      } else {
+        setVideoError('');
+      }
+    } catch (e) {
+      setVideoError('El formato del enlace no es válido.');
     }
   };
 
@@ -156,15 +165,41 @@ export default function ComunidadPage() {
     <div className="min-h-screen bg-[#111111] text-white p-4 md:p-10 font-sans">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-6 text-white">
-          Muro de la <span className="text-[#f8ed1a]">Comunidad</span>
+          Community <span className="text-[#f8ed1a]">Wall</span>
         </h1>
+
+        {/* Menú de Navegación Rápida */}
+        <div className="fixed left-6 top-6 z-50 flex flex-row gap-4">
+          <Link href="/login" className="flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-[#f8ed1a] text-black rounded-full shadow-xl hover:scale-110 transition-transform hover:bg-yellow-400 group relative">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-7 md:h-7">
+              <path d="m12 19-7-7 7-7"/>
+              <path d="M19 12H5"/>
+            </svg>
+            <span className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl border border-gray-700 pointer-events-none">Back</span>
+          </Link>
+          
+          <Link href="/chat" className="flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-[#f8ed1a] text-black rounded-full shadow-xl hover:scale-110 transition-transform hover:bg-yellow-400 group relative">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-7 md:h-7">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl border border-gray-700 pointer-events-none">Chat</span>
+          </Link>        
+                    
+          <Link href="/properties" className="flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-[#f8ed1a] text-black rounded-full shadow-xl hover:scale-110 transition-transform hover:bg-yellow-400 group relative">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-7 md:h-7">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl border border-gray-700 pointer-events-none">Properties</span>
+          </Link>
+        </div>
 
         {/* Caja de Creación de Publicación */}
         <div className="bg-[#1a1a1a] p-4 md:p-6 rounded-xl shadow-2xl border border-gray-800 mb-8">
           <textarea
             className="w-full p-4 bg-black/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#f8ed1a] resize-none transition-all"
             rows={3}
-            placeholder="¿Qué quieres compartir con la comunidad?"
+            placeholder="What's on your mind?"
             value={postText}
             onChange={(e) => setPostText(e.target.value)}
           />
@@ -173,7 +208,7 @@ export default function ComunidadPage() {
             <input
               type="text"
               className="w-full p-3 text-sm bg-black/50 border border-gray-700 text-white placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f8ed1a] transition-all"
-              placeholder="Pegar enlace de video (YouTube, Drive, Dailymotion)..."
+              placeholder="Optional URL"
               value={videoUrl}
               onChange={(e) => handleVideoValidation(e.target.value)}
             />
@@ -182,7 +217,7 @@ export default function ComunidadPage() {
 
           <div className="mt-4 p-4 border border-gray-800 rounded-lg bg-black/20">
             <ImageUpload 
-              label="Adjuntar Imagen (Opcional)" 
+              label="Add image (optional)" 
               value={imageFiles} 
               onChange={setImageFiles} 
               multiple={false} 
@@ -194,21 +229,21 @@ export default function ComunidadPage() {
           {showPollCreator && (
             <div className="mt-4 p-4 border border-gray-800 rounded-lg bg-[#111111] space-y-3 shadow-inner">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[#f8ed1a] font-bold text-sm uppercase tracking-widest">Opciones de Encuesta</span>
-                <button onClick={() => { setShowPollCreator(false); setPollOptions(['', '']); }} className="text-gray-500 hover:text-red-400 text-xs font-bold uppercase transition">Cancelar</button>
+                <span className="text-[#f8ed1a] font-bold text-sm uppercase tracking-widest">Poll Options</span>
+                <button onClick={() => { setShowPollCreator(false); setPollOptions(['', '']); }} className="text-gray-500 hover:text-red-400 text-xs font-bold uppercase transition">Cancel</button>
               </div>
               {pollOptions.map((opt, idx) => (
                 <input
                   key={idx}
                   type="text"
                   className="w-full p-3 text-sm bg-black/50 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#f8ed1a]"
-                  placeholder={`Opción ${idx + 1}...`}
+                  placeholder={`Option ${idx + 1}...`}
                   value={opt}
                   onChange={(e) => handlePollOptionChange(idx, e.target.value)}
                 />
               ))}
               {pollOptions.length < 4 && (
-                <button onClick={handleAddPollOption} className="text-[#f8ed1a] text-xs font-bold uppercase hover:underline mt-2 inline-block">+ Añadir otra opción (Máx 4)</button>
+                <button onClick={handleAddPollOption} className="text-[#f8ed1a] text-xs font-bold uppercase hover:underline mt-2 inline-block">+ Add another option (Max 4)</button>
               )}
             </div>
           )}
@@ -219,7 +254,7 @@ export default function ComunidadPage() {
                 onClick={() => setShowPollCreator(!showPollCreator)}
                 className={`flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition-colors font-medium border ${showPollCreator ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700'}`}
               >
-                <span>📊</span> Crear Encuesta
+                <span>📊</span> Create Poll
               </button>
             </div>
             
@@ -228,7 +263,7 @@ export default function ComunidadPage() {
               disabled={!!videoError || (!postText && !videoUrl && imageFiles.length === 0 && !showPollCreator) || isPublishing}
               className="bg-[#f8ed1a] text-black hover:bg-yellow-400 px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(248,237,26,0.2)]"
             >
-              {isPublishing ? "Publicando..." : "Publicar"}
+              {isPublishing ? "Publishing..." : "Publish"}
             </button>
           </div>
         </div>
@@ -272,24 +307,49 @@ export default function ComunidadPage() {
 
                 {post.videoUrl && (
                   <div className="mb-5 rounded-lg overflow-hidden border border-gray-800 bg-black/50">
-                    {ytId ? (
-                      <div className="relative w-full aspect-video">
-                        <iframe 
-                          src={`https://www.youtube.com/embed/${ytId}`} 
-                          title="YouTube video player" 
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                          allowFullScreen
-                          className="absolute top-0 left-0 w-full h-full border-0"
-                        ></iframe>
-                      </div>
-                    ) : (
-                      <div className="p-4 text-sm break-all">
-                        <span className="font-bold text-gray-400 block mb-2">🔗 Enlace de video:</span> 
-                        <a href={post.videoUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline hover:text-blue-300 transition-colors font-medium">
-                          {post.videoUrl}
-                        </a>
-                      </div>
-                    )}
+                    {(() => {
+                      let embedUrl = null;
+                      const videoYtId = getYouTubeId(post.videoUrl);
+                      
+                      // 1. Previsualización para YouTube
+                      if (videoYtId) {
+                        embedUrl = `https://www.youtube.com/embed/${videoYtId}`;
+                      } 
+                      // 2. Previsualización para Google Drive y Docs (Convierte /view o /edit a /preview)
+                      else if ((post.videoUrl.includes('drive.google.com') || post.videoUrl.includes('docs.google.com')) && (post.videoUrl.includes('/view') || post.videoUrl.includes('/edit'))) {
+                        embedUrl = post.videoUrl.replace(/\/(view|edit).*/, '/preview');
+                      } 
+                      // 3. Previsualización para Dailymotion
+                      else if (post.videoUrl.includes('dailymotion.com/video/')) {
+                        const dmId = post.videoUrl.split('/video/')[1]?.split('?')[0];
+                        if (dmId) embedUrl = `https://www.dailymotion.com/embed/video/${dmId}`;
+                      }
+
+                      // Si logramos armar una URL de incrustación válida, mostramos el reproductor
+                      if (embedUrl) {
+                        return (
+                          <div className="relative w-full aspect-video">
+                            <iframe 
+                              src={embedUrl} 
+                              title="Reproductor de video" 
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                              allowFullScreen
+                              className="absolute top-0 left-0 w-full h-full border-0"
+                            ></iframe>
+                          </div>
+                        );
+                      }
+
+                      // Fallback: Si no es un enlace incrustable, mostramos el link de texto
+                      return (
+                        <div className="p-4 text-sm break-all">
+                          <span className="font-bold text-gray-400 block mb-2">🔗 Enlace de video:</span> 
+                          <a href={post.videoUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline hover:text-blue-300 transition-colors font-medium">
+                            {post.videoUrl}
+                          </a>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
