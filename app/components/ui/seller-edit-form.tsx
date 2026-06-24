@@ -32,6 +32,7 @@ interface PropertyData {
   calendarLink?: string | null;
   isFeatured: boolean;
   isOffMarket: boolean;
+  publishFeePaid?: boolean;
   seoTitleEn?: string | null;
   seoDescriptionEn?: string | null;
   seoTitleEs?: string | null;
@@ -162,6 +163,49 @@ export default function SellerEditForm({ property }: { property: PropertyData })
  
   // --- STATUS STATE ---
   const [status, setStatus] = useState<string>(property.status);
+  
+  // --- PAYMENT STATE ---
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value;
+    
+    // Si intenta publicar y NO ha pagado, interceptamos con el modal
+    if (newStatus === 'AVAILABLE' && !property.publishFeePaid) {
+      setShowPaymentModal(true);
+      // Nota: No actualizamos el state 'status', así el select regresa visualmente al estado anterior si cancela.
+    } else {
+      setStatus(newStatus);
+      if (newStatus === 'SOLD') setIsForSale(true);
+      if (newStatus === 'RENTED') setIsForRent(true);
+    }
+  };
+
+  const handleProceedToPayment = async () => {
+    setIsProcessingPayment(true);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: property.id,
+          isPublishFee: true
+        })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url; // Redirigir a Stripe
+      } else {
+        alert(data.error || 'Error al procesar el pago');
+        setIsProcessingPayment(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error al conectar con Stripe');
+      setIsProcessingPayment(false);
+    }
+  };
 
   // --- IMAGE STATE ---
   const initialMain: ImageFile[] = property.images && property.images.length > 0
@@ -290,12 +334,7 @@ export default function SellerEditForm({ property }: { property: PropertyData })
                   <select 
                     name="status" 
                     value={status} 
-                    onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setStatus(newStatus);
-                        if (newStatus === 'SOLD') setIsForSale(true);
-                        if (newStatus === 'RENTED') setIsForRent(true);
-                    }}
+                    onChange={handleStatusChange}
                     className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                   >
                       <option value="AVAILABLE">Available</option>
@@ -835,6 +874,50 @@ export default function SellerEditForm({ property }: { property: PropertyData })
         </div>
 
       </form>
+
+      {/* MODAL DE PAGO STRIPE */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#1a1a1a] border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-[#529e14]/20 mb-4">
+                <span className="text-[#529e14] text-xl">💳</span>
+              </div>
+              <h3 className="text-xl font-black text-white uppercase tracking-wide mb-2">Publish Property</h3>
+              <p className="text-sm text-gray-400 mb-6">
+                A one-time fee of <strong className="text-[#f8ed1a]">$19.00 USD</strong> is required to publish this property and make it available to all buyers.
+              </p>
+              
+              <div className="flex gap-4 w-full">
+                <button
+                  type="button"
+                  disabled={isProcessingPayment}
+                  onClick={() => setShowPaymentModal(false)}
+                  className="flex-1 py-2 px-4 bg-transparent border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800 hover:text-white transition-colors font-bold text-sm disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingPayment}
+                  onClick={handleProceedToPayment}
+                  className="flex-1 py-2 px-4 bg-[#529e14] text-white rounded-lg hover:bg-[#458510] transition-colors font-black uppercase text-sm flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    'Pay $19 & Publish'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }

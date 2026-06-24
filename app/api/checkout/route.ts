@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   try {
-    const { paymentId } = await req.json();
+    const { paymentId, propertyId, isPublishFee } = await req.json();
     
     // Obtenemos la URL exacta desde donde el usuario hizo clic en el botón
     const referer = req.headers.get('referer');
@@ -21,8 +21,17 @@ export async function POST(req: Request) {
     let unitAmount = 0;
     let paymentType = '';
 
-    // 1. Intentamos buscar primero en la tabla de compradores (Payment)
-    const buyerPayment = await prisma.payment.findUnique({
+    if (isPublishFee && propertyId) {
+      const property = await prisma.property.findUnique({ where: { id: propertyId } });
+      if (!property) return NextResponse.json({ error: 'Propiedad no encontrada' }, { status: 404 });
+      
+      productName = `Publicación de Propiedad`;
+      productDescription = `Tarifa única de publicación`;
+      unitAmount = 1900; // $19.00 USD en centavos
+      paymentType = 'PUBLISH_FEE';
+    } else if (paymentId) {
+      // 1. Intentamos buscar primero en la tabla de compradores (Payment)
+      const buyerPayment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: { contract: { include: { buyers: { include: { user: true } } } } }
     });
@@ -58,6 +67,10 @@ export async function POST(req: Request) {
       }
     }
 
+    } else {
+      return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 });
+    }
+
     // 3. Crear la sesión de Stripe Checkout unificada
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'us_bank_account'],
@@ -79,7 +92,8 @@ export async function POST(req: Request) {
       success_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${returnPath}?success=true`,
       cancel_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${returnPath}?canceled=true`,
       metadata: {
-        localPaymentId: paymentId,
+        localPaymentId: paymentId || '',
+        propertyId: propertyId || '',
         type: paymentType 
       },
     });

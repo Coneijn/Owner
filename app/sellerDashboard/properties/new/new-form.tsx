@@ -95,7 +95,7 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
  
   // --- STATUS STATE ---
-  const [status, setStatus] = useState<string>('AVAILABLE');
+  const [status, setStatus] = useState<string>('DRAFT');
 
   // --- IMAGE STATE ---
   const [mainImageFiles, setMainImageFiles] = useState<ImageFile[]>([]);
@@ -212,24 +212,21 @@ export default function SellerNewPropertyForm({ sellerProfileId }: Props) {
                   
                   <div className="sm:col-span-2">
                       <label className="block text-xs font-bold leading-6 text-[#f8ed1a] uppercase">Status</label>
-                      <select 
-                        name="status" 
-                        value={status} 
-                        onChange={(e) => {
+                     <select 
+                         name="status" 
+                         value={status} 
+                         onChange={(e) => {
                             const newStatus = e.target.value;
                             setStatus(newStatus);
-                            if (newStatus === 'SOLD') setIsForSale(true);
-                            if (newStatus === 'RENTED') setIsForRent(true);
                         }}
                         className="mt-2 block w-full rounded bg-gray-800 border-0 text-white shadow-sm ring-1 ring-inset ring-gray-700 focus:ring-[#f8ed1a] sm:text-sm"
                       >
-                          <option value="AVAILABLE">Available</option>
-                          <option value="UNDER_CONTRACT">Under Contract | Pending</option>
-                          <option value="SOLD">Sold</option>
-                          <option value="RENTED">Rented</option>
-                          <option value="DRAFT">Draft</option>
+                          <option value="DRAFT">Draft (Save to pay & publish later)</option>
                           <option value="COMING_SOON">Coming Soon</option>
                       </select>
+                      <p className="mt-2 text-[10px] text-gray-500">
+                        To publish as Available, save as Draft first, then edit the property to complete the $19 publish fee.
+                      </p>
                   </div>
 
                   {status === 'COMING_SOON' && (

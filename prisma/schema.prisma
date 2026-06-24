@@ -124,6 +124,7 @@ model Property {
   isFeatured  Boolean        @default(false)
   // Para ocultar propiedades del catálogo público
   isOffMarket Boolean        @default(false)
+  publishFeePaid Boolean        @default(false)
 
   // --- Contenido Bilingüe ---
   // Títulos
