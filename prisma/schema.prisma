@@ -33,6 +33,15 @@ model User {
   // --- Relaciones de Mensajería Interna ---
   sentMessages        Message[]       @relation("SentMessages")
   receivedMessages    Message[]       @relation("ReceivedMessages")
+
+  // --- Relaciones de la Comunidad ---
+  communityPosts      CommunityPost[]
+  postLikes           PostLike[]
+  pollVotes           PollVote[]
+  communityComments   CommunityComment[]
+
+  // --- Relaciones de Cursos / Actividades ---
+  activityProgress    UserProgress[]
 }
 
 model WebuserProfile {
@@ -115,6 +124,7 @@ model Property {
   isFeatured  Boolean        @default(false)
   // Para ocultar propiedades del catálogo público
   isOffMarket Boolean        @default(false)
+  publishFeePaid Boolean        @default(false)
 
   // --- Contenido Bilingüe ---
   // Títulos
@@ -511,6 +521,211 @@ model Message {
   @@index([senderId])
 }
 
+// --- NUEVOS MODELOS DE LA COMUNIDAD ---
+
+model CommunityPost {
+  id        String   @id @default(cuid())
+  
+  // Contenido del post
+  text      String?  @db.Text
+  imageUrl  String?
+  videoUrl  String?
+
+  // Autor
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Interacciones
+  likes     PostLike[]
+  options   PollOption[]
+  pollVotes PollVote[]
+  comments  CommunityComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  // Un usuario solo puede dar un "Me gusta" por publicación
+  @@unique([postId, userId])
+}
+
+model PollOption {
+  id        String   @id @default(cuid())
+  text      String
+  
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  votes     PollVote[]
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Referencia al post para asegurar que vote una sola vez por encuesta entera
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Un usuario solo puede votar una vez por encuesta
+  @@unique([postId, userId])
+}
+
+model CommunityComment {
+  id        String   @id @default(cuid())
+  text      String   @db.Text
+  
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- 6.5. GESTOR DE ARCHIVOS (SOURCES) ---
+
+model MediaFolder {
+  id        String        @id @default(cuid())
+  name      String
+  
+  // Relación recursiva para permitir subcarpetas
+  parentId  String?
+  parent    MediaFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MediaFolder[] @relation("FolderHierarchy")
+  
+  // Archivos dentro de esta carpeta
+  files     MediaFile[]
+  
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model MediaFile {
+  id        String       @id @default(cuid())
+  name      String
+  url       String       // La URL de S3 donde se guardó
+  type      String       // ej: "video/mp4", "image/png"
+  size      Int          // Tamaño en bytes
+  
+  // Relación con la carpeta a la que pertenece
+  folderId  String?
+  folder    MediaFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime     @default(now())
+}
+// --- NUEVOS MODELOS: SISTEMA DE ACTIVIDADES (TREN Y VAGONES) ---
+
+// El "Tren" principal
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  isPublished Boolean  @default(false)
+  
+  // Relación con los vagones
+  nodes       ActivityNode[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// El "Vagón" (Contenedor lógico)
+model ActivityNode {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  title       String
+  orderIndex  Float    // Usamos Float (ej. 10, 20, 30) para poder insertar el "15" sin recalcular todo
+  
+  // Relaciones
+  payload     NodePayload? 
+  completions UserProgress[] // Usuarios que han pasado este vagón
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Para asegurar que el ordenamiento sea súper rápido
+  @@index([courseId, orderIndex])
+}
+
+// El "Contenido del Vagón" (Multimedia y Evaluación)
+model NodePayload {
+  id             String         @id @default(cuid())
+  nodeId         String         @unique
+  node           ActivityNode   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  
+  // Multimedia Polimórfico (Video, PDF, Imagen, etc.)
+  mediaUrl       String?
+  mediaType      String?        // ej: "VIDEO", "IMAGE", "PDF", "LINK"
+  
+  // Banco de Preguntas (1 a Muchos)
+  questions      QuizQuestion[]
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+// La Pregunta Individual
+model QuizQuestion {
+  id          String       @id @default(cuid())
+  payloadId   String
+  payload     NodePayload  @relation(fields: [payloadId], references: [id], onDelete: Cascade)
+  
+  text        String       @db.Text
+  options     QuizOption[]
+  
+  createdAt   DateTime     @default(now())
+}
+
+// Las Opciones de cada Pregunta
+model QuizOption {
+  id          String       @id @default(cuid())
+  questionId  String
+  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  text        String
+  isCorrect   Boolean      @default(false) 
+  
+  createdAt   DateTime     @default(now())
+}
+
+// La "Compuerta" de Progreso de Usuarios
+model UserProgress {
+  id          String       @id @default(cuid())
+  
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  nodeId      String
+  node        ActivityNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  
+  score       Float?       // Para guardar si sacó 75, 80 o 100
+  completedAt DateTime     @default(now())
+
+  @@unique([userId, nodeId])
+}
 // 7. Enums
 enum Role {
   ADMIN

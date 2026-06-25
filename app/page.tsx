@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import Header from '@/app/components/Header'; 
 import MapSplitView from './map/MapSplitView';
 import WhatsAppButton from './components/WhatsAppButton';
+import SignupPopup from './components/SignupPopup';
 export const dynamic = 'force-dynamic';
 import { Metadata } from 'next';
 
@@ -243,6 +244,8 @@ export default async function MapPage(props: {
         <div className="hidden lg:block">
             <WhatsAppButton lang={lang} propertyName={contactName} position="left"/>
         </div>
+        
+        <SignupPopup lang={lang} />
     </div>
   );
 }

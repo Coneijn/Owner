@@ -32,12 +32,20 @@ export async function POST(req: Request) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     
-    // Recuperar el ID del pago local que enviamos en los metadatos
     const localPaymentId = session.metadata?.localPaymentId;
+    const propertyId = session.metadata?.propertyId;
+    const paymentType = session.metadata?.type;
 
-    if (localPaymentId) {
-      try {
-        // Actualizar el estado en Prisma
+    try {
+      if (paymentType === 'PUBLISH_FEE' && propertyId) {
+        await prisma.property.update({
+          where: { id: propertyId },
+          data: {
+            publishFeePaid: true,
+            status: 'AVAILABLE',
+          },
+        });
+      } else if (paymentType === 'SALE' && localPaymentId) {
         await prisma.payment.update({
           where: { id: localPaymentId },
           data: {
@@ -46,10 +54,19 @@ export async function POST(req: Request) {
             stripePaymentIntentID: session.payment_intent as string,
           },
         });
-      } catch (dbError) {
-        console.error("Error al actualizar el pago en la base de datos:", dbError);
-        return NextResponse.json({ error: "Error actualizando base de datos" }, { status: 500 });
+      } else if (paymentType === 'RENT' && localPaymentId) {
+        await prisma.rentalPayment.update({
+          where: { id: localPaymentId },
+          data: {
+            status: 'PAID',
+            paidAt: new Date(),
+            stripePaymentIntentID: session.payment_intent as string,
+          },
+        });
       }
+    } catch (dbError) {
+      console.error("Error al actualizar la base de datos desde webhook:", dbError);
+      return NextResponse.json({ error: "Error actualizando base de datos" }, { status: 500 });
     }
   }
 
