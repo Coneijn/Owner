@@ -19,7 +19,7 @@ export default function NotificacionesPage() {
     }
 
     setStatus('Conectando...');
-    const eventSource = new EventSource('/api/webhooks/ghl-notifications');
+    const eventSource = new EventSource('/api/webhoooks/ghl-notifications');
 
     eventSource.onopen = () => {
       setStatus('Listening for notifications...');
