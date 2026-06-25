@@ -21,20 +21,23 @@ export default function NotificacionesPage() {
     setStatus('Conectando...');
     const eventSource = new EventSource('/api/webhoooks/ghl-notifications');
 
-    eventSource.onopen = () => {
-      setStatus('Listening for notifications...');
-    };
+   // En tu useEffect del Frontend
+eventSource.onopen = () => {
+  setStatus('Listening for notifications...');
+};
 
-    eventSource.onmessage = (event) => {
-      const parsed = JSON.parse(event.data);
-      if (parsed.type === 'new_message') {
-        // Reproducir sonido al recibir el webhook
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(e => console.error("Error al reproducir audio (recuerda que el usuario debe interactuar con la página primero):", e));
-        }
-      }
-    };
+eventSource.onmessage = (event) => {
+  // Red de seguridad: si llegó un mensaje, es obvio que estamos conectados
+  setStatus('Listening for notifications...'); 
+  
+  const parsed = JSON.parse(event.data);
+  if (parsed.type === 'new_message') {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.error(e));
+    }
+  }
+};
 
     eventSource.onerror = () => {
       setStatus('Reconectando...');
