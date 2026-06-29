@@ -218,7 +218,7 @@ export default async function PropertyDetailPage(props: Props) {
                         </p>
                     </div>
                     <div className="text-left lg:text-right">
-                        <p className="text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">
+                        <p className="hidden lg:block text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">
                             {formatMoney(displayPrice)}{priceSuffix}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
@@ -260,6 +260,42 @@ export default async function PropertyDetailPage(props: Props) {
                                 lng={property.longitude}
                             />
                         </div>
+
+                        {/* Precio detonante en móvil y estructura modal de la calculadora */}
+                        {property.status !== 'COMING_SOON' && (
+                          <>
+                            {/* Checkbox oculto que maneja el estado abierto/cerrado del modal */}
+                            <input type="checkbox" id="calculator-modal" className="hidden peer" />
+                            
+                            {/* Bloque de precio que actúa como detonante en móvil */}
+                            <div className="lg:hidden block mb-6 text-center">
+                              <label htmlFor="calculator-modal" className="inline-block cursor-pointer group select-none">
+                                <p className="text-4xl font-black text-[#529e14] tracking-tight active:scale-95 transition-transform">
+                                  {formatMoney(displayPrice)}{priceSuffix}
+                                </p>
+                                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mt-1 underline decoration-dotted">
+                                  {lang === 'en' ? 'View breakdown' : 'Ver desglose'}
+                                </span>
+                              </label>
+                            </div>
+
+                            {/* Contenedor del Modal */}
+                            <div className="fixed inset-0 z-50 hidden peer-checked:flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+                              {/* Clic fuera del contenido para cerrar */}
+                              <label htmlFor="calculator-modal" className="absolute inset-0 cursor-pointer bg-transparent"></label>
+                              
+                              {/* Contenido de la calculadora */}
+                              <div className="bg-[#1a1a1a] rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl z-10 border border-gray-800 text-white">
+                                <label htmlFor="calculator-modal" className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl font-bold cursor-pointer bg-gray-800 w-8 h-8 flex items-center justify-center rounded-full transition-colors">
+                                  ✕
+                                </label>
+                                <div className="mt-4">
+                                  <PropertyFinancials property={financialProps} lang={lang} />
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg">
                             <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
@@ -332,7 +368,7 @@ export default async function PropertyDetailPage(props: Props) {
                     <div className="space-y-8">
                         <div className="sticky top-24 space-y-8">
                             {property.status !== 'COMING_SOON' && (
-                                <div className="shadow-xl rounded-xl overflow-hidden border border-gray-100 bg-[#1a1a1a]">
+                                <div className="hidden lg:block shadow-xl rounded-xl overflow-hidden border border-gray-100 bg-[#1a1a1a]">
                                      <PropertyFinancials property={financialProps} lang={lang} />
                                 </div>
                             )}

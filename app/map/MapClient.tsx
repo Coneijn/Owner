@@ -442,7 +442,7 @@ useEffect(() => {
             // --- LÓGICA DE ICONOS Y PRIORIDAD ---
             const isSelected = selectedProperty?.id === property.id;
             const isSpecial = checkSpecialStatus(property);
-            const showSign = currentZoom >= 17; 
+            const showSign = currentZoom >= 13; 
             
             const markerAnimation = (isSpecial && !isSelected && !showSign) 
             ? google.maps.Animation.BOUNCE 
