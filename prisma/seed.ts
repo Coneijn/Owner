@@ -30,8 +30,7 @@ async function main() {
   }
 
   for (const prop of data.properties) {
-    const { images, ...propData } = prop;
-
+    const { images, sellerProfileId, ...propData } = prop;
     await prisma.property.upsert({
       where: { id: prop.id }, 
       update: {},

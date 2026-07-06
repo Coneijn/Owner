@@ -108,10 +108,50 @@ model AgentProfile {
   // Notas internas sobre comisiones o acuerdos
   commissionNotes String? @db.Text
 
+  // Balance financiero y referidos del agente
+  balance Decimal @default(0) @db.Decimal(10, 2)
+  referrals AgentReferral[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+model AgentReferral {
+  id String @id @default(cuid())
 
+  // 1. Enlace con el Agente que lo refirió
+  agentId String
+  agent   AgentProfile @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  // 2. Enlace con la Propiedad de interés
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // 3. Datos del referido (Solo se guardan como texto, como pidió Alexis)
+  clientName  String
+  clientPhone String?
+  clientEmail String?
+
+  // 4. Datos financieros (Se llenan/calculan cuando la casa se vende)
+  expectedDeposit Decimal? @db.Decimal(10, 2) // Ej. $10,000
+  expectedCommission Decimal? @db.Decimal(10, 2) // Ej. $4,000
+  balanceOwed     Decimal? @db.Decimal(10, 2) // Lo que debe pagar el agente (Depósito - Comisión)
+
+  // 5. Estado del referido
+  status ReferralStatus @default(PENDING) // PENDING, WON (Vendida), LOST
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Índice útil para cuando la rutina busque si el comprador era un referido
+  @@index([propertyId, clientEmail, clientPhone])
+}
+
+// Nuevo Enum para el estado del referido
+enum ReferralStatus {
+  PENDING
+  WON
+  LOST
+}
 // 3. Modelo de Propiedad 
 model Property {
   id        String   @id @default(cuid())
@@ -209,6 +249,9 @@ model Property {
   marketingMaterials MarketingMaterial[]
   contracts          Contract[]
   leases             LeaseAgreement[]
+
+  // Relación con los referidos creados por agentes para esta propiedad
+  agentReferrals     AgentReferral[]
 }
 
 //Usado por el agente

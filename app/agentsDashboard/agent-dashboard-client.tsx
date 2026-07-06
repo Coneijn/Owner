@@ -1,12 +1,21 @@
 "use client";
 import React, { useState, useMemo } from 'react';
-import { Search, Home, Flame, Clock, DollarSign, X, ExternalLink, Info, Target, Megaphone, MapPin } from 'lucide-react';
-
+import { Search, Home, Flame, Clock, DollarSign, X, ExternalLink, Info, Target, Megaphone, MapPin, MessageSquare, UserPlus } from 'lucide-react';
+import {useSession} from "next-auth/react";
 export default function AgentDashboardClient({ initialProps }: { initialProps: any[] }) {
+  const { data: session } = useSession();
+  const agentId = session?.user?.id || '';
   const [selectedProp, setSelectedProp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Estados para el Modal de Referidos
+  const [referralProp, setReferralProp] = useState<any>(null);
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredProps = useMemo(() => {
     return initialProps.filter(p => 
@@ -133,13 +142,39 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
                   <div className="flex items-center gap-1"><span className="text-[#f8ed1a]">📏</span> {p.sqft} sqft</div>
                 </div>
 
-                <div className="mt-auto bg-gray-900/50 p-4 rounded-lg border border-gray-800">
-                  <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Your Commission</div>
-                  <div className="text-[#529e14] font-black text-xl flex items-center justify-between">
-                    {p.commAmt} 
-                    <span className="text-sm font-bold text-gray-400">{p.commPct}</span>
+                <div className="mt-auto space-y-3">
+                  <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Your Commission</div>
+                    <div className="text-[#529e14] font-black text-xl flex items-center justify-between">
+                      {p.commAmt} 
+                      <span className="text-sm font-bold text-gray-400">{p.commPct}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Botones de Acción */}
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implementar redirección o apertura del chat
+                        alert("Redirigiendo al chat con el dueño...");
+                      }}
+                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 border border-gray-700 transition-colors"
+                    >
+                      <MessageSquare size={14} /> Text Owner
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReferralProp(p);
+                      }}
+                      className="flex-1 bg-[#529e14] hover:bg-[#458510] text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg transition-colors"
+                    >
+                      <UserPlus size={14} /> Add Referral
+                    </button>
                   </div>
                 </div>
+
               </div>
             </div>
           ))}
@@ -151,7 +186,59 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
           </div>
         )}
 
-        {/* MODAL */}
+        {/* REFERRAL MODAL */}
+        {referralProp && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+            <div className="bg-[#1a1a1a] border border-gray-700 w-full max-w-md rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className="flex justify-between items-center p-6 border-b border-gray-800 bg-gray-900">
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">Add Referral</h2>
+                <button 
+                  onClick={() => setReferralProp(null)}
+                  className="text-gray-400 hover:text-white bg-gray-800 hover:bg-red-600 w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form action={async (formData) => {
+                setIsSubmitting(true);
+                // Aquí llamarías a tu Server Action importada
+                // const result = await createAgentReferral(null, formData);
+                // ... lógica de manejo de error/éxito
+                setIsSubmitting(false);
+                setReferralProp(null);
+              }} className="p-6 space-y-4">
+                {/* Hidden fields needed by the Server Action */}
+                <input type="hidden" name="propertyId" value={referralProp.id} />
+                {/* Asegúrate de tener el agentId, quizás lo pasas desde las props iniciales */}
+                <input type="hidden" name="agentId" value={agentId || ''} />
+                <p className="text-sm text-gray-400 mb-4">
+                  Register a buyer for <strong className="text-[#f8ed1a]">{referralProp.address}</strong>. Your commission balance will be adjusted once the deal closes.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Client Full Name *</label>
+                  <input type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Client Phone</label>
+                  <input type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Client Email</label>
+                  <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="w-full mt-4 bg-[#529e14] hover:bg-[#458510] text-white py-3 rounded-lg font-black uppercase tracking-wide transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Saving...' : 'Register Referral'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL PRINCIPAL DE LA PROPIEDAD */}
         {selectedProp && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             <div className="bg-[#1a1a1a] border border-gray-700 w-full max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
