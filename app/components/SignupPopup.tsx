@@ -40,7 +40,7 @@ export default function SignupPopup({ lang }: SignupPopupProps) {
 
   return (
     <div
-      className={`fixed bottom-8 left-8 z-40 w-full max-w-sm bg-brand-dark border-2 border-brand-accent rounded-lg p-6 shadow-2xl transition-all duration-700 ease-in-out transform animate-bounce-subtle ${
+      className={`fixed bottom-4 left-4 z-40 w-[calc(100%-32px)] max-w-sm sm:bottom-8 sm:left-8 sm:w-full bg-brand-dark border-2 border-brand-accent rounded-lg p-6 shadow-2xl transition-all duration-700 ease-in-out transform animate-bounce-subtle ${
         isVisible ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0"
       }`}
     >
