@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     
     const localPaymentId = session.metadata?.localPaymentId;
     const propertyId = session.metadata?.propertyId;
+    const agentUserId = session.metadata?.agentId;
     const paymentType = session.metadata?.type;
 
     try {
@@ -61,6 +62,13 @@ export async function POST(req: Request) {
             status: 'PAID',
             paidAt: new Date(),
             stripePaymentIntentID: session.payment_intent as string,
+          },
+        });
+      } else if (paymentType === 'AGENT_BALANCE' && agentUserId) {
+        await prisma.agentProfile.update({
+          where: { id: agentUserId }, 
+          data: {
+            balance: 0,
           },
         });
       }

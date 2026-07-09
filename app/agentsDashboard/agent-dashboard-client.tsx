@@ -1,17 +1,52 @@
 "use client";
+
 import React, { useState, useMemo } from 'react';
 import { Search, Home, Flame, Clock, DollarSign, X, ExternalLink, Info, Target, Megaphone, MapPin, MessageSquare, UserPlus } from 'lucide-react';
-import {useSession} from "next-auth/react";
-export default function AgentDashboardClient({ initialProps }: { initialProps: any[] }) {
+import { useSession } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+import { createAgentReferral } from '@/app/actions/referral-actions';
+
+export default function AgentDashboardClient({ initialProps, agentBalance }: { initialProps: any[], agentBalance: number }) {
   const { data: session } = useSession();
-  const agentId = session?.user?.id || '';
+  const agentId = session?.user?.id; 
+  const router = useRouter();
   const [selectedProp, setSelectedProp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [isProcessingBalance, setIsProcessingBalance] = useState(false);
 
   // Estados para el Modal de Referidos
   const [referralProp, setReferralProp] = useState<any>(null);
+
+  const handlePayBalance = async () => {
+    setIsProcessingBalance(true);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isBalancePayment: true,
+          amount: Math.abs(agentBalance), // Mandamos el valor en positivo
+          agentId: agentId
+        })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url; // Redirigir a Stripe
+      } else {
+        alert(data.error || 'Error al procesar el pago del balance');
+        setIsProcessingBalance(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error al conectar con Stripe');
+      setIsProcessingBalance(false);
+    }
+  };
+
+
+
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -64,6 +99,36 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
             </div>
           ))}
         </div>
+
+        {/* AGENT BALANCE ROW */}
+        {agentBalance < 0 && (
+          <div className="bg-red-900/20 border border-red-800 rounded-xl p-6 mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-500">
+            <div>
+              <h3 className="text-xl font-black text-red-500 uppercase tracking-wide flex items-center gap-2">
+                <DollarSign size={20} /> Outstanding Balance
+              </h3>
+              <p className="text-gray-300 text-sm mt-1 max-w-xl">
+                You have a pending balance from recent referrals (deposit collected minus your commission). Please settle it to continue operating normally.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-6 w-full md:w-auto">
+              <div className="text-4xl font-black text-red-500">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Math.abs(agentBalance))}
+              </div>
+              <button
+                onClick={handlePayBalance}
+                disabled={isProcessingBalance}
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(220,38,38,0.5)] hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                {isProcessingBalance ? 'Processing...' : 'Pay Balance'}
+              </button>
+
+            
+
+
+            </div>
+          </div>
+        )}
 
         {/* FILTERS */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -153,16 +218,27 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
                   
                   {/* Botones de Acción */}
                   <div className="flex gap-2">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // TODO: Implementar redirección o apertura del chat
-                        alert("Redirigiendo al chat con el dueño...");
-                      }}
-                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 border border-gray-700 transition-colors"
-                    >
-                      <MessageSquare size={14} /> Text Owner
-                    </button>
+                    {p.sellerUserId ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/chat?initId=${p.sellerUserId}`);
+                        }}
+                        className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 border border-gray-700 transition-colors"
+                      >
+                        <MessageSquare size={14} /> Text Owner
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alert("This property does not have an owner associated with the chat.");
+                        }}
+                        className="flex-1 bg-gray-800/50 text-gray-500 py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 border border-gray-800 cursor-not-allowed"
+                      >
+                        <MessageSquare size={14} /> No Owner
+                      </button>
+                    )}
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -201,30 +277,39 @@ export default function AgentDashboardClient({ initialProps }: { initialProps: a
               </div>
               <form action={async (formData) => {
                 setIsSubmitting(true);
-                // Aquí llamarías a tu Server Action importada
-                // const result = await createAgentReferral(null, formData);
-                // ... lógica de manejo de error/éxito
+                
+                const result = await createAgentReferral(null, formData);
+                
                 setIsSubmitting(false);
-                setReferralProp(null);
+                
+                if (result.error) {
+                  alert(result.error);
+                } else {
+                  alert(result.message || 'Referral saved successfully!');
+                  setReferralProp(null);
+                  setClientName('');
+                  setClientPhone('');
+                  setClientEmail('');
+                }
               }} className="p-6 space-y-4">
                 {/* Hidden fields needed by the Server Action */}
                 <input type="hidden" name="propertyId" value={referralProp.id} />
-                {/* Asegúrate de tener el agentId, quizás lo pasas desde las props iniciales */}
                 <input type="hidden" name="agentId" value={agentId || ''} />
+                
                 <p className="text-sm text-gray-400 mb-4">
                   Register a buyer for <strong className="text-[#f8ed1a]">{referralProp.address}</strong>. Your commission balance will be adjusted once the deal closes.
                 </p>
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Client Full Name *</label>
-                  <input type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
+                  <input type="text" name="clientName" required value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Client Phone</label>
-                  <input type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
+                  <input type="tel" name="clientPhone" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Client Email</label>
-                  <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
+                  <input type="email" name="clientEmail" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#529e14] outline-none transition-colors" />
                 </div>
                 <button 
                   type="submit" 

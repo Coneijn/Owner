@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   try {
-    const { paymentId, propertyId, isPublishFee } = await req.json();
+    const { paymentId, propertyId, isPublishFee, isBalancePayment, amount, agentId } = await req.json();
     
     // Obtenemos la URL exacta desde donde el usuario hizo clic en el botón
     const referer = req.headers.get('referer');
@@ -20,8 +20,20 @@ export async function POST(req: Request) {
     let productDescription = '';
     let unitAmount = 0;
     let paymentType = '';
+    let finalAgentProfileId = agentId;
 
-    if (isPublishFee && propertyId) {
+    if (isBalancePayment && agentId && amount) {
+      // 1. Convertimos el userId de la sesión en el ID real del Perfil del Agente
+      const agentProfile = await prisma.agentProfile.findUnique({ where: { userId: agentId } });
+      if (!agentProfile) return NextResponse.json({ error: 'Perfil de agente no encontrado' }, { status: 404 });
+      
+      finalAgentProfileId = agentProfile.id; // Asignamos la llave primaria correcta
+      
+      productName = `Agent Balance Settlement`;
+      productDescription = `Payment to settle outstanding referral balance`;
+      unitAmount = Math.round(amount * 100);
+      paymentType = 'AGENT_BALANCE';
+    } else if (isPublishFee && propertyId) {
       const property = await prisma.property.findUnique({ where: { id: propertyId } });
       if (!property) return NextResponse.json({ error: 'Propiedad no encontrada' }, { status: 404 });
       
@@ -94,8 +106,9 @@ export async function POST(req: Request) {
       metadata: {
         localPaymentId: paymentId || '',
         propertyId: propertyId || '',
+        agentId: finalAgentProfileId || '', 
         type: paymentType 
-      },
+       },
     });
 
     return NextResponse.json({ url: session.url });

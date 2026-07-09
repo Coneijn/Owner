@@ -411,6 +411,12 @@ export async function updateProperty(prevState: any, formData: FormData) {
     const statusInput = rawFormData.status as PropertyStatus;
     const isTransitioning = statusInput === 'SOLD' || statusInput === 'RENTED';
 
+    console.log("=== DEBUG UPDATE PROPERTY ===");
+    console.log("1. Status recibido:", statusInput);
+    console.log("2. DownPayment (crudo):", rawFormData.downPayment);
+    const parsedDownPaymentUpdate = parseDecimalOrNull(rawFormData.downPayment);
+    console.log("3. DownPayment (parseado):", parsedDownPaymentUpdate);
+
     const updatedProperty = await prisma.property.update({
       where: { id },
       data: {
@@ -478,6 +484,9 @@ export async function updateProperty(prevState: any, formData: FormData) {
         buyerFinancing: parseStringOrNull(rawFormData.buyerFinancing),
       },
     });
+    console.log("4. DB Actualizada. DownPayment guardado:", updatedProperty.downPayment);
+    console.log("===============================");
+    
 
     // 3. Creamos el log
     await prisma.auditLog.create({
@@ -899,12 +908,24 @@ export async function assignPropertyClient(
 
       await prisma.property.update({
         where: { id: propertyId },
-        data: { status: 'RENTED', isForRent: true }
+        data: { 
+          status: 'RENTED', 
+          isForRent: true,
+          monthlyRent: monthlyRent,
+          securityDeposit: securityDeposit
+        }
       });
 
     } else if (clientType === 'BUYER') {
-      const totalAmount = parseFloat(formData.get('totalAmount') as string || '0');
-      const downPayment = parseFloat(formData.get('downPayment') as string || '0');
+      console.log("=== DEBUG ASSIGN CLIENT (BUYER) ===");
+      const rawTotalAmount = formData.get('totalAmount');
+      const rawDownPayment = formData.get('downPayment');
+      console.log("1. Datos recibidos del formulario -> Total:", rawTotalAmount, "| Enganche:", rawDownPayment);
+
+      const totalAmount = parseFloat(rawTotalAmount as string || '0');
+      const downPayment = parseFloat(rawDownPayment as string || '0');
+      console.log("2. Datos parseados a números -> Total:", totalAmount, "| Enganche:", downPayment);
+
       const interestRate = parseFloat(formData.get('interestRate') as string || '0');
       const termInYears = parseInt(formData.get('termInYears') as string || '30');
       
@@ -990,10 +1011,49 @@ export async function assignPropertyClient(
         }
       });
 
-      await prisma.property.update({
+      const updateResult = await prisma.property.update({
         where: { id: propertyId },
-        data: { status: 'SOLD', isForSale: true }
+        data: { 
+          status: 'SOLD', 
+          isForSale: true,
+          price: totalAmount,
+          downPayment: downPayment, 
+          interestRate: interestRate
+        }
       });
+      
+      console.log("3. Propiedad actualizada a SOLD. Enganche guardado:", updateResult.downPayment);
+
+      // --- NUEVO: LÓGICA DE REFERIDOS TRAS ASIGNACIÓN FINAL ---
+      const pendingReferral = await prisma.agentReferral.findFirst({
+        where: { propertyId: propertyId, status: 'PENDING' },
+      });
+
+      if (pendingReferral) {
+        const deposit = downPayment; // Tomamos el enganche FINAL real de la asignación
+        const commission = property.commissionAmt ? Number(property.commissionAmt) : 0;
+        const balanceOwed = deposit - commission;
+
+        await prisma.agentReferral.update({
+          where: { id: pendingReferral.id },
+          data: {
+            status: 'WON',
+            expectedDeposit: deposit,
+            expectedCommission: commission,
+            balanceOwed: balanceOwed,
+          },
+        });
+
+        await prisma.agentProfile.update({
+          where: { id: pendingReferral.agentId },
+          data: {
+            balance: { decrement: balanceOwed }
+          }
+        });
+        console.log(`4. Referido procesado. Agente debe $${balanceOwed} USD.`);
+      }
+
+      console.log("===================================");
     }
 
     // 6. LOG DE AUDITORÍA

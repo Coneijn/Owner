@@ -99,6 +99,7 @@ export default async function AgentDashboardPage() {
     },
     include: {
       marketingMaterials: true,
+      sellerProfile: true, 
     },
   });
 
@@ -138,6 +139,7 @@ export default async function AgentDashboardPage() {
       buyerCredit: p.buyerCredit || "",
       buyerFinancing: p.buyerFinancing || "Cash, Owner Finance",
       marketing: p.marketingMaterials || [],
+      sellerUserId: p.sellerProfile?.userId || null,
     };
   });
 
@@ -171,7 +173,10 @@ export default async function AgentDashboardPage() {
       </nav>
 
       {/* COMPONENTE CLIENTE */}
-      <AgentDashboardClient initialProps={serializedProps} />
+      <AgentDashboardClient 
+        initialProps={serializedProps} 
+        agentBalance={Number(currentUser.agentProfile.balance || 0)} 
+      />
     </div>
   );
 }
