@@ -30,8 +30,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
+    const eventType = body.type || 'new_message';
     const encoder = new TextEncoder();
-    const message = `data: ${JSON.stringify({ type: 'new_message', data: body })}\n\n`;
+    const message = `data: ${JSON.stringify({ type: eventType, data: body })}\n\n`;
     
     clients.forEach(client => {
       try {

@@ -5,11 +5,13 @@ import { useEffect, useState, useRef } from 'react';
 export default function NotificacionesPage() {
   const [isEnabled, setIsEnabled] = useState(false);
   const [status, setStatus] = useState('Desactivado');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const messageAudioRef = useRef<HTMLAudioElement | null>(null);
+  const callAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Inicializar el audio (asegúrate de tener este archivo en tu carpeta /public)
-    audioRef.current = new Audio('/notification.mp3'); 
+    // Inicializar los audios (asegúrate de tener este archivo en tu carpeta /public)
+    messageAudioRef.current = new Audio('/notification.mp3');
+    callAudioRef.current = new Audio('/ringtone.mp3'); 
   }, []);
 
   useEffect(() => {
@@ -27,14 +29,21 @@ eventSource.onopen = () => {
 };
 
 eventSource.onmessage = (event) => {
-  // Red de seguridad: si llegó un mensaje, es obvio que estamos conectados
   setStatus('Listening for notifications...'); 
   
   const parsed = JSON.parse(event.data);
+  
   if (parsed.type === 'new_message') {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.error(e));
+    if (messageAudioRef.current) {
+      messageAudioRef.current.currentTime = 0;
+      messageAudioRef.current.play().catch(e => console.error(e));
+    }
+  }
+  
+  if (parsed.type === 'new_call') {
+    if (callAudioRef.current) {
+      callAudioRef.current.currentTime = 0;
+      callAudioRef.current.play().catch(e => console.error(e));
     }
   }
 };
