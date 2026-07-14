@@ -470,9 +470,11 @@ export default function NewPropertyForm({ sellers = [] }: { sellers?: SellerProf
                                 
                                 <option value="10000">$10,000</option>
                                 <option value="20000">$20,000</option>
+                                <option value="25000">$25,000</option>
                                 <option value="30000">$30,000</option>
                                 <option value="40000">$40,000</option>
                                 <option value="50000">$50,000</option>
+                                <option value="100000">$100,000</option>
                             </select>
                         </div>
 
