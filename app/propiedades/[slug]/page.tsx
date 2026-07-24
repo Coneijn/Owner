@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import {notFound, redirect} from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image'; 
@@ -12,6 +12,7 @@ import WhatsAppButton from '@/app/components/WhatsAppButton';
 import StaticPropertyMap from '@/app/components/StaticPropertyMap';
 import DOMPurify from 'isomorphic-dompurify';
 import { auth } from '@/auth'; // <--- IMPORTANTE: Agregamos esto para leer la sesión
+import stringSimilarity from 'string-similarity';
 
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -150,7 +151,43 @@ export default async function PropertyDetailPage(props: Props) {
     include: { sellerProfile: true }
   });
 
-  if (!property) notFound();
+  // --- INICIO DE BÚSQUEDA FUZZY (RESCATE DE URL ROTAS) ---
+  if (!property) {
+    const allProperties = await prisma.property.findMany({
+      select: { id: true, slug: true, address: true },
+    });
+
+    // Limpiamos el texto que ingresó el usuario
+    const hint = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let bestMatch = null;
+    let highestScore = 0;
+
+    for (const p of allProperties) {
+      const cleanId = p.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanSlug = p.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanAddress = p.address.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const scoreId = stringSimilarity.compareTwoStrings(hint, cleanId);
+      const scoreSlug = stringSimilarity.compareTwoStrings(hint, cleanSlug);
+      const scoreAddress = stringSimilarity.compareTwoStrings(hint, cleanAddress);
+
+      const maxScoreForProperty = Math.max(scoreId, scoreSlug, scoreAddress);
+
+      if (maxScoreForProperty > highestScore) {
+        highestScore = maxScoreForProperty;
+        bestMatch = p;
+      }
+    }
+
+    // Redireccionamos si la similitud es del 75% o mayor
+    if (bestMatch && highestScore >= 0.75) {
+      redirect(`/propiedades/${bestMatch.slug}?lang=${lang}`);
+    } else {
+      // Si el texto de plano no se parece a nada, redirigimos a "properties"
+      redirect(`/properties?lang=${lang}`);
+    }
+  }
+  // --- FIN DE BÚSQUEDA FUZZY ---
 
   // --- LÓGICA DE MENSAJES DUEÑO A DUEÑO ---
   const session = await auth();

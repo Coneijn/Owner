@@ -40,6 +40,7 @@
     "react-to-print": "^3.3.0",
     "sanitize-html": "^2.17.3",
     "slugify": "^1.6.6",
+    "string-similarity": "^4.0.4",
     "stripe": "^22.0.1",
     "use-debounce": "^10.1.0"
   },
@@ -56,6 +57,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/sanitize-html": "^2.16.1",
+    "@types/string-similarity": "^4.0.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.1.1",
     "prisma": "^5.21.1",
