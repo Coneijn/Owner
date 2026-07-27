@@ -85,6 +85,7 @@ export async function GET() {
         zip: p.zipCode,
         status: p.status.toLowerCase(),
         type: type, // "owner-finance", "rental", o "both"
+        downPayment: Number(p.downPayment) || null,
       };
     });
 
