@@ -179,12 +179,15 @@ export default async function PropertyDetailPage(props: Props) {
       }
     }
 
+    // Definimos la URL base desde el entorno
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+
     // Redireccionamos si la similitud es del 75% o mayor
     if (bestMatch && highestScore >= 0.75) {
-      redirect(`/propiedades/${bestMatch.slug}?lang=${lang}`);
+      redirect(`${baseUrl}/propiedades/${bestMatch.slug}?lang=${lang}`);
     } else {
       // Si el texto de plano no se parece a nada, redirigimos a "properties"
-      redirect(`/properties?lang=${lang}`);
+      redirect(`${baseUrl}/properties?lang=${lang}`);
     }
   }
   // --- FIN DE BÚSQUEDA FUZZY ---
