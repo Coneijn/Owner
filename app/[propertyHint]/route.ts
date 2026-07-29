@@ -22,6 +22,7 @@ export async function GET(
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
   const queryString = searchParams ? `?${searchParams}` : '';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
 
   try {
     // 3. Consultar la BD trayendo solo lo estrictamente necesario
@@ -59,15 +60,15 @@ export async function GET(
     // 5. Redirección basada en la coincidencia
     if (bestMatch && highestScore >= 0.75) {
       // 308 es una redirección permanente (bueno para SEO)
-      return NextResponse.redirect(new URL(`/propiedades/${bestMatch.slug}${queryString}`, request.url), 308);
+      return NextResponse.redirect(`${baseUrl}/propiedades/${bestMatch.slug}${queryString}`, 308);
     }
 
     // Si no alcanza el 75%, lo mandamos al catálogo de propiedades
-    return NextResponse.redirect(new URL(`/properties${queryString}`, request.url), 302);
+    return NextResponse.redirect(`${baseUrl}/properties${queryString}`, 302);
 
   } catch (error) {
     console.error("Error resolviendo URL amigable:", error);
     // Redirección de seguridad en caso de falla de conexión a BD
-    return NextResponse.redirect(new URL(`/properties${queryString}`, request.url), 302);
+    return NextResponse.redirect(`${baseUrl}/properties${queryString}`, 302);
   }
 }
