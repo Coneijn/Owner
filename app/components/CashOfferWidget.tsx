@@ -26,6 +26,8 @@ interface CashOfferWidgetProps {
   lang?: 'es' | 'en';
   onSelectOption?: (option: string, data: any) => void; 
   allProperties?: any[]; 
+  initialAddress?: string;//para el fuzzy search
+  autoAnalyze?: boolean;//para el fuzzy search
 }
 
 const libraries: ("places" | "visualization")[] = ["places", "visualization"];
@@ -147,10 +149,16 @@ selectRentCompsDesc: "We will use the average monthly rent of these homes to fin
   }
 };
 
-export default function CashOfferWidget({ lang = 'es', onSelectOption, allProperties }: CashOfferWidgetProps) {
+export default function CashOfferWidget({ 
+  lang = 'es', 
+  onSelectOption,
+  allProperties,
+  initialAddress = '',//para el fuzzy search
+  autoAnalyze = false//para el fuzzy search
+}: CashOfferWidgetProps) {
   const t = i18n[lang];
   
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState(initialAddress || '');
   const [conditionScale, setConditionScale] = useState(3);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -246,7 +254,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
     }
   }, [selectedComps]);
 
-  // 👇 NUEVO: Actualizar Renta cuando cambian las rentas seleccionadas 👇
+  //  Actualizar Renta cuando cambian las rentas seleccionadas 
   useEffect(() => {
     if (selectedRentComps.length > 0) {
       const avgRent = selectedRentComps.reduce((sum, comp) => sum + comp.price, 0) / selectedRentComps.length;
@@ -302,9 +310,17 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
 
     calc();
   }, [inputs, isDpPercent]);
+  //para el fuzzy search, si hay una dirección inicial y autoAnalyze es true, se analiza la propiedad automáticamente
+  useEffect(() => {
+    if (initialAddress && autoAnalyze) {
+      setAddress(initialAddress);
+      analyzeProperty(3, initialAddress);
+    }
+  }, [initialAddress, autoAnalyze]);
 
-  const analyzeProperty = async (overrideCondition?: number) => {
-    if (!address) return;
+  const analyzeProperty = async (overrideCondition?: number, searchAddress?: string) => {
+    const targetAddress = searchAddress || address;
+    if (!targetAddress) return;
     const currentCondition = overrideCondition !== undefined ? overrideCondition : conditionScale;
     setLoading(true); setError('');
     if (overrideCondition === undefined) setPropertyDetails(null);
@@ -313,7 +329,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: address.trim(), conditionScale: currentCondition }),
+        body: JSON.stringify({ address: targetAddress.trim(), conditionScale: currentCondition }),
       });
 
       const data = await response.json();
