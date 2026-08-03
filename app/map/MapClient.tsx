@@ -1,6 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect, Fragment, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, HeatmapLayer } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, HeatmapLayer, MarkerClusterer } from '@react-google-maps/api';
 import Link from 'next/link';
 import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
 
@@ -267,74 +267,97 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
           mapTypeControl: false, fullscreenControl: false, styles: cleanMapStyles, backgroundColor: '#0a0f1c'
         }}
       >
-        {properties.map((property) => {
-            if (!property.lat || !property.lng) return null;
+        <MarkerClusterer
+          options={{
+            styles: Array(5).fill({
+              // SVG con la misma forma original de Google (borde translúcido) pero en tu amarillo #f8b1a
+              url: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2050%2050%22%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%2225%22%20fill%3D%22%23f81a%22%20fill-opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%2217%22%20fill%3D%22%23f8ed1a%22%2F%3E%3C%2Fsvg%3E',
+              
+              // 👇 AQUÍ CAMBIAS EL TAMAÑO 👇
+              height: 60, 
+              width: 60,  
+              
+              textColor: '#1a1a1a', // Color del número
+              textSize: 16, 
+              fontWeight: '900',
+            })
+          }}
+        >
+          {(clusterer) => (
+            <>
+              {properties.map((property) => {
+                  if (!property.lat || !property.lng) return null;
 
-            const isSelected = selectedProperty?.id === property.id;
-            const isSpecial = checkSpecialStatus(property);
-            
-            // --- CAMBIO: Siempre mostramos los carteles, ignoramos el currentZoom ---
-            const showSign = true; 
-            
-            const markerAnimation = (isSpecial && !isSelected && !showSign) ? google.maps.Animation.BOUNCE : null;
-            
-            // --- LÓGICA DE TEXTO DE MARCADOR SEGÚN TOGGLE ---
-            const monthlyRate = isRent ? property.monthlyRent : calculateEstimatedPayment(property.price, property.downPayment, property.taxes, property.insurance, property.interestRate);
-            const totalPrice = isRent ? property.securityDeposit : property.price;
+                  const isSelected = selectedProperty?.id === property.id;
+                  const isSpecial = checkSpecialStatus(property);
+                  
+                  // --- CAMBIO: Siempre mostramos los carteles, ignoramos el currentZoom ---
+                  const showSign = true; 
+                  
+                  const markerAnimation = (isSpecial && !isSelected && !showSign) ? google.maps.Animation.BOUNCE : null;
+                  
+                  // --- LÓGICA DE TEXTO DE MARCADOR SEGÚN TOGGLE ---
+                  const monthlyRate = isRent ? property.monthlyRent : calculateEstimatedPayment(property.price, property.downPayment, property.taxes, property.insurance, property.interestRate);
+                  const totalPrice = isRent ? property.securityDeposit : property.price;
 
-            const priceForLabel = priceDisplay === 'monthly' ? monthlyRate : totalPrice;
-            
-            const labelText = priceDisplay === 'monthly'
-                ? `$${Math.round(priceForLabel).toLocaleString('en-US')}` // Ejemplo: "$1,200"
-                : formatShortPrice(priceForLabel); // Ejemplo: "$250k"
+                  const priceForLabel = priceDisplay === 'monthly' ? monthlyRate : totalPrice;
+                   
+                  const labelText = priceDisplay === 'monthly'
+                      ? `$${Math.round(priceForLabel).toLocaleString('en-US')}` // Ejemplo: "$1,200"
+                      : formatShortPrice(priceForLabel); // Ejemplo: "$250k"
 
-            let iconUrl = '/frog-pin.png'; 
-            let labelConfig = null;
-            let iconSize = new window.google.maps.Size(50, 50);
-            let labelOrigin = new window.google.maps.Point(25, 25); 
+                  let iconUrl = '/frog-pin.png'; 
+                  let labelConfig = null;
+                  let iconSize = new window.google.maps.Size(40, 40);
+                  let labelOrigin = new window.google.maps.Point(25, 25); 
 
-            if (isSelected) {
-                iconUrl = '/frog-pin2.png';
-                iconSize = new window.google.maps.Size(90, 90); 
-            } else if (showSign) {
-                iconUrl = '/frog-sign.png';
-                iconSize = new window.google.maps.Size(70, 70);
-                labelOrigin = new window.google.maps.Point(35, 48);
-                labelConfig = {
-                    text: labelText,
-                    color: "#000000",
-                    fontWeight: "900",
-                    fontSize: "11px",
-                    className: "map-marker-label",
-                };
-            } else if (isSpecial) {
-                iconUrl = '/pinNewEdited.png';
-                iconSize = new window.google.maps.Size(70, 70); 
-            }
+                  if (isSelected) {
+                      iconUrl = '/frog-pin2.png';
+                      iconSize = new window.google.maps.Size(80, 80); 
+                  } else if (showSign) {
+                      iconUrl = '/frog-sign.png';
+                      iconSize = new window.google.maps.Size(60, 60);
+                      // Centramos en X (30) y cambiamos en Y (40)
+                      labelOrigin = new window.google.maps.Point(30, 40);
+                      labelConfig = {
+                          text: labelText,
+                          color: "#000000",
+                          fontWeight: "900",
+                          fontSize: "11px",
+                          className: "map-marker-label",
+                      };
+                  } else if (isSpecial) {
+                      iconUrl = '/pinNewEdited.png';
+                      iconSize = new window.google.maps.Size(65, 65); 
+                  }
 
-            return (
-                <Fragment key={property.id}>
-                    <Marker
-                        position={{ lat: property.lat, lng: property.lng }}
-                        onClick={() => handleMarkerClick(property)}
-                        onMouseOver={() => setHoveredProperty(property.id)}
-                        onMouseOut={() => setHoveredProperty(null)}
-                        zIndex={isSelected ? 999 : (isSpecial ? 800 : 1)}
-                        animation={markerAnimation as any} 
-                        icon={{ url: iconUrl, scaledSize: iconSize, labelOrigin: labelOrigin }}
-                        label={labelConfig as any} 
-                    />
+                  return (
+                      <Fragment key={property.id}>
+                          <Marker
+                              position={{ lat: property.lat, lng: property.lng }}
+                              clusterer={clusterer}
+                              onClick={() => handleMarkerClick(property)}
+                              onMouseOver={() => setHoveredProperty(property.id)}
+                              onMouseOut={() => setHoveredProperty(null)}
+                              zIndex={isSelected ? 999 : (isSpecial ? 800 : 1)}
+                              animation={markerAnimation as any} 
+                              icon={{ url: iconUrl, scaledSize: iconSize, labelOrigin: labelOrigin }}
+                              label={labelConfig as any} 
+                          />
 
-                    {hoveredProperty === property.id && isSpecial && (
-                        <OverlayView position={{ lat: property.lat, lng: property.lng }} mapPaneName={OverlayView.FLOAT_PANE} getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -80 })}>
-                            <div className="w-max bg-orange-500 text-[#f8ed1a] text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded shadow-[0_0_12px_rgba(239,68,68,0.6)] border-2 border-red-600 pointer-events-none whitespace-nowrap animate-in fade-in zoom-in duration-200">
-                              {lang === 'en' ? 'Hot property' : 'Gran oportunidad'}
-                          </div>
-                        </OverlayView>
-                    )}
-                </Fragment>
-            );
-        })}
+                          {hoveredProperty === property.id && isSpecial && (
+                              <OverlayView position={{ lat: property.lat, lng: property.lng }} mapPaneName={OverlayView.FLOAT_PANE} getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -80 })}>
+                                  <div className="w-max bg-orange-500 text-[#f8ed1a] text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded shadow-[0_0_12px_rgba(239,68,68,0.6)] border-2 border-red-600 pointer-events-none whitespace-nowrap animate-in fade-in zoom-in duration-200">
+                                    {lang === 'en' ? 'Hot property' : 'Gran oportunidad'}
+                                </div>
+                              </OverlayView>
+                          )}
+                      </Fragment>
+                  );
+              })}
+            </>
+          )}
+        </MarkerClusterer>
 
         {selectedProperty && (
           <InfoWindow
