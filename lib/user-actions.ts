@@ -384,3 +384,23 @@ export async function sendAdminMagicLink(userId: string) {
     return { error: 'Ocurrió un error al enviar el enlace.' };
   }
 }
+
+// ==========================================
+// 7. ACTUALIZAR NOMBRE DE USUARIO (ADMIN)
+// ==========================================
+export async function updateUserName(userId: string, newName: string) {
+  const session = await auth();
+  if (!session?.user?.email) return { error: 'No autorizado' };
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { name: newName },
+    });
+    revalidatePath('/admin/team_management');
+    return { success: true };
+  } catch (error) {
+    console.error("Error al actualizar nombre:", error);
+    return { error: 'Ocurrió un error al actualizar el nombre.' };
+  }
+}

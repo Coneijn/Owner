@@ -15,7 +15,14 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { firstName, lastName, email, phone } = body;
+    
+    // Soporte para camelCase, snake_case o un solo campo "name"
+    const fName = body.firstName || body.first_name || '';
+    const lName = body.lastName || body.last_name || '';
+    const fullName = body.name || body.full_name || `${fName} ${lName}`.trim() || 'Nuevo Usuario';
+    
+    const email = body.email;
+    const phone = body.phone;
 
     if (!phone || !email) {
       return NextResponse.json({ error: 'Missing phone or email' }, { status: 400 });
@@ -42,14 +49,14 @@ export async function POST(req: Request) {
     // 3. Crear el Usuario y su Perfil de Vendedor
     const newUser = await prisma.user.create({
       data: {
-        name: `${firstName} ${lastName}`.trim(),
+        name: fullName,
         email: email,
         password: randomInitialPassword,
         role: 'USER',
         forcePasswordChange: true,
         sellerProfile: {
           create: {
-            sellerName: `${firstName} ${lastName}`.trim(),
+            sellerName: fullName,
             phone: normalizedPhone,
             sellerType: 'OWNER'
           }

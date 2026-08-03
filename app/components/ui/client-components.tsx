@@ -5,7 +5,7 @@ import { useFormStatus } from 'react-dom';
 
 import ImpersonateButton from './impersonate-button';
 
-import { 
+import {
   changePassword,
   createUser,
   deleteUser,
@@ -13,7 +13,8 @@ import {
   sendAdminMagicLink,
   setupTwoFactor,
   confirmTwoFactor,
-  disableTwoFactor
+  disableTwoFactor,
+  updateUserName
 } from '@/lib/user-actions';
 
 
@@ -368,6 +369,24 @@ interface User {
 
 export function UserListTable({ users, currentUserEmail }: { users: User[], currentUserEmail: string | null | undefined }) {
     const [resetMsg, setResetMsg] = useState<{userId: string, msg: string} | null>(null);
+    const [editingUserId, setEditingUserId] = useState<string | null>(null);
+    const [editNameValue, setEditNameValue] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const handleEditClick = (user: User) => {
+        setEditingUserId(user.id);
+        setEditNameValue(user.name || '');
+    };
+
+    const handleSaveName = async (userId: string) => {
+        setIsUpdating(true);
+        const result = await updateUserName(userId, editNameValue);
+        if (!result.success) {
+            alert(result.error || 'Error updating name');
+        }
+        setEditingUserId(null);
+        setIsUpdating(false);
+    };
 
     const handleSendMagicLink = async (userId: string) => {
         if(!confirm('Are you sure you want to send a magic link to this user?')) return;
@@ -402,7 +421,26 @@ export function UserListTable({ users, currentUserEmail }: { users: User[], curr
                         <tr key={user.id} className="hover:bg-gray-900/50 transition-colors">
                             <td className="px-6 py-4">
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-white">{user.name || 'Unnamed'}</span>
+                                    {editingUserId === user.id ? (
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <input
+                                                type="text"
+                                                value={editNameValue}
+                                                onChange={(e) => setEditNameValue(e.target.value)}
+                                                disabled={isUpdating}
+                                                className="bg-black border border-gray-600 rounded px-2 py-1 text-white text-xs focus:border-[#f8ed1a] outline-none"
+                                            />
+                                            <button onClick={() => handleSaveName(user.id)} disabled={isUpdating} className="text-green-400 hover:text-green-300 font-bold text-xs">Save</button>
+                                            <button onClick={() => setEditingUserId(null)} disabled={isUpdating} className="text-gray-400 hover:text-white font-bold text-xs">Cancel</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-white">{user.name || 'Unnamed'}</span>
+                                            <button onClick={() => handleEditClick(user)} className="text-gray-500 hover:text-white" title="Edit name">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
+                                            </button>
+                                        </div>
+                                    )}
                                     <span className="text-xs">{user.email}</span>
                                     {currentUserEmail === user.email && (
                                         <span className="text-[10px] text-[#f8ed1a] font-bold uppercase mt-1">(You)</span>
