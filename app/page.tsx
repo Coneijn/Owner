@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import Header from '@/app/components/Header'; 
+import HomeHeader from '@/app/components/HomeHeader'; 
 import MapSplitView from './map/MapSplitView';
 import WhatsAppButton from './components/WhatsAppButton';
 import SignupPopup from './components/SignupPopup';
@@ -143,6 +143,18 @@ export default async function MapPage(props: {
     ...(minSqft !== undefined && { sqft: { gte: minSqft } }),
   };
 
+  // Obtener los precios globales mínimos y máximos para el Slider
+  const priceStats = await prisma.property.aggregate({
+    where: { 
+      status: { in: ['AVAILABLE', 'COMING_SOON'] },
+      isForSale: true
+    },
+    _min: { price: true },
+    _max: { price: true }
+  });
+  const globalMinPrice = Number(priceStats._min.price || 0);
+  const globalMaxPrice = Number(priceStats._max.price || 1000000);
+
   const rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
@@ -231,13 +243,15 @@ export default async function MapPage(props: {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0f1c] overflow-hidden">
-        <Header lang={lang} activePage="home" />
+        <HomeHeader lang={lang} activePage="home" />
         <div className="flex-1 relative min-h-0">
             <MapSplitView 
                 properties={properties} 
                 lang={lang} 
                 t={t} 
                 searchType={searchType}
+                globalMinPrice={globalMinPrice}
+                globalMaxPrice={globalMaxPrice}
             />
         </div>
         

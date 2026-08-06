@@ -79,7 +79,45 @@ function MapTabs({ currentType, texts, lang = 'en' }: { currentType: string, tex
         </div>
     );
 }
+// --- NUEVO: Componente para el Slider de Precio ---
+function PriceSlider({ min, max, lang }: { min: number, max: number, lang: string }) {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const [value, setValue] = useState(Number(searchParams.get('maxPrice')) || max);
 
+    useEffect(() => {
+        const urlMax = searchParams.get('maxPrice');
+        if (urlMax) setValue(Number(urlMax));
+    }, [searchParams]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setValue(Number(e.target.value));
+    };
+
+    const handleCommit = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('maxPrice', value.toString());
+        router.push(`?${params.toString()}`);
+    };
+
+    return (
+        <div className="flex items-center gap-2 bg-[#121826]/90 backdrop-blur-md rounded-full px-3 py-1.5 md:py-2 border border-gray-700 shadow-xl h-full">
+            <span className="text-[10px] md:text-xs text-gray-400 font-bold uppercase whitespace-nowrap">
+                {lang === 'en' ? 'Max: ' : 'Máx: '}${value >= 1000 ? Math.round(value/1000) + 'k' : value}
+            </span>
+            <input
+                type="range"
+                min={min}
+                max={max}
+                value={value}
+                onChange={handleChange}
+                onMouseUp={handleCommit}
+                onTouchEnd={handleCommit}
+                className="w-20 md:w-32 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-[#f8ed1a]"
+            />
+        </div>
+    );
+}
 // --- NUEVO: Componente para alternar Precio Mensual vs Total ---
 function PriceToggle({ priceDisplay, setPriceDisplay, lang }: { priceDisplay: 'monthly'|'total', setPriceDisplay: (val: 'monthly'|'total') => void, lang: string }) {
     return (
@@ -100,7 +138,7 @@ function PriceToggle({ priceDisplay, setPriceDisplay, lang }: { priceDisplay: 'm
     );
 }
 
-export default function MapSplitView({ properties, lang, t, searchType }: any) {
+export default function MapSplitView({ properties, lang, t, searchType, globalMinPrice = 0, globalMaxPrice = 1000000 }: any) {
   const [highlighted, setHighlighted] = useState<any | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -188,11 +226,11 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
          </MapErrorBoundary>
          
          <div className="hidden lg:flex flex-col gap-2 absolute top-6 left-4 right-4 z-[50] justify-center transition-all duration-300 ease-out pointer-events-none">
-            <div className="pointer-events-auto self-start ml-2 flex items-center gap-2"> 
-                <MapTabs currentType={searchType} texts={t.tabs} />
-                {/* --- SE AÑADIÓ EL BOTÓN TOGGLE AQUÍ --- */}
-                <PriceToggle priceDisplay={priceDisplay} setPriceDisplay={setPriceDisplay} lang={lang} />
-            </div>
+            <div className="pointer-events-auto self-start ml-2 flex flex-wrap items-center gap-2">
+                  <MapTabs currentType={searchType} texts={t.tabs} />
+                 <PriceToggle priceDisplay={priceDisplay} setPriceDisplay={setPriceDisplay} lang={lang} />
+                 <PriceSlider min={globalMinPrice} max={globalMaxPrice} lang={lang} />
+             </div>
             <div className="w-full pointer-events-auto max-w-7xl mx-auto">
                 <FloatingSearch placeholder={t.search.placeholder} onOpenFilters={() => setIsFilterOpen(true)} />
             </div>
@@ -204,10 +242,10 @@ export default function MapSplitView({ properties, lang, t, searchType }: any) {
           
           <div className="absolute top-0 left-0 w-full pointer-events-auto p-4 pt-4 flex flex-col items-start gap-2">             
              <div className="flex flex-wrap items-center gap-2 w-full">
-                 <MapTabs currentType={searchType} texts={t.tabs} />
-                 {/* --- SE AÑADIÓ EL BOTÓN TOGGLE AQUÍ PARA MÓVIL --- */}
-                 <PriceToggle priceDisplay={priceDisplay} setPriceDisplay={setPriceDisplay} lang={lang} />
-             </div>
+                  <MapTabs currentType={searchType} texts={t.tabs} />
+                  <PriceToggle priceDisplay={priceDisplay} setPriceDisplay={setPriceDisplay} lang={lang} />
+                  <PriceSlider min={globalMinPrice} max={globalMaxPrice} lang={lang} />
+              </div>
              <div className="w-full">
                 <FloatingSearch placeholder={t.search.placeholder} onOpenFilters={() => setIsFilterOpen(true)} />
              </div>

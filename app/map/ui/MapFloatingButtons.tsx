@@ -62,17 +62,6 @@ export default function MapFloatingButtons({ lang }: { lang: 'es' | 'en' }) {
         </svg>
       </a>
       
-      {/* 1. AGENDAR RECORRIDO */}
-      <a href={CALENDAR_LINK} target="_blank" rel="noopener noreferrer" className={btnContainerClass} title={t.tour}>
-        <FlipButtonContent imgSrc="/frog-show.png" text={t.tour} bgColor="bg-[#FFEC00] text-[#1a1a1a]" />
-      </a>
-
-      {/* 2. APLICAR */}
-      <Link href={`/apply?lang=${lang}`} className={btnContainerClass} title={t.apply}>
-        <FlipButtonContent imgSrc="/frog-apply.png" text={t.apply} bgColor="bg-white text-[#1a1a1a]" />
-      </Link>
-
-
-    </div>
+      </div>
   );
 }
