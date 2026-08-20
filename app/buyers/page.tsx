@@ -9,7 +9,6 @@ type Lang = 'en' | 'es';
 export default function BuyerLandingPage(props: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
-  // Desenvolvemos searchParams con React.use()
   const resolvedSearchParams = props.searchParams ? use(props.searchParams) : undefined;
   const lang: Lang = resolvedSearchParams?.lang === 'es' ? 'es' : 'en';
 
@@ -184,25 +183,26 @@ export default function BuyerLandingPage(props: {
         </section>
 
         <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-          {/* Paso 1: Video */}
-          <div className="space-y-3">
-            <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2">
+          
+          {/* Paso 1: Video Adaptativo (Vertical 9:16 en móvil, Horizontal 16:9 en desktop) */}
+          <div className="space-y-3 flex flex-col items-center">
+            <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2 self-center">
               <span className="text-[#529e14]">▶</span> {t.steps.step1}
             </h2>
             
-            <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
+            <div className="w-full max-w-[320px] md:max-w-none rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
               {mounted ? (
                 <video
                   key={currentVideoSrc}
                   controls
                   playsInline
-                  className="w-full aspect-video object-contain bg-black"
+                  className="w-full aspect-[9/16] md:aspect-video object-contain bg-black"
                 >
                   <source src={currentVideoSrc} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
               ) : (
-                <div className="w-full aspect-video bg-[#121212] animate-pulse" />
+                <div className="w-full aspect-[9/16] md:aspect-video bg-[#121212] animate-pulse" />
               )}
             </div>
           </div>
@@ -336,6 +336,7 @@ export default function BuyerLandingPage(props: {
         <p className="text-gray-500 text-sm">{t.footer}</p>
       </footer>
 
+      <WhatsAppButton lang={lang} propertyName={contactName} />
     </div>
   );
 }
