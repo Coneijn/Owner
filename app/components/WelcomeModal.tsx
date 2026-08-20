@@ -86,7 +86,7 @@ export default function WelcomeModal() {
             </h2>
             <div className="flex flex-col gap-4">
               <button
-                onClick={() => handleRoleSelect("properties")}
+                onClick={() => handleRoleSelect("buyers")}
                 className="w-full py-3 px-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transition-colors"
               >
                 {content[lang].buyer}
