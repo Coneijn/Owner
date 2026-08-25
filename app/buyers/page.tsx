@@ -1,8 +1,17 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import Script from 'next/script';
 import Header from '@/app/components/Header';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
+
+// Add TypeScript declarations for Google Analytics/Ads
+declare global {
+  interface Window {
+    dataLayer: any[];
+    gtag: (...args: any[]) => void;
+  }
+}
 
 type Lang = 'en' | 'es';
 
@@ -158,6 +167,16 @@ export default function BuyerLandingPage(props: {
         }),
       });
       setIsSubmitted(true);
+
+      // Trigger Google Ads Conversion on successful submission
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+        window.gtag('event', 'conversion', {
+          'send_to': 'AW-18397689925/2iWdCJjKjeccEMXw2cRE',
+          'value': 1.0,
+          'currency': 'USD'
+        });
+      }
+
     } catch (error) {
       console.error("Error submitting lead:", error);
     } finally {
@@ -166,177 +185,194 @@ export default function BuyerLandingPage(props: {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200 flex flex-col justify-between">
-      <div>
-        <Header lang={lang} activePage="buyers" />
+    <>
+      {/* Google Tag (gtag.js) */}
+      <Script 
+        async 
+        src="https://www.googletagmanager.com/gtag/js?id=AW-18397689925" 
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'AW-18397689925');
+        `}
+      </Script>
 
-        <section className="bg-gradient-to-b from-gray-900 to-[#1a1a1a] py-14 px-4 text-center border-b border-gray-800">
-          <span className="inline-block text-[#529e14] font-black tracking-widest text-xs uppercase mb-3">
-            {t.hero.badge}
-          </span>
-          <h1 className="text-3xl md:text-5xl font-black text-[#f8ed1a] uppercase mb-4 tracking-tight">
-            {t.hero.title}
-          </h1>
-          <p className="text-lg text-white max-w-2xl mx-auto leading-relaxed">
-            {t.hero.subtitle}
-          </p>
-        </section>
+      <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200 flex flex-col justify-between">
+        <div>
+          <Header lang={lang} activePage="buyers" />
 
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-          
-          {/* Paso 1: Video Adaptativo (Vertical 9:16 en móvil, Horizontal 16:9 en desktop) */}
-          <div className="space-y-3 flex flex-col items-center">
-            <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2 self-center">
-              <span className="text-[#529e14]">▶</span> {t.steps.step1}
-            </h2>
+          <section className="bg-gradient-to-b from-gray-900 to-[#1a1a1a] py-14 px-4 text-center border-b border-gray-800">
+            <span className="inline-block text-[#529e14] font-black tracking-widest text-xs uppercase mb-3">
+              {t.hero.badge}
+            </span>
+            <h1 className="text-3xl md:text-5xl font-black text-[#f8ed1a] uppercase mb-4 tracking-tight">
+              {t.hero.title}
+            </h1>
+            <p className="text-lg text-white max-w-2xl mx-auto leading-relaxed">
+              {t.hero.subtitle}
+            </p>
+          </section>
+
+          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
             
-            <div className="w-full max-w-[320px] md:max-w-none rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
-              {mounted ? (
-                <video
-                  key={currentVideoSrc}
-                  controls
-                  playsInline
-                  className="w-full aspect-[9/16] md:aspect-video object-contain bg-black"
-                >
-                  <source src={currentVideoSrc} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <div className="w-full aspect-[9/16] md:aspect-video bg-[#121212] animate-pulse" />
-              )}
+            {/* Paso 1: Video Adaptativo (Vertical 9:16 en móvil, Horizontal 16:9 en desktop) */}
+            <div className="space-y-3 flex flex-col items-center">
+              <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2 self-center">
+                <span className="text-[#529e14]">▶</span> {t.steps.step1}
+              </h2>
+              
+              <div className="w-full max-w-[320px] md:max-w-none rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
+                {mounted ? (
+                  <video
+                    key={currentVideoSrc}
+                    controls
+                    playsInline
+                    className="w-full aspect-[9/16] md:aspect-video object-contain bg-black"
+                  >
+                    <source src={currentVideoSrc} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <div className="w-full aspect-[9/16] md:aspect-video bg-[#121212] animate-pulse" />
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Paso 2: Formulario */}
-          <div className="space-y-3">
-            <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2">
-              <span className="text-[#529e14]">✓</span> {t.steps.step2}
-            </h2>
+            {/* Paso 2: Formulario */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2">
+                <span className="text-[#529e14]">✓</span> {t.steps.step2}
+              </h2>
 
-            <div className="bg-[#121212] p-6 sm:p-10 rounded-2xl border border-gray-800 shadow-2xl">
-              {isSubmitted ? (
-                <div className="text-center py-8 space-y-3">
-                  <div className="w-14 h-14 bg-[#529e14]/20 text-[#529e14] rounded-full flex items-center justify-center mx-auto ring-4 ring-[#529e14]/10">
-                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-black text-white uppercase">{t.success.title}</h3>
-                  <p className="text-gray-300 text-sm max-w-md mx-auto">{t.success.desc}</p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div>
-                    <h3 className="text-xl font-black text-white uppercase">{t.form.title}</h3>
-                    <p className="text-gray-400 text-xs mt-1">{t.form.subtitle}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.firstName}</label>
-                      <input
-                        required
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
-                      />
+              <div className="bg-[#121212] p-6 sm:p-10 rounded-2xl border border-gray-800 shadow-2xl">
+                {isSubmitted ? (
+                  <div className="text-center py-8 space-y-3">
+                    <div className="w-14 h-14 bg-[#529e14]/20 text-[#529e14] rounded-full flex items-center justify-center mx-auto ring-4 ring-[#529e14]/10">
+                      <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.lastName}</label>
-                      <input
-                        required
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
-                      />
-                    </div>
+                    <h3 className="text-2xl font-black text-white uppercase">{t.success.title}</h3>
+                    <p className="text-gray-300 text-sm max-w-md mx-auto">{t.success.desc}</p>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.phone}</label>
-                    <input
-                      required
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="(901) 000-0000"
-                      className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.zip}</label>
-                      <input
-                        required
-                        type="text"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleInputChange}
-                        placeholder="38115"
-                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
-                      />
+                      <h3 className="text-xl font-black text-white uppercase">{t.form.title}</h3>
+                      <p className="text-gray-400 text-xs mt-1">{t.form.subtitle}</p>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.downPayment}</label>
-                      <div className="relative">
-                        <select
-                          name="downPayment"
-                          value={formData.downPayment}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.firstName}</label>
+                        <input
+                          required
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
                           onChange={handleInputChange}
-                          className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm appearance-none cursor-pointer"
-                        >
-                          <option value="10k">$10,000</option>
-                          <option value="20k">$20,000</option>
-                          <option value="30k+">$30,000+</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
+                          className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.lastName}</label>
+                        <input
+                          required
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.phone}</label>
+                      <input
+                        required
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="(901) 000-0000"
+                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.zip}</label>
+                        <input
+                          required
+                          type="text"
+                          name="zipCode"
+                          value={formData.zipCode}
+                          onChange={handleInputChange}
+                          placeholder="38115"
+                          className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">{t.form.downPayment}</label>
+                        <div className="relative">
+                          <select
+                            name="downPayment"
+                            value={formData.downPayment}
+                            onChange={handleInputChange}
+                            className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#f8ed1a] transition-colors text-sm appearance-none cursor-pointer"
+                          >
+                            <option value="10k">$10,000</option>
+                            <option value="20k">$20,000</option>
+                            <option value="30k+">$30,000+</option>
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-[#f8ed1a] hover:bg-yellow-400 text-black font-black uppercase tracking-wide py-4 px-6 rounded-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                  >
-                    {isSubmitting ? t.form.submitting : t.form.submit}
-                  </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-[#f8ed1a] hover:bg-yellow-400 text-black font-black uppercase tracking-wide py-4 px-6 rounded-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    >
+                      {isSubmitting ? t.form.submitting : t.form.submit}
+                    </button>
 
-                  <p className="text-center text-xs text-gray-400 mt-2">
-                    {t.form.disclaimer}
-                  </p>
-                </form>
-              )}
-            </div>
-          </div>
-
-          {/* Tarjetas de Beneficios */}
-          <div className="grid md:grid-cols-3 gap-4 pt-4 border-t border-gray-800">
-            {t.benefits.map((b, idx) => (
-              <div key={idx} className="bg-[#242424] p-5 rounded-lg border border-gray-700 hover:border-[#f8ed1a] transition-colors">
-                <h3 className="text-[#f8ed1a] font-black uppercase text-sm mb-2">{b.title}</h3>
-                <p className="text-gray-300 text-xs leading-relaxed">{b.desc}</p>
+                    <p className="text-center text-xs text-gray-400 mt-2">
+                      {t.form.disclaimer}
+                    </p>
+                  </form>
+                )}
               </div>
-            ))}
-          </div>
-        </main>
+            </div>
+
+            {/* Tarjetas de Beneficios */}
+            <div className="grid md:grid-cols-3 gap-4 pt-4 border-t border-gray-800">
+              {t.benefits.map((b, idx) => (
+                <div key={idx} className="bg-[#242424] p-5 rounded-lg border border-gray-700 hover:border-[#f8ed1a] transition-colors">
+                  <h3 className="text-[#f8ed1a] font-black uppercase text-sm mb-2">{b.title}</h3>
+                  <p className="text-gray-300 text-xs leading-relaxed">{b.desc}</p>
+                </div>
+              ))}
+            </div>
+          </main>
+        </div>
+
+        <footer className="bg-[#1a1a1a] text-white py-8 border-t border-gray-800 text-center mt-12">
+          <p className="text-gray-500 text-sm">{t.footer}</p>
+        </footer>
+
+        <WhatsAppButton lang={lang} propertyName={contactName} />
       </div>
-
-      <footer className="bg-[#1a1a1a] text-white py-8 border-t border-gray-800 text-center mt-12">
-        <p className="text-gray-500 text-sm">{t.footer}</p>
-      </footer>
-
-      <WhatsAppButton lang={lang} propertyName={contactName} />
-    </div>
+    </>
   );
 }
