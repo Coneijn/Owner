@@ -86,6 +86,7 @@ export async function GET() {
         status: p.status.toLowerCase(),
         type: type, // "owner-finance", "rental", o "both"
         downPayment: Number(p.downPayment) || null,
+        interestRate: Number(p.interestRate) || null, // <-- Agregado aquí
       };
     });
 
