@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 import Header from '@/app/components/Header';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
@@ -20,6 +21,10 @@ export default function BuyerLandingPage(props: {
 }) {
   const resolvedSearchParams = props.searchParams ? use(props.searchParams) : undefined;
   const lang: Lang = resolvedSearchParams?.lang === 'es' ? 'es' : 'en';
+
+  // Obtenemos los parámetros de búsqueda de la URL
+  const searchParamsHook = useSearchParams();
+  const utmCampaign = searchParamsHook.get('utm_campaign') || '';
 
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -163,7 +168,8 @@ export default function BuyerLandingPage(props: {
         body: JSON.stringify({
           ...formData,
           language: lang,
-          source: 'buyer_landing_page'
+          source: 'buyer_landing_page',
+          utm_campaign: utmCampaign // Se envía aquí
         }),
       });
       setIsSubmitted(true);
@@ -219,7 +225,7 @@ export default function BuyerLandingPage(props: {
 
           <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
             
-            {/* Paso 1: Video Adaptativo (Vertical 9:16 en móvil, Horizontal 16:9 en desktop) */}
+            {/* Paso 1: Video Adaptativo */}
             <div className="space-y-3 flex flex-col items-center">
               <h2 className="text-sm font-black text-[#f8ed1a] uppercase tracking-wider flex items-center gap-2 self-center">
                 <span className="text-[#529e14]">▶</span> {t.steps.step1}
