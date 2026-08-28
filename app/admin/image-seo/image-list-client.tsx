@@ -3,111 +3,134 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-// Usando el mismo estilo colapsable de PropertySection en dashboard-client.tsx
-const SeoPropertySection = ({ title, items, icon, colorClass }: any) => {
-  const [isOpen, setIsOpen] = useState(true);
-
-  if (items.length === 0) return null;
+// Componente de tabla reutilizable adaptado a tu estilo
+const PropertyImageTable = ({ items }: { items: any[] }) => {
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl mt-6">
+        <p className="text-gray-500 text-lg">No properties found in this view.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mb-6 bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-gray-900 hover:bg-gray-800 transition-colors border-b border-gray-800"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{icon}</span>
-          <h2 className={`text-lg font-black uppercase tracking-wide ${colorClass}`}>
-            {title} <span className="text-gray-500 text-sm ml-2">({items.length})</span>
-          </h2>
-        </div>
-        <span className={`text-gray-400 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
-      </button>
+    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl mt-6">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-800">
+          <thead className="bg-[#111]">
+            <tr>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property</th>
+              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-3 text-center text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Image Count</th>
+              <th className="px-6 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
+            {items.map((property) => {
+              const imageCount = property.images ? property.images.length : 0;
+              
+              // Alerta visual si tiene muy pocas imágenes (opcional, puedes ajustarlo)
+              const countColor = imageCount === 0 
+                ? 'bg-red-900/30 text-red-400 border-red-800/50' 
+                : imageCount < 5 
+                  ? 'bg-orange-900/30 text-orange-400 border-orange-800/50'
+                  : 'bg-[#529e14]/20 text-[#529e14] border-[#529e14]/30';
 
-      {isOpen && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-800">
-              <thead className="bg-[#111]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property</th>
-                  <th className="px-6 py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Images</th>
-                  <th className="px-6 py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Missing Alt Text</th>
-                  <th className="px-6 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+              return (
+                <tr key={property.id} className="hover:bg-white/5 transition-colors group">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-bold text-white truncate max-w-[300px]">
+                      {property.titleEn || 'Untitled Property'}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate max-w-[300px]">
+                      {property.address}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                      {property.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <span className={`px-3 py-1 rounded text-[11px] font-black tracking-wider border ${countColor}`}>
+                      {imageCount} Images
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Link href={`/admin/properties/${property.id}/edit`} className="text-blue-400 hover:text-blue-300 font-bold uppercase text-[10px] tracking-wide">
+                      EDIT MEDIA
+                    </Link>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
-                {items.map((property: any) => {
-                  const totalImages = property.images.length;
-                  const missingCount = property.images.filter((img: any) => !img.altText || img.altText.trim() === '').length;
-
-                  return (
-                    <tr key={property.id} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-white truncate max-w-[300px]">
-                          {property.titleEn || 'Untitled Property'}
-                        </div>
-                        <div className="text-xs text-gray-500 truncate max-w-[300px]">
-                          {property.address}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="font-mono text-gray-300">{totalImages}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {missingCount > 0 ? (
-                          <span className="bg-red-900/30 text-red-400 border border-red-800/50 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                            {missingCount} missing
-                          </span>
-                        ) : (
-                          <span className="bg-[#529e14]/20 text-[#529e14] border border-[#529e14]/30 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                            0 missing
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Link href={`/admin/properties/${property.id}/edit`} className="text-blue-400 hover:text-blue-300 font-bold uppercase text-[10px] tracking-wide">
-                          EDIT PROPERTY
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
 
-export default function SeoImagesClient({ properties }: { properties: any[] }) {
-  const missingAltProperties = properties.filter(
-    (p) => p.images.length === 0 || p.images.some((img: any) => !img.altText || img.altText.trim() === '')
-  );
+export default function ImageListClient({ properties }: { properties: any[] }) {
+  const [activeTab, setActiveTab] = useState<'active' | 'all'>('active');
 
-  const completeAltProperties = properties.filter(
-    (p) => p.images.length > 0 && p.images.every((img: any) => img.altText && img.altText.trim() !== '')
-  );
+  // 1. ORDENAMIENTO GLOBAL: De menor a mayor cantidad de imágenes
+  const sortedProperties = [...properties].sort((a, b) => {
+    const countA = a.images ? a.images.length : 0;
+    const countB = b.images ? b.images.length : 0;
+    return countA - countB; // Orden ascendente
+  });
+
+  // 2. FILTRADO: Solo las activas (AVAILABLE) basadas en la lista ya ordenada
+  const activeProperties = sortedProperties.filter((p) => p.status === 'AVAILABLE');
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      <SeoPropertySection 
-        title="Action Required: Missing Alt Text" 
-        items={missingAltProperties} 
-        icon="⚠️" 
-        colorClass="text-red-500" 
-      />
       
-      <SeoPropertySection 
-        title="Fully Optimized Properties" 
-        items={completeAltProperties} 
-        icon="✅" 
-        colorClass="text-[#529e14]" 
-      />
+      {/* NAVEGACIÓN DE VISTAS (TABS) */}
+      <div className="flex border-b border-gray-800 gap-6 overflow-x-auto whitespace-nowrap">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
+            activeTab === 'active'
+              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Active Properties
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'active' ? 'bg-gray-800 text-white' : 'bg-gray-900 text-gray-500'}`}>
+            {activeProperties.length}
+          </span>
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
+            activeTab === 'all'
+              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          All Properties
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-900 text-gray-500'}`}>
+            {sortedProperties.length}
+          </span>
+        </button>
+      </div>
+
+      {/* RENDERIZADO CONDICIONAL DE LA TABLA */}
+      {activeTab === 'active' && (
+        <div className="animate-in fade-in duration-300">
+          <PropertyImageTable items={activeProperties} />
+        </div>
+      )}
+
+      {activeTab === 'all' && (
+        <div className="animate-in fade-in duration-300">
+          <PropertyImageTable items={sortedProperties} />
+        </div>
+      )}
+
     </div>
   );
 }
