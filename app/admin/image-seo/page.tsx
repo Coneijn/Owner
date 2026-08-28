@@ -1,41 +1,31 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import SeoImagesClient from './seo-client';
-
+import ImageListClient from './image-list-client';
 export const dynamic = 'force-dynamic';
 
-export default async function ImageSeoPage() {
-  // 1. Obtenemos las propiedades incluyendo sus imágenes
+export default async function ImageManagerPage() {
+  // 1. Obtenemos las propiedades incluyendo sus imágenes y el status
   const properties = await prisma.property.findMany({
     select: {
       id: true,
       titleEn: true,
       address: true,
-      slug: true,
+      status: true, // Importante para saber si está activa
       images: {
         select: {
           id: true,
-          url: true,
-          altText: true,
-          isMain: true,
         },
       },
     },
-    orderBy: { createdAt: 'desc' },
   });
 
-  // 2. Sanitizamos los datos para evitar problemas al pasarlos al Client Component
+  // 2. Sanitizamos los datos
   const safeProperties = properties.map((p) => ({
     id: p.id,
     titleEn: p.titleEn,
     address: p.address,
-    slug: p.slug,
-    images: p.images.map((img) => ({
-      id: img.id,
-      url: img.url,
-      altText: img.altText,
-      isMain: img.isMain,
-    })),
+    status: p.status,
+    images: p.images,
   }));
 
   return (
@@ -46,10 +36,10 @@ export default async function ImageSeoPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 border-b border-gray-800 pb-6">
           <div>
             <h1 className="text-3xl font-black text-white uppercase tracking-tight">
-              Image SEO <span className="text-[#f8ed1a]">Auditor</span>
+              Property <span className="text-[#f8ed1a]">Images</span>
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              Revisa y gestiona las propiedades a las que les falta el texto alternativo (Alt Text) en sus imágenes.
+              Revisa la cantidad de imágenes por propiedad.
             </p>
           </div>
           <div className="flex gap-4">
@@ -63,7 +53,7 @@ export default async function ImageSeoPage() {
         </div>
 
         {/* --- COMPONENTE INTERACTIVO --- */}
-        <SeoImagesClient properties={safeProperties} />
+        <ImageListClient properties={safeProperties} />
 
       </div>
     </div>
