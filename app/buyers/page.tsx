@@ -26,8 +26,10 @@ export default function BuyerLandingPage(props: {
 
   // Obtenemos los parámetros de búsqueda de la URL
   const searchParamsHook = useSearchParams();
-  const utmCampaign = searchParamsHook.get('utm_campaign') || '';
 
+const utmCampaign = searchParamsHook.get('utm_campaign') 
+  || (typeof window !== 'undefined' ? sessionStorage.getItem('utm_campaign') : '') 
+  || '';
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

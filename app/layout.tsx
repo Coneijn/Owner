@@ -122,7 +122,18 @@ export default function RootLayout({
 
        `}
        </Script>
-
+{/* --- UTM TRACKER --- */}
+<Script id="utm-tracker-script" strategy="afterInteractive">
+          {`
+            if (typeof window !== 'undefined') {
+              const params = new URLSearchParams(window.location.search);
+              ['utm_campaign','utm_source','utm_medium','utm_content'].forEach(key => {
+                const val = params.get(key);
+                if (val) sessionStorage.setItem(key, val);
+              });
+            }
+          `}
+        </Script>
         {/* --- 2. GOOGLE ADS & ANALYTICS TAGS --- */}
         <Script 
           src="https://www.googletagmanager.com/gtag/js?id=AW-17843139208"
