@@ -23,6 +23,8 @@ export default function WelcomeModal() {
   };
 
   const handleRoleSelect = (rolePath: string) => {
+    //guarda el tipo de usuario seleccionado en el localStorage para futuras referencias
+    localStorage.setItem("userRole", rolePath);
     // Guardar preferencia para no volver a mostrar el modal
     localStorage.setItem("onboardingComplete", "true");
     setIsOpen(false);
@@ -34,14 +36,16 @@ export default function WelcomeModal() {
   // Textos dinámicos según el idioma seleccionado
   const content = {
     en: {
-      question: "Are you a Buyer, Seller, or Agent?",
+      question: "What kind of user fits you better? Looking for a house, selling a property, or would you like to be an agent? ",      
       buyer: "Buyer",
+      renter: "Renter",
       seller: "Seller",
       agent: "Agent",
     },
     es: {
-      question: "¿Eres Comprador, Vendedor o Agente?",
+      question: "¿Qué tipo de usuario se adapta mejor a ti? ¿Buscas una casa, vender una propiedad o te gustaría ser un agente? ",
       buyer: "Comprador",
+      renter: "Inquilino",
       seller: "Vendedor",
       agent: "Agente",
     },
@@ -90,6 +94,12 @@ export default function WelcomeModal() {
                 className="w-full py-3 px-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transition-colors"
               >
                 {content[lang].buyer}
+              </button>
+              <button
+                onClick={() => handleRoleSelect("renters")}
+                className="w-full py-3 px-4 border-2 border-blue-400 text-blue-400 hover:bg-blue-50 font-semibold rounded-lg transition-colors"
+              >
+                {content[lang].renter}
               </button>
               <button
                 onClick={() => handleRoleSelect("sellers")}

@@ -11,7 +11,12 @@ export default function SignupPopup({ lang }: SignupPopupProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
+  const [userRole, setUserRole] = useState<string | null>(null);
+
   useEffect(() => {
+    // Leemos el rol guardado en WelcomeModal
+    setUserRole(localStorage.getItem("userRole"));
+
     const timer = setTimeout(() => setIsVisible(true), 2000);
     const autoClose = setTimeout(() => setIsVisible(false), 32000);
     
@@ -25,18 +30,35 @@ export default function SignupPopup({ lang }: SignupPopupProps) {
 
   const content = {
     es: {
-      title: "¡HAZTE USUARIO WEB! 🏡",
-      text: "Crea tu cuenta gratis.",
+      title: {
+        default: "¡HAZTE USUARIO WEB! 🏡",
+        buyers: "Compra la casa de tus suenos. ",
+        renters: "Renta la casa de tus suenos. ",
+        sellers: "Vende tu propiedad.",
+        agents: "Conviértete en un agente."
+      } ,
+      text:"Crea tu cuenta gratis.",
       button: "REGISTRARSE"
     },
     en: {
-      title: "BECOME A WEB USER! 🏡",
-      text: "Create a free account.",
+      title: {
+        default: "Become a web user! 🏡",
+        buyers: "Buy your dream home.",
+        renters: "Rent your dream home.",
+        sellers: "Sell your property.",
+        agents: "Become an agent."
+      },
+      text:"Create a free account.",
       button: "SIGN UP"
     }
   };
 
   const t = content[lang] || content.es;
+
+  // Elegimos el titulo segun el rol, si no hay rol usamos el default
+  const title = (userRole && t.title[userRole as keyof typeof t.title]) 
+    ? t.title[userRole as keyof typeof t.title] 
+    : t.title.default;
 
   return (
     <div
@@ -54,7 +76,7 @@ export default function SignupPopup({ lang }: SignupPopupProps) {
         }
       `}</style>
 
-      {/* Botón de cerrar con color de marca */}
+      {/* Boton de cerrar con color de marca */}
       <button
         onClick={() => setIsDismissed(true)}
         className="absolute -top-3 -right-3 bg-brand-accent text-brand-dark rounded-full p-1 hover:brightness-110 transition-colors"
@@ -66,7 +88,7 @@ export default function SignupPopup({ lang }: SignupPopupProps) {
       </button>
       
       <h4 className="font-black text-brand-accent text-lg mb-2 uppercase tracking-wide">
-        {t.title}
+        {title}
       </h4>
       <p className="text-sm text-white mb-4 font-medium">
         {t.text}

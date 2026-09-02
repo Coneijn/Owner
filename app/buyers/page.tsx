@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 import Header from '@/app/components/Header';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
+import AddContactButton from '@/app/components/AddContactButton';
 
 // Add TypeScript declarations for Google Analytics/Ads
 declare global {
@@ -209,11 +210,10 @@ export default function BuyerLandingPage(props: {
 
       <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200 flex flex-col justify-between">
         <div>
-          <Header lang={lang} activePage="buyers" />
+<Header lang={lang} activePage="buyers" />
 
           <section className="bg-gradient-to-b from-gray-900 to-[#1a1a1a] py-14 px-4 text-center border-b border-gray-800">
-            <span className="inline-block text-[#529e14] font-black tracking-widest text-xs uppercase mb-3">
-              {t.hero.badge}
+            <span className="inline-block text-[#529e14] font-black tracking-widest text-xs uppercase mb-3">              {t.hero.badge}
             </span>
             <h1 className="text-3xl md:text-5xl font-black text-[#f8ed1a] uppercase mb-4 tracking-tight">
               {t.hero.title}
@@ -264,6 +264,10 @@ export default function BuyerLandingPage(props: {
                     </div>
                     <h3 className="text-2xl font-black text-white uppercase">{t.success.title}</h3>
                     <p className="text-gray-300 text-sm max-w-md mx-auto">{t.success.desc}</p>
+                    
+                    <div className="pt-4">
+                      <AddContactButton lang={lang} />
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
