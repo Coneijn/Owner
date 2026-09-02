@@ -7,6 +7,7 @@ import Header from '@/app/components/Header';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
 import AddContactButton from '@/app/components/AddContactButton';
 import ScheduleAnApointmentCalendar from '@/app/components/ScheduleAnApoinmentCalendar';
+import AgentsCalendar from '@/app/components/AgentsCalendar';
 // Add TypeScript declarations for Google Analytics/Ads
 declare global {
   interface Window {
