@@ -6,7 +6,7 @@ import Script from 'next/script';
 import Header from '@/app/components/Header';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
 import AddContactButton from '@/app/components/AddContactButton';
-
+import ScheduleAnApointmentCalendar from '@/app/components/ScheduleAnApoinmentCalendar';
 // Add TypeScript declarations for Google Analytics/Ads
 declare global {
   interface Window {
@@ -265,10 +265,12 @@ export default function BuyerLandingPage(props: {
                     <h3 className="text-2xl font-black text-white uppercase">{t.success.title}</h3>
                     <p className="text-gray-300 text-sm max-w-md mx-auto">{t.success.desc}</p>
                     
-                    <div className="pt-4">
+                    <div className="pt-4 space-y-6">
                       <AddContactButton lang={lang} />
+                      <ScheduleAnApointmentCalendar />
                     </div>
                   </div>
+               
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
