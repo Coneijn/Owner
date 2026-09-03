@@ -1,4 +1,4 @@
-import {notFound, redirect} from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image'; 
@@ -8,19 +8,10 @@ import PropertyGallery from '@/app/components/PropertyGallery';
 import VideoModal from '@/app/components/video-modal';
 import PropertyShare from '@/app/components/PropertyShare';
 import PropertyFinancials from '@/app/components/PropertyFinancials';
+import PropertyPriceHeader from '@/app/components/PropertyPriceHeader'; // <--- NUEVO IMPORT
 import WhatsAppButton from '@/app/components/WhatsAppButton';
-import StaticPropertyMap from '@/app/components/StaticPropertyMap';
-import DOMPurify from 'isomorphic-dompurify';
-import { auth } from '@/auth'; // <--- IMPORTANTE: Agregamos esto para leer la sesión
+import { auth } from '@/auth'; 
 import stringSimilarity from 'string-similarity';
-
-const formatMoney = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 const DICTIONARY = {
   es: {
@@ -33,24 +24,17 @@ const DICTIONARY = {
     comingSoon: "Próximamente", 
     aboutTitle: "SOBRE ESTA PROPIEDAD",
     featuresTitle: "CARACTERÍSTICAS",
-    beds: "Habitaciones",
-    baths: "Baños",
-    sqft: "Sq Ft",
-    year: "Año",
     interestedTitle: "¿TE INTERESA ESTA CASA?",
     interestedSub: "Agenda una visita hoy mismo o habla con nuestro asistente virtual.",
     btnChat: "COMUNICATE CON EL DUEÑO",
     btnSchedule: "AGENDAR RECORRIDO",
     btnApply: "COMPRAR AHORA",
     btnCall: "LLAMAR AHORA",
-    location: "Ubicación",
     meetSeller: "CONOCE AL DUEÑO",
     sellerRole: "Vendedor",
     videoBtn: "VER VIDEO TOUR", 
     ownerTitle: "Dueño de la Propiedad", 
     agentTitle: "Asesor de Ventas",
-    perMonth: "/mes",
-    // Nuevas traducciones
     listPropertyTitle: "¿Eres dueño de una casa?",
     listPropertyBtn: "Publica tu Propiedad",
     getPaidTitle: "Programa de Agentes",
@@ -67,24 +51,17 @@ const DICTIONARY = {
     comingSoon: "Coming Soon", 
     aboutTitle: "ABOUT THIS PROPERTY",
     featuresTitle: "FEATURES",
-    beds: "Bedrooms",
-    baths: "Baths",
-    sqft: "Sq Ft",
-    year: "Year Built",
     interestedTitle: "INTERESTED IN THIS HOME?",
     interestedSub: "Schedule a visit today or talk to our AI assistant.",
     btnChat: "MESSAGE THE OWNER",
     btnSchedule: "SCHEDULE HOME TOUR",
     btnApply: "BUY NOW",
     btnCall: "CALL NOW",
-    location: "Location",
     meetSeller: "MEET YOUR OWNER",
     sellerRole: "Seller",
     videoBtn: "WATCH VIDEO TOUR", 
     ownerTitle: "Property Owner", 
     agentTitle: "Sales Agent", 
-    perMonth: "/mo",
-    // Nuevas traducciones
     listPropertyTitle: "Do you own a home?",
     listPropertyBtn: "List your property",
     getPaidTitle: "Agent Program",
@@ -104,7 +81,6 @@ export async function generateMetadata(
   props: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  // ... (Tu metadata se mantiene idéntica)
   const params = await props.params;
   const searchParams = await props.searchParams;
   const slug = params.slug;
@@ -151,13 +127,10 @@ export default async function PropertyDetailPage(props: Props) {
     include: { sellerProfile: true }
   });
 
-  // --- INICIO DE BÚSQUEDA FUZZY (RESCATE DE URL ROTAS) ---
   if (!property) {
     const allProperties = await prisma.property.findMany({
       select: { id: true, slug: true, address: true },
     });
-
-    // Limpiamos el texto que ingresó el usuario
     const hint = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
     let bestMatch = null;
     let highestScore = 0;
@@ -170,7 +143,6 @@ export default async function PropertyDetailPage(props: Props) {
       const scoreId = stringSimilarity.compareTwoStrings(hint, cleanId);
       const scoreSlug = stringSimilarity.compareTwoStrings(hint, cleanSlug);
       const scoreAddress = stringSimilarity.compareTwoStrings(hint, cleanAddress);
-
       const maxScoreForProperty = Math.max(scoreId, scoreSlug, scoreAddress);
 
       if (maxScoreForProperty > highestScore) {
@@ -179,30 +151,22 @@ export default async function PropertyDetailPage(props: Props) {
       }
     }
 
-    // Definimos la URL base desde el entorno
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-
-    // Redireccionamos si la similitud es del 75% o mayor
     if (bestMatch && highestScore >= 0.75) {
       redirect(`${baseUrl}/propiedades/${bestMatch.slug}?lang=${lang}`);
     } else {
-      // Si el texto de plano no se parece a nada, redirigimos a "properties"
       redirect(`${baseUrl}/properties?lang=${lang}`);
     }
   }
-  // --- FIN DE BÚSQUEDA FUZZY ---
 
-  // --- LÓGICA DE MENSAJES DUEÑO A DUEÑO ---
   const session = await auth();
   const isLoggedIn = !!session?.user;
   const ownerId = property?.sellerProfile?.userId;
   
-  // Si no está logueado, lo mandamos a signup con el retorno al chat inicializado
   const chatTarget = `/chat?initId=${ownerId}`;
   const messageLink = isLoggedIn 
       ? chatTarget 
       : `/signup?callbackUrl=${encodeURIComponent(chatTarget)}`;
-  // ----------------------------------------
 
   const price = property.price?.toNumber() ?? 0;
   const downPayment = property.downPayment?.toNumber() ?? 0;
@@ -219,24 +183,54 @@ export default async function PropertyDetailPage(props: Props) {
       monthlyRent, securityDeposit,
   };
 
-  const displayPrice = (property.isForRent && !property.isForSale) ? monthlyRent : price;
-  const priceSuffix = (property.isForRent && !property.isForSale) ? t.perMonth : '';
   const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
   const phoneHref = `tel:${property.phoneNumber || '9016-604-115'}`;
-  
   const bookingLink = property.calendarLink && property.calendarLink.length > 0 ? property.calendarLink : DEFAULT_CALENDAR_LINK;
   const propertyTitle = lang === 'en' ? property.titleEn : property.titleEs;
+
+  // --- BLOQUE CTA (Renderizado dinámico para móvil vs desktop) ---
+  const renderCTA = () => (
+    <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-16 h-16 bg-[#f8ed1a] rounded-bl-full opacity-20"></div>
+        <div>
+             <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{t.interestedTitle}</h3>
+             <p className="text-sm text-gray-400 font-medium">{t.interestedSub}</p>
+        </div>
+        <div className="space-y-3">
+            <Link href={messageLink} className="w-full flex items-center justify-center bg-transparent border-2 border-white/20 text-white hover:bg-white/10 font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300 shadow-sm">
+                💬 {t.btnChat}
+            </Link>
+            <a href={bookingLink} target="_blank" rel="noopener noreferrer" className="w-full bg-[#529e14] hover:bg-[#458510] text-white font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3">
+                📅 {t.btnSchedule}
+            </a>
+            <Link href={`/apply?lang=${lang}`} className="w-full bg-[#f8ed1a] hover:bg-[#e6db15] text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3">
+                📝 {t.btnApply}
+            </Link>
+            <a href={phoneHref} className="w-full flex items-center justify-center bg-transparent border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300">
+                📞 {t.btnCall}: {property.phoneNumber || '(901) 660-4115'}
+            </a>
+        </div>
+        {/* CTA Adicionales integrados en el bloque negro */}
+        <div className="mt-8 pt-6 border-t border-gray-700 text-center">
+            <p className="text-sm text-gray-400 font-medium mb-3">{t.listPropertyTitle}</p>
+            <Link href={`/sellers?lang=${lang}`} className="w-full inline-flex items-center justify-center bg-transparent border border-gray-500 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-400 font-bold uppercase tracking-wide py-3 px-4 rounded-lg transition-all gap-2">
+                🏡 {t.listPropertyBtn}
+            </Link>
+        </div>
+        <div>
+            <p className="text-sm text-gray-400 font-medium mb-3">{t.getPaidTitle}</p>
+            <Link href={`/agents?lang=${lang}`} className="w-full inline-flex items-center justify-center bg-transparent border border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold uppercase tracking-wide py-3 px-4 rounded-lg transition-all gap-2">
+                💰 {t.getPaidBtn}
+            </Link>
+        </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
       <Header lang={lang} activePage="properties" />
 
-      {/* --- ESTRUCTURA TIPO CATÁLOGO CON SIDEBAR IZQUIERDO --- */}
       <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row items-start lg:min-h-[calc(100vh-80px)]">
-        
-        
-
-        {/* === COLUMNA DERECHA: CONTENIDO DE LA PROPIEDAD === */}
         <main className="flex-1 w-full p-4 sm:p-6 lg:p-10 lg:pb-32 order-1 lg:order-2">
             <div className="max-w-6xl mx-auto">
                 
@@ -247,7 +241,7 @@ export default async function PropertyDetailPage(props: Props) {
                 </Link>
                 </div>
 
-                {/* Encabezado */}
+                {/* Encabezado Principal y Precio Dinámico */}
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end mb-10 pb-6 border-b-4 border-[#1a1a1a] gap-6">
                     <div className="flex-1">
                         <h1 className="text-4xl md:text-5xl font-black text-[#1a1a1a] mb-3 uppercase tracking-tighter leading-none">
@@ -257,11 +251,17 @@ export default async function PropertyDetailPage(props: Props) {
                             📍 {property.address}, {property.city}, {property.state} {property.zipCode}
                         </p>
                     </div>
-                    <div className="text-left lg:text-right">
-                        <p className="hidden lg:block text-4xl md:text-5xl font-black text-[#529e14] tracking-tight">
-                            {formatMoney(displayPrice)}{priceSuffix}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
+                    
+                    {/* Componente del Precio y Tabs */}
+                    <div className="text-left lg:text-right w-full lg:w-auto mt-4 lg:mt-0 flex flex-col justify-end">
+                        <PropertyPriceHeader 
+                            price={price} 
+                            monthlyRent={monthlyRent} 
+                            isForSale={property.isForSale ?? true}
+                            isForRent={property.isForRent ?? false}
+                            lang={lang}
+                        />
+                        <div className="mt-4 flex flex-wrap gap-4 items-center justify-start lg:justify-end">
                             <div className="shrink-0">
                                 <PropertyShare title={propertyTitle} slug={slug} lang={lang} />
                             </div>
@@ -298,33 +298,19 @@ export default async function PropertyDetailPage(props: Props) {
                                 address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
                                 lat={property.latitude}
                                 lng={property.longitude}
+                                bedrooms={property.bedrooms}
+                                bathrooms={property.bathrooms}
+                                sqft={property.sqft}
+                                lang={lang}
                             />
                         </div>
 
-                        {/* Precio detonante en móvil y estructura modal de la calculadora */}
+                        {/* Contenedor del Modal de la calculadora para móvil */}
                         {property.status !== 'COMING_SOON' && (
                           <>
-                            {/* Checkbox oculto que maneja el estado abierto/cerrado del modal */}
                             <input type="checkbox" id="calculator-modal" className="hidden peer" />
-                            
-                            {/* Bloque de precio que actúa como detonante en móvil */}
-                            <div className="lg:hidden block mb-6 text-center">
-                              <label htmlFor="calculator-modal" className="inline-block cursor-pointer group select-none">
-                                <p className="text-4xl font-black text-[#529e14] tracking-tight active:scale-95 transition-transform">
-                                  {formatMoney(displayPrice)}{priceSuffix}
-                                </p>
-                                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mt-1 underline decoration-dotted">
-                                  {lang === 'en' ? 'View breakdown' : 'Ver desglose'}
-                                </span>
-                              </label>
-                            </div>
-
-                            {/* Contenedor del Modal */}
                             <div className="fixed inset-0 z-50 hidden peer-checked:flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                              {/* Clic fuera del contenido para cerrar */}
                               <label htmlFor="calculator-modal" className="absolute inset-0 cursor-pointer bg-transparent"></label>
-                              
-                              {/* Contenido de la calculadora */}
                               <div className="bg-[#1a1a1a] rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl z-10 border border-gray-800 text-white">
                                 <label htmlFor="calculator-modal" className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl font-bold cursor-pointer bg-gray-800 w-8 h-8 flex items-center justify-center rounded-full transition-colors">
                                   ✕
@@ -337,23 +323,9 @@ export default async function PropertyDetailPage(props: Props) {
                           </>
                         )}
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg">
-                            <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
-                                <span className="block text-3xl font-black text-white">{property.bedrooms}</span>
-                                <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.beds}</span>
-                            </div>
-                            <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
-                                <span className="block text-3xl font-black text-white">{property.bathrooms}</span>
-                                <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.baths}</span>
-                            </div>
-                            <div className="text-center p-6 border-r border-gray-700 hover:bg-gray-800 transition-colors">
-                                <span className="block text-3xl font-black text-white">{property.sqft}</span>
-                                <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.sqft}</span>
-                            </div>
-                            <div className="text-center p-6 hover:bg-gray-800 transition-colors">
-                                <span className="block text-3xl font-black text-white">{property.yearBuilt || 'N/A'}</span>
-                                <span className="text-xs text-[#f8ed1a] uppercase font-bold tracking-wider">{t.year}</span>
-                            </div>
+                        {/* BLOQUE CTA: VISIBLE SÓLO EN MÓVIL (Inmediatamente debajo de la galería) */}
+                        <div className="block lg:hidden mt-8">
+                            {renderCTA()}
                         </div>
                               
                         <div>
@@ -404,7 +376,7 @@ export default async function PropertyDetailPage(props: Props) {
                         )}
                     </div>
 
-                    {/* Sección Derecha (Precios y CTAs) */}
+                    {/* Sección Derecha (Precios y CTAs - ESCRITORIO) */}
                     <div className="space-y-8">
                         <div className="sticky top-24 space-y-8">
                             {property.status !== 'COMING_SOON' && (
@@ -413,51 +385,9 @@ export default async function PropertyDetailPage(props: Props) {
                                 </div>
                             )}
 
-                            <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-16 h-16 bg-[#f8ed1a] rounded-bl-full opacity-20"></div>
-
-                                <div>
-                                     <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{t.interestedTitle}</h3>
-                                     <p className="text-sm text-gray-400 font-medium">{t.interestedSub}</p>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <Link href={messageLink} className="w-full flex items-center justify-center bg-transparent border-2 border-white/20 text-white hover:bg-white/10 font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300 shadow-sm">
-                                        💬 {t.btnChat}
-                                    </Link>
-                                    <a href={bookingLink} target="_blank" rel="noopener noreferrer" className="w-full bg-[#529e14] hover:bg-[#458510] text-white font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3">
-                                        📅 {t.btnSchedule}
-                                    </a>
-                                    <Link href={`/apply?lang=${lang}`} className="w-full bg-[#f8ed1a] hover:bg-[#e6db15] text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all transform hover:-translate-y-1 shadow-lg flex items-center justify-center gap-3">
-                                        📝 {t.btnApply}
-                                    </Link>
-                                    <a href={phoneHref} className="w-full flex items-center justify-center bg-transparent border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-[#1a1a1a] font-black uppercase tracking-wide py-4 px-4 rounded-lg transition-all duration-300">
-                                        📞 {t.btnCall}: {property.phoneNumber || '(901) 660-4115'}
-                                    </a>
-                                </div>
-
-                                {/* CTA: LIST YOUR PROPERTY (Se queda aquí del lado derecho) */}
-                                <div className="mt-8 pt-6 border-t border-gray-700 text-center">
-                                    <p className="text-sm text-gray-400 font-medium mb-3">{t.listPropertyTitle}</p>
-                                    <Link 
-                                        href={`/sellers?lang=${lang}`}
-                                        className="w-full inline-flex items-center justify-center bg-transparent border border-gray-500 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-400 font-bold uppercase tracking-wide py-3 px-4 rounded-lg transition-all gap-2"
-                                    >
-                                        🏡 {t.listPropertyBtn}
-                                    </Link>
-                                </div>
-
-                                {/* CTA: AGENTES */}
-                            <div>
-                                <p className="text-sm text-gray-400 font-medium mb-3">{t.getPaidTitle}</p>
-                                <Link 
-                                    href={`/agents?lang=${lang}`}
-                                    className="w-full inline-flex items-center justify-center bg-transparent border border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold uppercase tracking-wide py-3 px-4 rounded-lg transition-all gap-2"
-                                >
-                                    💰 {t.getPaidBtn}
-                                </Link>
-                            </div>
-
+                            {/* BLOQUE CTA: VISIBLE SÓLO EN ESCRITORIO */}
+                            <div className="hidden lg:block">
+                                {renderCTA()}
                             </div>
                         </div>
                     </div>
