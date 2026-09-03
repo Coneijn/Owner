@@ -234,12 +234,33 @@ export default async function PropertyDetailPage(props: Props) {
         <main className="flex-1 w-full p-4 sm:p-6 lg:p-10 lg:pb-32 order-1 lg:order-2">
             <div className="max-w-6xl mx-auto">
                 
-                {/* Botón Volver */}
-                <div className="mb-8">
-                <Link href={`/properties?lang=${lang}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors">
-                    <span className="text-lg">←</span> {t.back}
-                </Link>
-                </div>
+               <div className="flex items-center justify-between gap-4 mb-6">
+  <Link 
+    href={`/properties?lang=${lang}`} 
+    className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-500 hover:text-[#529e14] uppercase tracking-wide transition-colors shrink-0"
+  >
+    <span className="text-base">←</span> {t.back}
+  </Link>
+
+  {/* Badge reubicado y reducido de tamaño */}
+  {(() => {
+    let statusColor = "bg-gray-200 text-gray-600";
+    let statusText = "N/A";
+    switch (property.status) {
+      case 'AVAILABLE': statusColor = "bg-[#f8ed1a] text-[#1a1a1a]"; statusText = t.available; break;
+      case 'UNDER_CONTRACT': statusColor = "bg-orange-500 text-white"; statusText = t.underContract; break;
+      case 'SOLD': statusColor = "bg-red-600 text-white"; statusText = t.sold; break;
+      case 'DRAFT': statusColor = "bg-gray-600 text-white"; statusText = t.draft; break;
+      case 'COMING_SOON': statusColor = "bg-blue-600 text-white"; statusText = t.comingSoon; break;
+      default: statusText = property.status; 
+    }
+    return (
+      <span className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shadow-sm shrink-0 ${statusColor}`}>
+        {statusText}
+      </span>
+    );
+  })()}
+</div>
 
                 {/* Encabezado Principal y Precio Dinámico */}
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end mb-10 pb-6 border-b-4 border-[#1a1a1a] gap-6">
@@ -265,23 +286,7 @@ export default async function PropertyDetailPage(props: Props) {
                             <div className="shrink-0">
                                 <PropertyShare title={propertyTitle} slug={slug} lang={lang} />
                             </div>
-                            {(() => {
-                                let statusColor = "bg-gray-200 text-gray-600";
-                                let statusText = "N/A";
-                                switch (property.status) {
-                                    case 'AVAILABLE': statusColor = "bg-[#f8ed1a] text-[#1a1a1a]"; statusText = t.available; break;
-                                    case 'UNDER_CONTRACT': statusColor = "bg-orange-500 text-white"; statusText = t.underContract; break;
-                                    case 'SOLD': statusColor = "bg-red-600 text-white"; statusText = t.sold; break;
-                                    case 'DRAFT': statusColor = "bg-gray-600 text-white"; statusText = t.draft; break;
-                                    case 'COMING_SOON': statusColor = "bg-blue-600 text-white"; statusText = t.comingSoon; break;
-                                    default: statusText = property.status; 
-                                }
-                                return (
-                                    <span className={`inline-block px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wider shadow-sm ${statusColor}`}>
-                                        {statusText}
-                                    </span>
-                                );
-                            })()}
+                            
                         </div>
                     </div>
                 </div>
