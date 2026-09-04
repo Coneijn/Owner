@@ -3,16 +3,51 @@ import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import Header from '@/app/components/Header';
-// Importamos las utilidades extraídas
 import { calculateEstimatedPayment, formatMoney, normalizeProperty } from '@/lib/utils';
 import WhatsAppButton from '@/app/components/WhatsAppButton';
+import { ZIP_COORDS } from '@/app/map/MapClient';
+
+// Diccionario de coordenadas para nombres de vecindarios y ciudades
+const AREA_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  "berclair": { lat: 35.1554, lng: -89.9142 },
+  "bartlett": { lat: 35.2045, lng: -89.8737 },
+  "cordova": { lat: 35.1663, lng: -89.7364 },
+  "raleigh": { lat: 35.2132, lng: -89.9231 },
+  "frayser": { lat: 35.2285, lng: -90.0076 },
+  "germantown": { lat: 35.0935, lng: -89.7915 },
+  "collierville": { lat: 35.0454, lng: -89.6806 },
+  "midtown": { lat: 35.1311, lng: -89.9961 },
+  "downtown": { lat: 35.1487, lng: -90.0519 },
+};
+
+function getDistanceFromLatLonInMiles(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 3958.8; // Radio de la Tierra en millas
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 // --- DICCIONARIO ---
 const DICTIONARY = { 
    es: {
         filters: {
             title: "FILTRAR BÚSQUEDA",
-            zip: "Código Postal",
+            listingType: "Tipo de Oferta",
+            allTypes: "Todos (Venta y Renta)",
+            forSale: "Comprar",
+            forRent: "Rentar",
+            location: "Código Postal o Área",
+            radius: "Distancia",
+            exactArea: "Solo Área Exacta",
+            withinHalfMile: "Dentro de 0.5 millas",
+            within1Mile: "Dentro de 1 milla",
+            within3Miles: "Dentro de 3 millas",
+            within5Miles: "Dentro de 5 millas",
             priceRange: "Rango de Precio",
             minPrice: "Min $",
             maxPrice: "Max $",
@@ -22,18 +57,22 @@ const DICTIONARY = {
             reset: "Limpiar Filtros"
         },
         catalog: {
-            title: "CATÁLOGO DE VENTA",
+            titleSale: "CATÁLOGO DE VENTA",
+            titleRent: "CATÁLOGO DE RENTA",
+            titleAll: "CATÁLOGO DE PROPIEDADES",
             subtitle: "Encuentra tu próximo hogar sin bancos.",
             count: "propiedades encontradas",
             empty: "No hay propiedades que coincidan con tu búsqueda.",
             price: "Precio Total",
+            deposit: "Depósito de Seguridad",
             monthly: "Mensualidad Est.",
+            rentMonthly: "Renta Mensual",
             details: "Ver Detalles"
         },
         status: {
             available: "DISPONIBLE",
             comingSoon: "PRÓXIMAMENTE",
-            underContract: "PENDIENTE" // Nuevo texto en español
+            underContract: "PENDIENTE"
         },
         specs: {
             beds: "Habitaciones",
@@ -44,7 +83,17 @@ const DICTIONARY = {
     en: {
         filters: {
             title: "FILTER SEARCH",
-            zip: "Zip Code",
+            listingType: "Listing Type",
+            allTypes: "All (Sale & Rent)",
+            forSale: "Buy",
+            forRent: "Rent",
+            location: "Zip Code or Area",
+            radius: "Distance",
+            exactArea: "Exact Area Only",
+            withinHalfMile: "Within 0.5 miles",
+            within1Mile: "Within 1 mile",
+            within3Miles: "Within 3 miles",
+            within5Miles: "Within 5 miles",
             priceRange: "Price Range",
             minPrice: "Min $",
             maxPrice: "Max $",
@@ -54,18 +103,22 @@ const DICTIONARY = {
             reset: "Clear Filters"
         },
         catalog: {
-            title: "SALES CATALOG",
+            titleSale: "SALES CATALOG",
+            titleRent: "RENTAL CATALOG",
+            titleAll: "PROPERTY CATALOG",
             subtitle: "Find your next home without banks.",
             count: "properties found",
             empty: "No properties match your search.",
             price: "Total Price",
+            deposit: "Security Deposit",
             monthly: "Est. Monthly",
+            rentMonthly: "Monthly Rent",
             details: "View Details"
         },
         status: {
             available: "AVAILABLE",
             comingSoon: "COMING SOON",
-            underContract: "PENDING" // Nuevo texto en inglés
+            underContract: "PENDING"
         },
         specs: {
             beds: "Beds",
@@ -78,6 +131,9 @@ const DICTIONARY = {
 export default async function CatalogPage(props: {
   searchParams?: Promise<{
     zip?: string;
+    location?: string;
+    radius?: string;
+    type?: string;
     minPrice?: string;
     maxPrice?: string;
     beds?: string;
@@ -89,23 +145,59 @@ export default async function CatalogPage(props: {
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
   const t = DICTIONARY[lang];
 
+  const typeParam = searchParams?.type;
+  const searchType = typeParam === 'rent' ? 'rent' : typeParam === 'buy' ? 'buy' : '';
+  const locationText = (searchParams?.location || searchParams?.zip || '').trim();
+  const radius = searchParams?.radius ? Number(searchParams.radius) : undefined;
+
   const catalogName = lang === 'es' ? 'el Catálogo General' : 'the General Catalog';
 
-  // --- 1. LÓGICA DE FILTRADO ---
+  // Determinación de coordenadas del centro de búsqueda
+  const locationLower = locationText.toLowerCase();
+  let searchCenter: { lat: number; lng: number } | null = null;
+  if (locationText) {
+    if (ZIP_COORDS[locationText]) {
+      searchCenter = ZIP_COORDS[locationText];
+    } else if (AREA_COORDINATES[locationLower]) {
+      searchCenter = AREA_COORDINATES[locationLower];
+    }
+  }
+
+  const isRadiusSearch = Boolean(searchCenter && radius);
+
+  // --- 1. LÓGICA DE FILTRADO PRISMA ---
   const whereClause: Prisma.PropertyWhereInput = {
     status: {
       in: ['AVAILABLE', 'COMING_SOON', 'UNDER_CONTRACT']
     },
+    // Filtro Venta vs Renta
+    ...(searchType === 'rent' ? { isForRent: true } : searchType === 'buy' ? { isForSale: true } : {}),
   };
 
-  if (searchParams?.zip) {
-    whereClause.zipCode = { contains: searchParams.zip };
+  // Si NO es búsqueda por radio, se hace match textual en zip, ciudad o dirección
+  if (locationText && !isRadiusSearch) {
+    whereClause.OR = [
+      { zipCode: { contains: locationText } },
+      { city: { contains: locationText, mode: 'insensitive' } },
+      { address: { contains: locationText, mode: 'insensitive' } },
+    ];
   }
 
   if (searchParams?.minPrice || searchParams?.maxPrice) {
-    whereClause.price = {};
-    if (searchParams.minPrice) whereClause.price.gte = Number(searchParams.minPrice);
-    if (searchParams.maxPrice) whereClause.price.lte = Number(searchParams.maxPrice);
+    const min = searchParams.minPrice ? Number(searchParams.minPrice) : undefined;
+    const max = searchParams.maxPrice ? Number(searchParams.maxPrice) : undefined;
+
+    if (searchType === 'rent') {
+      whereClause.monthlyRent = {
+        ...(min !== undefined && { gte: min }),
+        ...(max !== undefined && { lte: max }),
+      };
+    } else {
+      whereClause.price = {
+        ...(min !== undefined && { gte: min }),
+        ...(max !== undefined && { lte: max }),
+      };
+    }
   }
 
   if (searchParams?.beds) {
@@ -116,26 +208,48 @@ export default async function CatalogPage(props: {
   }
 
   // --- 2. CONSULTA DB ---
-  const rawProperties = await prisma.property.findMany({
+  let rawProperties = await prisma.property.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
     include: { images: true } 
   });
 
-  // --- 3. CONVERSIÓN DE DATOS USANDO UTILS ---
+  // --- 3. FILTRADO POR RADIO (0.5 millas, 1 milla, etc.) ---
+  if (isRadiusSearch && searchCenter && radius) {
+    rawProperties = rawProperties.filter(p => {
+      if (!p.latitude || !p.longitude) return false;
+      const dist = getDistanceFromLatLonInMiles(
+        searchCenter!.lat,
+        searchCenter!.lng,
+        Number(p.latitude),
+        Number(p.longitude)
+      );
+      return dist <= radius;
+    });
+  }
+
+  // --- 4. CONVERSIÓN DE DATOS USANDO UTILS ---
   const properties = rawProperties.map(p => {
-    // Usamos el helper importado para limpiar los Decimales y Fechas
     const normalizedProperty = normalizeProperty(p);
-    
-    // Mantenemos la lógica visual específica del componente
     const mainImg = p.images.find(img => img.isMain)?.url || p.images[0]?.url || p.mainImage || '/placeholder.png';
 
     return {
         ...normalizedProperty,
         mainImageDisplay: mainImg,
         features: (p.features as string[]) || [],
+        isForRent: p.isForRent,
+        isForSale: p.isForSale,
+        monthlyRent: Number(p.monthlyRent || 0),
+        securityDeposit: Number(p.securityDeposit || 0),
     };
   });
+
+  // Título del catálogo dinámico
+  const catalogTitle = searchType === 'rent'
+    ? t.catalog.titleRent
+    : searchType === 'buy'
+    ? t.catalog.titleSale
+    : t.catalog.titleAll;
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-gray-200 font-sans">
@@ -156,11 +270,39 @@ export default async function CatalogPage(props: {
                 
                 <form className="space-y-6">
                     <input type="hidden" name="lang" value={lang} />
-                    
-                    {/* Zip Code */}
+
+                    {/* Venta o Renta */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.filters.zip}</label>
-                        <input type="text" name="zip" defaultValue={searchParams?.zip} placeholder="Ex: 28205" className="w-full bg-gray-800 border border-gray-700 rounded p-3 text-white focus:border-[#f8ed1a] focus:outline-none focus:ring-1 focus:ring-[#f8ed1a] transition" />
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.filters.listingType}</label>
+                        <select name="type" defaultValue={searchType} className="w-full bg-gray-800 border border-gray-700 rounded p-3 text-white focus:border-[#f8ed1a] focus:outline-none">
+                            <option value="">{t.filters.allTypes}</option>
+                            <option value="buy">{t.filters.forSale}</option>
+                            <option value="rent">{t.filters.forRent}</option>
+                        </select>
+                    </div>
+                    
+                    {/* Zip Code o Área */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.filters.location}</label>
+                        <input 
+                          type="text" 
+                          name="location" 
+                          defaultValue={locationText} 
+                          placeholder="Ex: 38016, Berclair, Cordova..." 
+                          className="w-full bg-gray-800 border border-gray-700 rounded p-3 text-white focus:border-[#f8ed1a] focus:outline-none focus:ring-1 focus:ring-[#f8ed1a] transition" 
+                        />
+                    </div>
+
+                    {/* Selector de Distancia / Radio */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.filters.radius}</label>
+                        <select name="radius" defaultValue={searchParams?.radius || ''} className="w-full bg-gray-800 border border-gray-700 rounded p-3 text-white focus:border-[#f8ed1a] focus:outline-none">
+                            <option value="">{t.filters.exactArea}</option>
+                            <option value="0.5">{t.filters.withinHalfMile}</option>
+                            <option value="1">{t.filters.within1Mile}</option>
+                            <option value="3">{t.filters.within3Miles}</option>
+                            <option value="5">{t.filters.within5Miles}</option>
+                        </select>
                     </div>
 
                     {/* Precio */}
@@ -215,7 +357,7 @@ export default async function CatalogPage(props: {
             <div className="flex flex-col sm:flex-row justify-between items-end border-b border-gray-800 pb-6 mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-2">
-                        {t.catalog.title}
+                        {catalogTitle}
                     </h1>
                     <p className="text-gray-400">{t.catalog.subtitle}</p>
                 </div>
@@ -236,25 +378,33 @@ export default async function CatalogPage(props: {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {properties.map((property) => {
-                        // Cálculo usando la función importada de utils
-                        const estimatedPayment = calculateEstimatedPayment(
-                            property.price,
-                            property.downPayment,
-                            property.taxes,
-                            property.insurance,
-                            property.interestRate
-                        );
+                        const isRentListing = searchType === 'rent' || (property.isForRent && !property.isForSale);
+                        
+                        // Cálculo estimado o renta fija según el tipo
+                        const monthlyDisplay = isRentListing
+                            ? property.monthlyRent
+                            : calculateEstimatedPayment(
+                                property.price,
+                                property.downPayment,
+                                property.taxes,
+                                property.insurance,
+                                property.interestRate
+                              );
+
+                        const totalDisplay = isRentListing
+                            ? property.securityDeposit
+                            : property.price;
 
                         // Lógica de Etiquetas de Estado
                         let statusLabel = t.status.available;
-                        let statusColor = 'bg-[#529e14] text-white'; // Verde por defecto (AVAILABLE)
+                        let statusColor = 'bg-[#529e14] text-white';
 
                         if (property.status === 'COMING_SOON') {
                             statusLabel = t.status.comingSoon;
                             statusColor = 'bg-blue-600 text-white';
                         } else if (property.status === 'UNDER_CONTRACT') {
                             statusLabel = t.status.underContract;
-                            statusColor = 'bg-orange-500 text-white'; // Naranja para PENDIENTE
+                            statusColor = 'bg-orange-500 text-white';
                         }
 
                         const firstFeature = property.features && property.features.length > 0 ? property.features[0] : null;
@@ -315,17 +465,21 @@ export default async function CatalogPage(props: {
                                             </div>
                                         </div>
                                         
-                                        {/* Precios (usando formatMoney de utils) */}
+                                        {/* Precios Adaptativos */}
                                         <div className="space-y-1 mb-4">
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-gray-400 font-bold uppercase">{t.catalog.price}</span>
-                                                <span className="text-white font-bold">{formatMoney(property.price)}</span>
+                                                <span className="text-gray-400 font-bold uppercase">
+                                                    {isRentListing ? t.catalog.deposit : t.catalog.price}
+                                                </span>
+                                                <span className="text-white font-bold">{formatMoney(totalDisplay)}</span>
                                             </div>
                                             
                                             <div className="flex justify-between items-center bg-gray-800/50 p-2 rounded">
-                                                <span className="text-[#f8ed1a] font-bold uppercase text-xs">{t.catalog.monthly}</span>
+                                                <span className="text-[#f8ed1a] font-bold uppercase text-xs">
+                                                    {isRentListing ? t.catalog.rentMonthly : t.catalog.monthly}
+                                                </span>
                                                 <span className="text-[#f8ed1a] font-black text-lg">
-                                                    {formatMoney(estimatedPayment)}
+                                                    {formatMoney(monthlyDisplay)}
                                                 </span>
                                             </div>
                                         </div>
@@ -346,7 +500,7 @@ export default async function CatalogPage(props: {
             )}
         </main>
       </div>
-       <WhatsAppButton lang={lang} propertyName={catalogName} />
+      <WhatsAppButton lang={lang} propertyName={catalogName} />
     </div>
   );
 }
