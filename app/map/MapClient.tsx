@@ -103,6 +103,7 @@ interface MapClientProps {
   onMarkerClick?: (property: PropertyProps) => void;
   searchType: string;
   priceDisplay?: 'monthly' | 'total'; // --- NUEVO PROP AÑADIDO AQUÍ ---
+onMapIdle?: (bounds: { north: number; south: number; east: number; west: number } | null) => void;
 }
 
 const formatShortPrice = (price: number) => {
@@ -110,22 +111,20 @@ const formatShortPrice = (price: number) => {
   if (price >= 1000000) return `$${(price / 1000000).toFixed(1)}M`;
   if (price >= 1000) return `$${Math.round(price / 1000)}k`;
   return `$${price}`;
-};
+}
 
 const smoothZoom = (mapInstance: google.maps.Map, targetZoom: number) => {
   let currentZoom = mapInstance.getZoom();
   if (currentZoom === undefined || currentZoom === targetZoom) return;
-
   const step = currentZoom > targetZoom ? -1 : 1;
   const zoomInterval = setInterval(() => {
     currentZoom! += step;
     mapInstance.setZoom(currentZoom!);
     if (currentZoom === targetZoom) clearInterval(zoomInterval);
-  }, 100); 
-};
+  }, 100);
+}
 
-export default function MapClient({ properties, lang, highlightedProperty, onMarkerClick, searchType, priceDisplay = 'monthly' }: MapClientProps) {
-  const [selectedProperty, setSelectedProperty] = useState<PropertyProps | null>(null);
+export default function MapClient({ properties, lang, highlightedProperty, onMarkerClick, searchType, priceDisplay = 'monthly', onMapIdle }: MapClientProps) {  const [selectedProperty, setSelectedProperty] = useState<PropertyProps | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [clickedZip, setClickedZip] = useState<{zip: string, count: number, lat: number, lng: number} | null>(null);
   const [currentZoom, setCurrentZoom] = useState(12);
@@ -260,6 +259,19 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
             setSelectedProperty(null);
             setClickedZip(null); 
             if (onMarkerClick) onMarkerClick(null as any);
+        }}
+        onIdle={() => {
+            if (map && onMapIdle) {
+                const bounds = map.getBounds();
+                if (bounds) {
+                    onMapIdle({
+                        north: bounds.getNorthEast().lat(),
+                        south: bounds.getSouthWest().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        west: bounds.getSouthWest().lng()
+                    });
+                }
+            }
         }}
         options={{
           disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM, }, 

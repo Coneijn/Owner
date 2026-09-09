@@ -143,8 +143,11 @@ export default function MapSplitView({ properties, lang, t, searchType, globalMi
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
-  // --- NUEVO: Estado global para el modo de visualización de precios ---
+// --- NUEVO: Estado global para el modo de visualizacion de precios ---
   const [priceDisplay, setPriceDisplay] = useState<'monthly' | 'total'>('monthly');
+
+  // Estado para guardar los limites del mapa
+  const [mapBounds, setMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
 
   useEffect(() => {
     if (highlighted) {
@@ -163,6 +166,16 @@ export default function MapSplitView({ properties, lang, t, searchType, globalMi
     const otherProperties = properties.filter((p: any) => p.id !== highlighted.id);
     return [highlighted, ...otherProperties];
   }, [highlighted, properties]);
+
+  const visibleProperties = useMemo(() => {
+    if (!mapBounds) return orderedProperties;
+    return orderedProperties.filter((p: any) => 
+      p.lat <= mapBounds.north && 
+      p.lat >= mapBounds.south && 
+      p.lng <= mapBounds.east && 
+      p.lng >= mapBounds.west
+    );
+  }, [orderedProperties, mapBounds]);
 
   useEffect(() => {
     if (highlighted) {
@@ -188,16 +201,16 @@ export default function MapSplitView({ properties, lang, t, searchType, globalMi
       <div className="hidden lg:flex flex-col w-[450px] h-full z-20 border-r border-white/10 shadow-2xl bg-[#0a0f1c]">
           <div className="p-6 border-b border-white/10 bg-[#0a0f1c]">
               <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-                  {properties.length} {t.sidebar.results}
+                  {visibleProperties.length} {t.sidebar.results}
               </h2>
               <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">
                   {t.sidebar.inventory}
               </p>
           </div>
+
           <div id="sidebar-list-container" className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
              {searchType === 'sold' && <SoldCTACard lang={lang} />}
-
-             {orderedProperties.map((property: any) => (
+             {visibleProperties.map((property: any) => (
                 <DesktopCard 
                     key={property.id} 
                     property={property} 
@@ -221,7 +234,8 @@ export default function MapSplitView({ properties, lang, t, searchType, globalMi
                 highlightedProperty={highlighted} 
                 onMarkerClick={handleMarkerClick}
                 searchType={searchType}
-                priceDisplay={priceDisplay} // Pasamos el toggle al mapa
+                 priceDisplay={priceDisplay}
+                 onMapIdle={(bounds: any) => setMapBounds(bounds)}
              />
          </MapErrorBoundary>
          
@@ -260,7 +274,7 @@ export default function MapSplitView({ properties, lang, t, searchType, globalMi
                 `}
               >
                   <span>{isMobileExpanded ? '▼' : '☰'}</span> 
-                  {isMobileExpanded ? (lang === 'en' ? 'Close List' : 'Ocultar Lista') : `${t.sidebar.viewList} (${properties.length})`}
+                  {isMobileExpanded ? (lang === 'en' ? 'Close List' : 'Ocultar Lista') : `${t.sidebar.viewList} (${visibleProperties.length})`}
               </button>
           </div>
 
@@ -268,12 +282,10 @@ export default function MapSplitView({ properties, lang, t, searchType, globalMi
               <div className="w-full flex justify-center pt-3 pb-1 cursor-pointer" onClick={() => setIsMobileExpanded(false)}>
                   <div className="w-12 h-1.5 bg-gray-700 rounded-full"></div>
               </div>
-
               <div id="mobile-list-container" className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-4 scrollbar-hide">
                  {searchType === 'sold' && <SoldCTACard lang={lang} isMobile={true} />}
-
-                 {orderedProperties.length > 0 ? (
-                      orderedProperties.map((property: any) => (
+                 {visibleProperties.length > 0 ? (
+                      visibleProperties.map((property: any) => (
                          <DesktopCard 
                             key={property.id} 
                             property={property} 
