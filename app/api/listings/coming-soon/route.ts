@@ -14,7 +14,6 @@ export async function GET() {
       select: {
         id: true,
         slug: true,
-        lockboxCode: true,
         address: true,
         city: true,
         state: true,
@@ -71,7 +70,6 @@ export async function GET() {
       return {
         id: p.id,
         slug: p.slug,
-        accessCode: p.lockboxCode || null,
         address: fullAddress,
         price: Number(p.price) || null,
         monthly_payment: type === 'rental' ? monthlyRentValue : financePaymentValue,

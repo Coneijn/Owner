@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import PaymentStatusToggle from '@/app/components/ui/payment-status-toggle';
+import ExtraordinaryPaymentModal from '@/app/components/ui/ExtraordinaryPaymentModal';
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -222,6 +223,7 @@ export default async function AgreementDetailsPage(props: { params: Promise<{ id
           <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
             <h2 className="text-sm font-black text-white uppercase tracking-widest">Payment Schedule & History</h2>
             <span className="text-xs text-gray-400 font-bold">{payments.length} Records</span>
+            <ExtraordinaryPaymentModal agreementId={agreement.id} agreementType={type as 'LOAN' | 'LEASE'} />
           </div>
           
           <div className="overflow-x-auto">

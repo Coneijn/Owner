@@ -48,36 +48,42 @@ export async function POST(req: Request) {
       include: { contract: { include: { buyers: { include: { user: true } } } } }
     });
 
-    if (buyerPayment) {
-      const primaryBuyer = buyerPayment.contract.buyers?.[0];
-      customerEmail = primaryBuyer?.user?.email || undefined;
-      productName = `Mensualidad - Contrato ${buyerPayment.contractId.slice(-8)}`;
-      productDescription = `Pago de principal, intereses e impuestos`;
-      
-      // SUMAMOS EL SERVICE_FEE PARA COMPRADORES
-      const totalAmountWithFee = Number(buyerPayment.totalDue);
-      unitAmount = Math.round(totalAmountWithFee * 100);
-      paymentType = 'SALE';
-    } else {
-      // 2. Si no existe en Payment, buscamos en la tabla de inquilinos (RentalPayment)
-      const rentalPayment = await prisma.rentalPayment.findUnique({
-        where: { id: paymentId },
-        include: { lease: { include: { renters: { include: { user: true } } } } }
-      });
+   // Helper para calcular el monto final con el fee de Stripe (2.9% + $0.30)
+function calculateGrossAmountInCents(amountInDollars: number): number {
+  const netInCents = Math.round(amountInDollars * 100);
+  return Math.round((netInCents + 30) / (1 - 0.029));
+}
 
-      if (rentalPayment) {
-        const primaryRenter = rentalPayment.lease.renters?.[0];
-        customerEmail = primaryRenter?.user?.email || undefined;
-        productName = `Renta Mensual - Contrato ${rentalPayment.leaseId.slice(-8)}`;
-        productDescription = `Pago de renta mensual`;
-        // Para rentas, de momento usamos el totalDue tal cual
-        unitAmount = Math.round(Number(rentalPayment.totalDue) * 100);
-        paymentType = 'RENT';
-      } else {
-        console.error("❌ ERROR 404: Pago no encontrado. ID recibido:", paymentId);
-        return NextResponse.json({ error: 'Pago no encontrado en el sistema' }, { status: 404 });
-      }
-    }
+if (buyerPayment) {
+  const primaryBuyer = buyerPayment.contract.buyers?.[0];
+  customerEmail = primaryBuyer?.user?.email || undefined;
+  productName = `Mensualidad - Contrato ${buyerPayment.contractId.slice(-8)}`;
+  productDescription = `Pago de principal, intereses e impuestos (incluye comisión por procesamiento)`;
+
+  // Recargo de procesamiento para que el neto recibido sea exactamente totalDue
+  unitAmount = calculateGrossAmountInCents(Number(buyerPayment.totalDue));
+  paymentType = 'SALE';
+} else {
+  // 2. Si no existe en Payment, buscamos en la tabla de inquilinos (RentalPayment)
+  const rentalPayment = await prisma.rentalPayment.findUnique({
+    where: { id: paymentId },
+    include: { lease: { include: { renters: { include: { user: true } } } } }
+  });
+
+  if (rentalPayment) {
+    const primaryRenter = rentalPayment.lease.renters?.[0];
+    customerEmail = primaryRenter?.user?.email || undefined;
+    productName = `Renta Mensual - Contrato ${rentalPayment.leaseId.slice(-8)}`;
+    productDescription = `Pago de renta mensual (incluye comisión por procesamiento)`;
+
+    // Aplicamos el mismo cálculo si las rentas también trasladan el fee
+    unitAmount = calculateGrossAmountInCents(Number(rentalPayment.totalDue));
+    paymentType = 'RENT';
+  } else {
+    console.error("❌ ERROR 404: Pago no encontrado. ID recibido:", paymentId);
+    return NextResponse.json({ error: 'Pago no encontrado en el sistema' }, { status: 404 });
+  }
+}
 
     } else {
       return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 });
