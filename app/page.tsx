@@ -5,16 +5,16 @@ import WhatsAppButton from './components/WhatsAppButton';
 import SignupPopup from './components/SignupPopup';
 export const dynamic = 'force-dynamic';
 import { Metadata } from 'next';
-import WelcomeModal from "./components/WelcomeModal"; // <-- Importación del nuevo modal
+import WelcomeModal from "./components/WelcomeModal";
 
 export const metadata: Metadata = {
   title: 'Dueño a Dueño 🏡 Houses 4 Sale',
   openGraph: {
-    title: 'Dueño a Dueño 🏡 Houses 4 Sale'},
+    title: 'Dueño a Dueño 🏡 Houses 4 Sale',
+  },
   twitter: {
-    title: 'Dueño a Dueño 🏡 Houses 4 Sale'
-  }
-  
+    title: 'Dueño a Dueño 🏡 Houses 4 Sale',
+  },
 };
 
 export default async function MapPage(props: { 
@@ -184,7 +184,7 @@ export default async function MapPage(props: {
         sqft: true,
         status: true,
         
-        // --- CAMBIO: Seleccionamos explícitamente ambos tipos ---
+        // Seleccionamos explícitamente ambos tipos
         isForSale: true,
         isForRent: true,
         monthlyRent: true,
@@ -226,10 +226,8 @@ export default async function MapPage(props: {
     sqft: p.sqft,
     status: p.status,
     
-    // --- CAMBIO: Pasamos los valores al front ---
     isForRent: p.isForRent, 
     isForSale: p.isForSale,
-    // Definimos el tipo para el bot (Frank)
     listingType: p.isForRent && !p.isForSale ? 'rent' : 'owner-finance',
 
     features: p.features,
@@ -241,11 +239,12 @@ export default async function MapPage(props: {
     previousprice: p.previousPrice ? Number(p.previousPrice) : null,
     lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null,
   }));
-{/* --- MODAL DE ONBOARDING --- */}
-        <WelcomeModal />
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0f1c] overflow-hidden">
+        {/* Modal de Onboarding dentro del flujo de render */}
+        <WelcomeModal />
+
         <HomeHeader lang={lang} activePage="home" />
         <div className="flex-1 relative min-h-0">
             <MapSplitView 
@@ -264,6 +263,5 @@ export default async function MapPage(props: {
         
         <SignupPopup lang={lang} />
     </div>
-    
   );
 }
