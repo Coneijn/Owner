@@ -4,7 +4,6 @@ import Script from "next/script";
 import "./globals.css";
 import ChatWidget from "./components/ChatWidget";
 import Providers from "./components/Providers";
-import WelcomeModal from "./components/WelcomeModal"; // <-- Importación del nuevo modal
     
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -161,9 +160,7 @@ export default function RootLayout({
           />
         </noscript>
 
-        {/* --- MODAL DE ONBOARDING --- */}
-        <WelcomeModal />
-
+        
         <Providers>
           {children}
         </Providers>

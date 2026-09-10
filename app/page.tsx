@@ -5,6 +5,7 @@ import WhatsAppButton from './components/WhatsAppButton';
 import SignupPopup from './components/SignupPopup';
 export const dynamic = 'force-dynamic';
 import { Metadata } from 'next';
+import WelcomeModal from "./components/WelcomeModal"; // <-- Importación del nuevo modal
 
 export const metadata: Metadata = {
   title: 'Dueño a Dueño 🏡 Houses 4 Sale',
@@ -240,6 +241,8 @@ export default async function MapPage(props: {
     previousprice: p.previousPrice ? Number(p.previousPrice) : null,
     lastPriceChangeAt: p.lastPriceChangeAt ? p.lastPriceChangeAt.toISOString() : null,
   }));
+{/* --- MODAL DE ONBOARDING --- */}
+        <WelcomeModal />
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0f1c] overflow-hidden">
@@ -261,5 +264,6 @@ export default async function MapPage(props: {
         
         <SignupPopup lang={lang} />
     </div>
+    
   );
 }
