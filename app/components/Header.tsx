@@ -30,15 +30,14 @@ export default function Header({ lang, activePage }: HeaderProps) {
     <>
     <header className="bg-[#1a1a1a] shadow-lg sticky top-0 z-[60] border-b border-gray-800 h-16 md:h-20">
         <div className="max-w-8xl mx-auto px-4 h-full relative flex justify-between items-center">
-            <Link href={`/?lang=${lang}`} className="flex items-center gap-2 z-50">
-              <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                 <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-              </div>
-              <span className="text-sm md:text-xl font-black uppercase text-white tracking-tighter">
-                DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
-              </span>
-            </Link>
-
+        <Link href={`/?lang=${lang}`} className="flex items-center gap-2 z-50">
+  <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a] bg-[#f8ed1a]">
+    <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+  </div>
+  <span className="text-sm md:text-xl font-black uppercase text-white tracking-tighter">
+    DUEÑO A <span className="text-[#f8ed1a]">DUEÑO</span>
+  </span>
+</Link>ß
             <div className="flex items-center gap-4">
                 <nav className="hidden lg:flex gap-6 text-sm">
                     <Link href={`/?lang=${lang}`} className={getLinkClass('home')}>{t.home}</Link>
