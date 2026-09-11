@@ -8,11 +8,11 @@ import PropertyGallery from '@/app/components/PropertyGallery';
 import VideoModal from '@/app/components/video-modal';
 import PropertyShare from '@/app/components/PropertyShare';
 import PropertyFinancials from '@/app/components/PropertyFinancials';
-import PropertyPriceHeader from '@/app/components/PropertyPriceHeader'; // <--- NUEVO IMPORT
+import PropertyPriceHeader from '@/app/components/PropertyPriceHeader'; 
 import WhatsAppButton from '@/app/components/WhatsAppButton';
 import { auth } from '@/auth'; 
 import stringSimilarity from 'string-similarity';
-
+import NearbyProperties from '@/app/components/NearbyProperties';
 const DICTIONARY = {
   es: {
     back: "Volver al catálogo",
@@ -397,6 +397,13 @@ export default async function PropertyDetailPage(props: Props) {
                         </div>
                     </div>
                 </div>
+                {/* --- PROPIEDADES CERCANAS AL FONDO --- */}
+                <NearbyProperties 
+                  currentPropertyId={property.id}
+                  latitude={property.latitude}
+                  longitude={property.longitude}
+                  lang={lang}
+                />
             </div>
         </main>
       </div>
