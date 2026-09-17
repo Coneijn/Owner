@@ -169,6 +169,39 @@ export async function createSellerProfile(prevState: any, formData: FormData) {
 }
 
 
+// --- FUNCIÓN AUXILIAR PARA EL DISPARO DEL WEBHOOK ---
+const GHL_AVAILABLE_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/fc0ebfe8-e149-416d-a669-1c8a048847d6';
+
+async function notifyAvailablePropertyWebhook(data: {
+  propertyId: string;
+  zipCode: string;
+  isForSale: boolean;
+  isForRent: boolean;
+  price?: any;
+  monthlyRent?: any;
+}) {
+  try {
+    await fetch(GHL_AVAILABLE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        propertyId: data.propertyId,
+        zipCode: data.zipCode,
+        isForSale: data.isForSale,
+        isForRent: data.isForRent,
+        price: data.price ? Number(data.price) : null,
+        monthlyRent: data.monthlyRent ? Number(data.monthlyRent) : null,
+        event: 'PROPERTY_AVAILABLE',
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (webhookError) {
+    console.error('Error enviando webhook a LeadConnector:', webhookError);
+  }
+}
+
 // --- CREATE PROPERTY ---
 export async function createProperty(prevState: any, formData: FormData) {
   const rawFormData = Object.fromEntries(formData.entries());
@@ -227,7 +260,6 @@ export async function createProperty(prevState: any, formData: FormData) {
     // 2. GUARDAMOS EL RESULTADO EN UNA VARIABLE (newProperty)
     const newProperty = await prisma.property.create({
       data: {
-        // ... (Mantén exactamente todos los datos que ya tienes aquí adentro)
         slug: sanitizedSlug,
         status: rawFormData.status as PropertyStatus, 
         isFeatured: rawFormData.isFeatured === 'on',
@@ -295,12 +327,24 @@ export async function createProperty(prevState: any, formData: FormData) {
         action: 'PROPERTY_CREATED',
         entityType: 'PROPERTY',
         entityId: newProperty.id,
-        userId: session?.user?.id || null, // Guardamos el ID de quien la creó
+        userId: session?.user?.id || null,
         propertyId: newProperty.id,
         address: newProperty.address,
         details: 'Nueva propiedad agregada al sistema.',
       }
     });
+
+    // 4. DISPARAR WEBHOOK SI SE CREÓ CON STATUS AVAILABLE
+    if (newProperty.status === 'AVAILABLE') {
+      await notifyAvailablePropertyWebhook({
+        propertyId: newProperty.id,
+        zipCode: newProperty.zipCode,
+        isForSale: newProperty.isForSale,
+        isForRent: newProperty.isForRent,
+        price: newProperty.price,
+        monthlyRent: newProperty.monthlyRent,
+      });
+    }
 
   } catch (error) {
     console.error('Error creating property:', error);
@@ -354,19 +398,16 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
   const newPriceValue = parseDecimalOrNull(rawFormData.price);
   let priceHistoryData = {};
-  let basePath = '/admin'; // <-- DECLARADO AFUERA DEL TRY
+  let basePath = '/admin';
 
   try {
-    // 1. Obtenemos sesión
     const session = await auth();
 
-    // --- Determinar la ruta base según el rol ---
     if (session?.user?.id) {
       const dbUser = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { role: true }
       });
-      // Si el usuario existe y NO es ADMIN, asume que es Vendedor
       if (dbUser && dbUser.role !== 'ADMIN') {
         basePath = '/sellerDashboard';
       }
@@ -381,7 +422,7 @@ export async function updateProperty(prevState: any, formData: FormData) {
     const newPriceNum = newPriceValue ? Number(newPriceValue) : null;
     const oldStatus = currentProperty?.status;
     const newStatus = rawFormData.status as PropertyStatus;
-    let logDetails = 'Propiedad actualizada.'; // Mensaje por defecto para la auditoría
+    let logDetails = 'Propiedad actualizada.';
 
     // --- VALIDACIÓN ESTRICTA EN EL SERVIDOR ---
     if (newStatus === 'SOLD' || newStatus === 'UNDER_CONTRACT') {
@@ -397,32 +438,22 @@ export async function updateProperty(prevState: any, formData: FormData) {
 
     if (newPriceNum !== currentPriceNum) {
        console.log(`Detectado cambio de precio: De ${currentPriceNum} a ${newPriceNum}`);
-       
        priceHistoryData = {
          previousPrice: currentProperty?.price, 
          lastPriceChangeAt: new Date()          
        };
-
-       // Si el precio cambió, lo anotamos en el log
        logDetails = `Propiedad actualizada. Cambio de precio detectado: de $${currentPriceNum || 0} a $${newPriceNum || 0}`;
     }
 
-    // 2. Determinamos si debemos posponer el cambio de estado
     const statusInput = rawFormData.status as PropertyStatus;
     const isTransitioning = statusInput === 'SOLD' || statusInput === 'RENTED';
-
-    console.log("=== DEBUG UPDATE PROPERTY ===");
-    console.log("1. Status recibido:", statusInput);
-    console.log("2. DownPayment (crudo):", rawFormData.downPayment);
-    const parsedDownPaymentUpdate = parseDecimalOrNull(rawFormData.downPayment);
-    console.log("3. DownPayment (parseado):", parsedDownPaymentUpdate);
+    const targetStatus = isTransitioning ? (currentProperty?.status || 'AVAILABLE') : statusInput;
 
     const updatedProperty = await prisma.property.update({
       where: { id },
       data: {
         slug: sanitizedSlug,
-        // Si va a asignación, mantenemos el estado actual o lo ponemos en UNDER_CONTRACT temporalmente
-        status: isTransitioning ? (currentProperty?.status || 'AVAILABLE') : statusInput,
+        status: targetStatus,
         isFeatured: rawFormData.isFeatured === 'on',
         isOffMarket: rawFormData.isOffMarket === 'on',
         isForSale: rawFormData.isForSale === 'on',
@@ -469,7 +500,6 @@ export async function updateProperty(prevState: any, formData: FormData) {
           create: imagesToCreate 
         },
         showSeller: rawFormData.showSeller === 'on',
-        // Solo actualizamos si el campo existe en el formulario (evita borrarlo si el acordeón está cerrado)
         sellerProfileId: rawFormData.sellerProfileId !== undefined ? parseStringOrNull(rawFormData.sellerProfileId) : undefined,
         emoji: parseStringOrNull(rawFormData.emoji),
         condition: parseStringOrNull(rawFormData.condition),
@@ -484,22 +514,31 @@ export async function updateProperty(prevState: any, formData: FormData) {
         buyerFinancing: parseStringOrNull(rawFormData.buyerFinancing),
       },
     });
-    console.log("4. DB Actualizada. DownPayment guardado:", updatedProperty.downPayment);
-    console.log("===============================");
-    
 
-    // 3. Creamos el log
     await prisma.auditLog.create({
       data: {
         action: 'PROPERTY_UPDATED',
         entityType: 'PROPERTY',
         entityId: updatedProperty.id,
-        userId: session?.user?.id || null, // Actor interno
+        userId: session?.user?.id || null,
         propertyId: updatedProperty.id,
         address: updatedProperty.address,
-        details: logDetails, // Guardará el mensaje de si cambió el precio o no
+        details: logDetails,
       }
     });
+
+    // 4. DISPARAR WEBHOOK SOLO SI HUBO CAMBIO EFECTIVO A AVAILABLE
+    const changedToAvailable = oldStatus !== 'AVAILABLE' && updatedProperty.status === 'AVAILABLE';
+    if (changedToAvailable) {
+      await notifyAvailablePropertyWebhook({
+        propertyId: updatedProperty.id,
+        zipCode: updatedProperty.zipCode,
+        isForSale: updatedProperty.isForSale,
+        isForRent: updatedProperty.isForRent,
+        price: updatedProperty.price,
+        monthlyRent: updatedProperty.monthlyRent,
+      });
+    }
 
   } catch (error) {
     console.error('Error updating property:', error);
@@ -510,12 +549,10 @@ export async function updateProperty(prevState: any, formData: FormData) {
   revalidatePath(`/propiedades/${sanitizedSlug}`); 
   const finalStatus = rawFormData.status as PropertyStatus;
   
-  // Si el nuevo estado es SOLD o RENTED, forzamos la ida a la página de asignación
-  if(finalStatus === 'SOLD' || finalStatus === 'RENTED') {
+  if (finalStatus === 'SOLD' || finalStatus === 'RENTED') {
     redirect(`${basePath}/properties/${id}/assign?type=${finalStatus}`);
   }
   
-  // Si no, regresamos al dashboard desde donde vinimos
   redirect(basePath);
 }
 // --- ACTIONS PARA SELLERS (Agregar al final de lib/actions.ts) ---

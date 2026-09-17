@@ -547,25 +547,21 @@ export default function EditForm({
                           />
                       </div>
                       <div className="sm:col-span-2">
-                          <label className="block text-xs font-bold leading-6 text-white uppercase">
-                                Down Payment ($) {isForSale && <span className="text-red-500">*</span>}
-                            </label>
-                            <select
-                                name="downPayment"
-                                defaultValue={property.downPayment || ''}
-                                required={isForSale}
-                                className="mt-2 block w-full rounded bg-gray-800 text-white ring-1 ring-gray-600 focus:ring-[#529e14] sm:text-sm"
-                            >
-                                <option value="10000">$10,000</option>
-                                <option value="20000">$20,000</option>
-                                <option value="25000">$25,000</option>
-                                <option value="30000">$30,000</option>
-                                <option value="30000">$39,000</option>
-                                <option value="40000">$40,000</option>
-                                <option value="50000">$50,000</option>
-                                <option value="100000">$100,000</option>
-                            </select>
-                      </div>
+    <label className="block text-xs font-bold leading-6 text-white uppercase">
+        Down Payment ($) {isForSale && <span className="text-red-500">*</span>}
+    </label>
+    <input
+        type="number"
+        name="downPayment"
+        id="downPayment"
+        min="0"
+        step="any"
+        placeholder="e.g. 25000"
+        defaultValue={property.downPayment || ''}
+        required={isForSale}
+        className="mt-2 block w-full rounded bg-gray-800 px-3 py-2 text-white ring-1 ring-gray-600 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#529e14] sm:text-sm"
+    />
+</div>
                       <div className="sm:col-span-2">
                           <label className="block text-xs font-bold leading-6 text-white uppercase">
                               Interest Rate (%) {isForSale && <span className="text-red-500">*</span>}
