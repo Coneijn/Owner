@@ -94,6 +94,9 @@ interface PropertyProps {
   securityDeposit: number;
   createdAt: string; 
   lastPriceChangeAt?: string | null;
+  status: string;
+  zipCode: string;
+
 }
 
 interface MapClientProps {
@@ -404,8 +407,10 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
                             <span className="text-white font-bold text-sm">{formatMoney(data.subPrice)}</span>
                         </div>
                         <h3 className="font-bold text-white text-xs uppercase truncate mb-2 border-t border-white/10 pt-2">
-                            {selectedProperty.address}
-                        </h3>
+  {selectedProperty.status === "SOLD"
+    ? selectedProperty.zipCode
+    : selectedProperty.address}
+</h3>
                         <div className="flex justify-between items-center text-xs text-gray-300 font-bold mb-3">
                             <div className="flex items-center gap-1"><span>🛏</span>{selectedProperty.beds}</div>
                             <div className="flex items-center gap-1"><span>🚿</span>{selectedProperty.baths}</div>

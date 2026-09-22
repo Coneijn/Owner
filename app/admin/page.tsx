@@ -18,26 +18,21 @@ export default async function AdminDashboard() {
 
   const rawProperties = await prisma.property.findMany({
     orderBy: { createdAt: 'desc' },
-    include: {
-      sellerProfile: true, 
-    }
+    include: { sellerProfile: true },
   });
 
   const properties = rawProperties.map((p) => {
     const { sellerProfile, ...rest } = p;
-
     return {
       ...rest,
       price: p.price ? Number(p.price) : 0,
-      previousPrice: p.previousPrice ? Number(p.previousPrice) : null, 
+      previousPrice: p.previousPrice ? Number(p.previousPrice) : null,
       downPayment: p.downPayment ? Number(p.downPayment) : 0,
       interestRate: p.interestRate ? Number(p.interestRate) : 0,
       taxes: p.taxes ? Number(p.taxes) : 0,
       insurance: p.insurance ? Number(p.insurance) : 0,
-
       commissionPct: p.commissionPct ? Number(p.commissionPct) : null,
       commissionAmt: p.commissionAmt ? Number(p.commissionAmt) : null,
-
       monthlyRent: p.monthlyRent ? Number(p.monthlyRent) : 0,
       securityDeposit: p.securityDeposit ? Number(p.securityDeposit) : 0,
       createdAt: p.createdAt.toISOString(),
@@ -47,32 +42,25 @@ export default async function AdminDashboard() {
       sellerName: sellerProfile?.sellerName || null,
       sellerType: sellerProfile?.sellerType || null,
       sellerImage: sellerProfile?.sellerImage || null,
-      sellerProfile: sellerProfile ? {
-        ...sellerProfile,
-        createdAt: sellerProfile.createdAt.toISOString(),
-        updatedAt: sellerProfile.updatedAt.toISOString(),
-      } : null,
+      sellerProfile: sellerProfile
+        ? {
+            ...sellerProfile,
+            createdAt: sellerProfile.createdAt.toISOString(),
+            updatedAt: sellerProfile.updatedAt.toISOString(),
+          }
+        : null,
     };
   });
 
   const rawContracts = await prisma.contract.findMany({
-    include: { 
-      property: { 
-        include: { 
-          sellerProfile: true 
-        } 
-      }, 
-       buyers: {
-        include: {
-          user: true, 
-        }
-      },
-      payments: { 
-        orderBy: { paymentDate: 'asc' } 
-      }
+    include: {
+      property: { include: { sellerProfile: true } },
+      buyers: { include: { user: true } },
+      payments: { orderBy: { paymentDate: 'asc' } },
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
   });
+
   const formattedContracts = rawContracts.map((c) => ({
     ...c,
     type: 'LOAN',
@@ -80,30 +68,18 @@ export default async function AdminDashboard() {
     downPayment: c.downPayment ? Number(c.downPayment) : 0,
     principalAmount: c.principalAmount ? Number(c.principalAmount) : 0,
     interestRate: c.interestRate ? Number(c.interestRate) : null,
-    property: c.property ? {
-      ...c.property,
-      price: c.property.price ? Number(c.property.price) : 0,
-    } : null
+    property: c.property
+      ? { ...c.property, price: c.property.price ? Number(c.property.price) : 0 }
+      : null,
   }));
 
   const rawLeases = await prisma.leaseAgreement.findMany({
-    include: { 
-      property: { 
-        include: { 
-          sellerProfile: true 
-        } 
-      }, 
-      // 👇 Actualizamos esta sección para incluir el modelo User
-      renters: {
-        include: {
-          user: true
-        }
-      },
-      payments: { 
-        orderBy: { paymentDate: 'asc' } 
-      }
+    include: {
+      property: { include: { sellerProfile: true } },
+      renters: { include: { user: true } },
+      payments: { orderBy: { paymentDate: 'asc' } },
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
   });
 
   const formattedLeases = rawLeases.map((l) => ({
@@ -111,11 +87,10 @@ export default async function AdminDashboard() {
     type: 'LEASE',
     monthlyRent: l.monthlyRent ? Number(l.monthlyRent) : 0,
     securityDeposit: l.securityDeposit ? Number(l.securityDeposit) : null,
-    totalAmount: l.monthlyRent ? Number(l.monthlyRent) : 0, // Clave para compatibilidad de UI
-    property: l.property ? {
-      ...l.property,
-      price: l.property.price ? Number(l.property.price) : 0,
-    } : null
+    totalAmount: l.monthlyRent ? Number(l.monthlyRent) : 0,
+    property: l.property
+      ? { ...l.property, price: l.property.price ? Number(l.property.price) : 0 }
+      : null,
   }));
 
   const contracts = [...formattedContracts, ...formattedLeases].sort(
@@ -124,21 +99,21 @@ export default async function AdminDashboard() {
 
   const totalProperties = properties.length;
   const availableProperties = properties.filter((p) => p.status === 'AVAILABLE').length;
-  const soldProperties = properties.filter((p) => p.status === 'SOLD' || p.status === 'UNDER_CONTRACT').length;
-  
-  const totalInventoryValue = properties
-    .filter(p => p.status === 'AVAILABLE' && p.isForSale)
-    .reduce((acc, curr) => acc + (curr.price), 0);
+  const soldProperties = properties.filter(
+    (p) => p.status === 'SOLD' || p.status === 'UNDER_CONTRACT'
+  ).length;
 
-  const soldOnly = properties.filter(p => p.status === 'SOLD');
-  
+  const totalInventoryValue = properties
+    .filter((p) => p.status === 'AVAILABLE' && p.isForSale)
+    .reduce((acc, curr) => acc + curr.price, 0);
+
+  const soldOnly = properties.filter((p) => p.status === 'SOLD');
   const downPaymentsCollected = soldOnly.reduce((acc, curr) => acc + curr.downPayment, 0);
-  
+
   const monthlyIncomeGenerated = soldOnly.reduce((acc, curr) => {
     let income = 0;
-    if (curr.isForRent) {
-      income = curr.monthlyRent;
-    } else if (curr.isForSale) {
+    if (curr.isForRent) income = curr.monthlyRent;
+    else if (curr.isForSale) {
       income = calculateEstimatedPayment(
         curr.price,
         curr.downPayment,
@@ -150,102 +125,71 @@ export default async function AdminDashboard() {
     return acc + income;
   }, 0);
 
-  // SANITIZACIÓN FINAL ANTIFALLOS: Elimina fechas y decimales (Decimal.js de Prisma) para Next.js
   const safeProperties = JSON.parse(JSON.stringify(properties));
   const safeContracts = JSON.parse(JSON.stringify(contracts));
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] font-sans text-gray-200">
-      
-      <nav className="bg-[#1a1a1a] shadow-lg border-b border-gray-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-20 items-center">
-            
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 group">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#f8ed1a]">
-                    <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-white text-lg font-black uppercase tracking-tight leading-none">
-                      Admin <span className="text-[#f8ed1a]">Panel</span>
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">v1.1 Dashboard</span>
-                </div>
+    <div className="min-h-screen bg-[#111318] font-sans text-gray-200">
+      {/* ===== NAV ===== */}
+      <nav className="bg-[#0d1117] border-b border-[#2a2d38] sticky top-0 z-50">
+        <div className="max-w-[1600px] mx-auto px-6">
+          <div className="flex items-center h-[60px] gap-2">
+            {/* Logo */}
+            <div className="flex items-center gap-3 pr-4 border-r border-[#2a2d38] mr-2 shrink-0">
+              <div className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-[#F8ED1A]">
+                <Image src="/logo.png" alt="Logo" fill className="object-cover" />
               </div>
-
-              {/* Botones */}
-              <Link
-                href="/comunidad"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/20 border border-yellow-500/50 text-yellow-500 hover:bg-yellow-500 hover:text-black text-xs font-bold uppercase tracking-wide transition-all shadow-sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                Community
-              </Link>
-              <Link
-                 href="/chat"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white text-xs font-bold uppercase tracking-wide transition-all shadow-sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
-                Chat
-              </Link>
+              <div className="flex flex-col leading-none">
+                <span className="text-white text-[15px] font-black uppercase tracking-tight">
+                  Admin <span className="text-[#F8ED1A]">Panel</span>
+                </span>
+                <span className="text-[9px] text-[#4b5563] font-bold tracking-[1.5px] uppercase mt-1">
+                  v1.1
+                </span>
+              </div>
             </div>
-            
-            
-            <div className="flex items-center gap-6">
-              
-              <Link 
-                href="/admin/sellers" 
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
-              >
-                  <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">👥</span> 
-                  <span>Sellers</span>
-              </Link>
 
-              <Link 
-                href="/admin/blog" 
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
-              >
-                  <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">📰</span> 
-                  <span>Blog</span>
-              </Link>
+            {/* Nav links */}
+            <div className="flex items-center flex-1 overflow-x-auto">
+              <NavLink href="/comunidad">Community</NavLink>
+              <NavLink href="/chat">Chat</NavLink>
+              <NavLink href="/admin/sellers" hideOnMobile>
+                Sellers
+              </NavLink>
+              <NavLink href="/admin/blog" hideOnMobile>
+                Blog
+              </NavLink>
+              <NavLink href="../api/agent/inventory" hideOnMobile target="_blank">
+                AI JSON
+              </NavLink>
+              <NavLink href="/admin/notificaciones" hideOnMobile target="_blank">
+                Alerts
+              </NavLink>
+            </div>
 
-              <Link 
-                href="../api/agent/inventory" 
-                target="_blank"
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
-              >
-                  <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">🤖</span> 
-                  <span>AI JSON</span>
-              </Link>
-
-              <Link 
-                href="/admin/notificaciones" 
-                target="_blank"
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide hover:text-[#f8ed1a] hover:border-[#f8ed1a] transition-all group"
-              >
-                  <span className="filter grayscale group-hover:grayscale-0 transition-all text-base">🔔</span> 
-                  <span>Alerts</span>
-              </Link>
-
-
-              <div className="text-right hidden sm:block border-l border-gray-800 pl-6">
-                <p className="text-sm text-white font-bold">{session?.user?.name || 'Administrator'}</p>
-                <Link 
-                  href="/admin/user_settings" 
-                  className="text-xs text-gray-500 hover:text-[#f8ed1a] transition-colors hover:underline underline-offset-2"
+            {/* Right side */}
+            <div className="flex items-center gap-3 pl-4 border-l border-[#2a2d38] shrink-0">
+              <div className="text-right hidden sm:block">
+                <p className="text-[13px] text-white font-bold leading-tight">
+                  {session?.user?.name || 'Administrator'}
+                </p>
+                <Link
+                  href="/admin/user_settings"
+                  className="text-[11px] text-[#8892a4] hover:text-[#F8ED1A] transition-colors"
                 >
                   {session?.user?.email}
                 </Link>
               </div>
-              
+              <div className="w-8 h-8 rounded-full bg-[#F8ED1A] text-black font-black text-[12px] flex items-center justify-center shrink-0">
+                {(session?.user?.name || 'A').charAt(0).toUpperCase()}
+              </div>
               <form
                 action={async () => {
                   'use server';
                   await signOut({ redirectTo: '/' });
                 }}
               >
-                <button className="bg-white/5 hover:bg-red-900/30 text-gray-300 hover:text-red-400 border border-gray-700 hover:border-red-800 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all">
+                <button className="bg-transparent border border-[#2e3340] text-[#8892a4] hover:border-[#f87171] hover:text-[#f87171] px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors">
                   Sign Out
                 </button>
               </form>
@@ -254,54 +198,131 @@ export default async function AdminDashboard() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
+      {/* ===== MAIN ===== */}
+      <main className="max-w-[1600px] mx-auto py-6 px-6">
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-6">
           <div>
-            <h1 className="text-3xl font-black text-white uppercase tracking-tight">Properties</h1>
-            <p className="text-gray-400 text-sm mt-1">Manage your real estate inventory.</p>
+            <h1 className="text-[21px] font-black text-white uppercase tracking-tight">
+              Properties
+            </h1>
+            <p className="text-[12px] text-[#8892a4] mt-1">
+              Manage your real estate inventory.
+            </p>
           </div>
-
           <Link
             href="/admin/properties/new"
-            className="bg-[#529e14] hover:bg-[#458510] text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide shadow-lg hover:shadow-[#529e14]/40 transition-all flex items-center gap-2 justify-center shrink-0 transform hover:-translate-y-0.5"
+            className="bg-[#F8ED1A] hover:bg-[#e6dc10] text-black px-5 py-2.5 rounded-lg font-bold uppercase tracking-wide text-[13px] transition-all flex items-center gap-2 justify-center shrink-0"
           >
-            <span>+</span> New Property
+            + New Property
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <StatCard title="Total Properties" value={totalProperties} icon="🏠" />
-          <StatCard title="Available" value={availableProperties} icon="✅" color="text-[#529e14]" />
-          <StatCard title="Sold / Contract" value={soldProperties} icon="🤝" color="text-[#f8ed1a]" />
+        {/* Stats row 1 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <StatCard
+            title="Total Properties"
+            value={totalProperties}
+            icon="🏠"
+            accent="bg-[#F8ED1A]"
+          />
+          <StatCard
+            title="Available"
+            value={availableProperties}
+            icon="✅"
+            accent="bg-[#34d399]"
+            color="text-[#34d399]"
+          />
+          <StatCard
+            title="Sold / Contract"
+            value={soldProperties}
+            icon="🤝"
+            accent="bg-[#60a5fa]"
+            color="text-[#60a5fa]"
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <StatCard title="Sale Inventory Value" value={formatMoney(totalInventoryValue)} icon="💰" />
-          <StatCard title="Down Payments Collected" value={formatMoney(downPaymentsCollected)} icon="💵" color="text-[#529e14]" />
-          <StatCard title="Monthly Income Generated" value={formatMoney(monthlyIncomeGenerated)} icon="📈" color="text-[#f8ed1a]" />
+        {/* Stats row 2 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          <StatCard
+            title="Sale Inventory Value"
+            value={formatMoney(totalInventoryValue)}
+            icon="💰"
+            accent="bg-[#a78bfa]"
+          />
+          <StatCard
+            title="Down Payments Collected"
+            value={formatMoney(downPaymentsCollected)}
+            icon="💵"
+            accent="bg-[#34d399]"
+            color="text-[#34d399]"
+          />
+          <StatCard
+            title="Monthly Income Generated"
+            value={formatMoney(monthlyIncomeGenerated)}
+            icon="📈"
+            accent="bg-[#F8ED1A]"
+            color="text-[#F8ED1A]"
+          />
         </div>
 
-        {/* Pasamos los datos sanitizados (sin clases complejas) al Client Component */}
         <DashboardClient properties={safeProperties} contracts={safeContracts} />
-
       </main>
     </div>
   );
 }
 
-function StatCard({ title, value, icon, color = 'text-white' }: any) {
-    return (
-        <div className="bg-[#1a1a1a] overflow-hidden shadow-lg rounded-xl border border-gray-800 p-6 relative group hover:border-gray-700 transition-colors">
-            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-            
-            <div className="flex items-center">
-                <div className="flex-shrink-0 text-3xl mr-4 opacity-80">{icon}</div>
-                <div>
-                    <dt className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</dt>
-                    <dd className={`mt-1 text-2xl font-black ${color}`}>{value}</dd>
-                </div>
-            </div>
+/* ---------- Helpers ---------- */
+
+function NavLink({
+  href,
+  children,
+  hideOnMobile = false,
+  target,
+}: {
+  href: string;
+  children: React.ReactNode;
+  hideOnMobile?: boolean;
+  target?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      target={target}
+      className={`${
+        hideOnMobile ? 'hidden md:flex' : 'flex'
+      } px-4 h-[60px] items-center text-[13px] font-semibold text-[#8892a4] hover:text-white border-b-[3px] border-transparent hover:border-[#F8ED1A] transition-colors uppercase tracking-wide whitespace-nowrap`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  icon,
+  color = 'text-white',
+  accent = 'bg-[#F8ED1A]',
+}: {
+  title: string;
+  value: React.ReactNode;
+  icon: string;
+  color?: string;
+  accent?: string;
+}) {
+  return (
+    <div className="bg-[#1c2030] border border-[#2e3340] rounded-xl p-4 relative overflow-hidden hover:border-[#3a4050] transition-colors">
+      <div className={`absolute top-0 left-0 right-0 h-[2px] ${accent}`} />
+      <div className="flex items-center gap-3">
+        <div className="text-2xl opacity-80 flex-shrink-0">{icon}</div>
+        <div className="min-w-0 flex-1">
+          <dt className="text-[9px] font-bold text-[#8892a4] uppercase tracking-[0.8px]">
+            {title}
+          </dt>
+          <dd className={`mt-1 text-xl font-black truncate ${color}`}>{value}</dd>
         </div>
-    )
+      </div>
+    </div>
+  );
 }

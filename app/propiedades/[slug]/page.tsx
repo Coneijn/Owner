@@ -76,7 +76,88 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
 };
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Variantes de abreviación comunes en direcciones US
+const STREET_ABBR_PAIRS: [RegExp, string][] = [
+  [/\bavenue\b/gi, "ave"],     [/\bave\.?\b/gi, "avenue"],
+  [/\bstreet\b/gi, "st"],      [/\bst\.?\b/gi, "street"],
+  [/\broad\b/gi, "rd"],        [/\brd\.?\b/gi, "road"],
+  [/\bboulevard\b/gi, "blvd"], [/\bblvd\.?\b/gi, "boulevard"],
+  [/\bdrive\b/gi, "dr"],       [/\bdr\.?\b/gi, "drive"],
+  [/\blane\b/gi, "ln"],        [/\bln\.?\b/gi, "lane"],
+  [/\bcourt\b/gi, "ct"],       [/\bct\.?\b/gi, "court"],
+  [/\bplace\b/gi, "pl"],       [/\bpl\.?\b/gi, "place"],
+  [/\bcircle\b/gi, "cir"],     [/\bcir\.?\b/gi, "circle"],
+  [/\bparkway\b/gi, "pkwy"],   [/\bpkwy\.?\b/gi, "parkway"],
+  [/\bterrace\b/gi, "ter"],    [/\bter\.?\b/gi, "terrace"],
+  [/\btrail\b/gi, "trl"],      [/\btrl\.?\b/gi, "trail"],
+  [/\bhighway\b/gi, "hwy"],    [/\bhwy\.?\b/gi, "highway"],
+];
+
+function sanitizeDescription(
+  text: string | null | undefined,
+  address: string | null,
+  city: string | null,
+  state: string | null,
+  zipCode: string | null,
+  placeholder: string
+): string | null | undefined {
+  if (!text) return text;
+
+  let result = text;
+
+  // --- 1. Genera variantes de la calle (con/sin abreviatura) ---
+  const streetVariants = new Set<string>();
+  if (address) {
+    streetVariants.add(address);
+    for (const [regex, replacement] of STREET_ABBR_PAIRS) {
+      streetVariants.add(address.replace(regex, replacement));
+    }
+  }
+
+  // --- 2. Genera variantes de la dirección completa (con city/state/zip) ---
+  const variants = new Set<string>();
+  for (const street of streetVariants) {
+    if (city && state && zipCode) {
+      variants.add(`${street}, ${city}, ${state} ${zipCode}`);
+      variants.add(`${street} ${city}, ${state} ${zipCode}`);
+      variants.add(`${street}, ${city} ${state} ${zipCode}`);
+    }
+    if (city && state) {
+      variants.add(`${street}, ${city}, ${state}`);
+      variants.add(`${street}, ${city} ${state}`);
+    }
+    if (city && zipCode) {
+      variants.add(`${street}, ${city} ${zipCode}`);
+    }
+    variants.add(street);
+  }
+  // Variante "solo ciudad, estado, zip" (a veces aparece sin street)
+  if (city && state && zipCode) {
+    variants.add(`${city}, ${state} ${zipCode}`);
+    variants.add(`${city} ${state} ${zipCode}`);
+  }
+
+  // --- 3. Reemplaza de mayor a menor longitud (para no dejar residuos) ---
+  const sorted = [...variants]
+    .filter((v) => v.length > 0)
+    .sort((a, b) => b.length - a.length);
+
+  for (const variant of sorted) {
+    result = result.replace(new RegExp(escapeRegExp(variant), "gi"), placeholder);
+  }
+
+  // --- 4. Limpieza final: colapsa placeholders duplicados y puntuación sobrante ---
+  const ph = escapeRegExp(placeholder);
+  result = result
+    .replace(new RegExp(`${ph}(\\s*[,;]?\\s*${ph})+`, "gi"), placeholder)
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .trim();
+
+  return result;
+}
 export async function generateMetadata(
   props: Props,
   parent: ResolvingMetadata
@@ -158,7 +239,7 @@ export default async function PropertyDetailPage(props: Props) {
       redirect(`${baseUrl}/properties?lang=${lang}`);
     }
   }
-
+  
   const session = await auth();
   const isLoggedIn = !!session?.user;
   const ownerId = property?.sellerProfile?.userId;
@@ -187,7 +268,51 @@ export default async function PropertyDetailPage(props: Props) {
   const phoneHref = `tel:${property.phoneNumber || '9016-604-115'}`;
   const bookingLink = property.calendarLink && property.calendarLink.length > 0 ? property.calendarLink : DEFAULT_CALENDAR_LINK;
   const propertyTitle = lang === 'en' ? property.titleEn : property.titleEs;
+  // --- Limpieza del título cuando la propiedad está vendida ---
+const isSold = property.status?.toUpperCase().trim() === "SOLD";
 
+let cleanTitle = propertyTitle;
+
+if (isSold && propertyTitle) {
+  // Extrae el número de calle de la dirección (ej. "3832" de "3832 Guernsey Avenue")
+  const streetNumber = property.address?.match(/^\d+/)?.[0];
+  const cityLower = property.city?.toLowerCase();
+  const stateLower = property.state?.toLowerCase();
+  const zip = property.zipCode;
+
+  // Divide por "|" o por "," y limpia cada fragmento
+  const parts = propertyTitle
+    .split(/\s*[|]\s*|,\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  // Conserva solo fragmentos que NO parezcan parte de la ubicación
+  const remaining = parts.filter((part) => {
+    const p = part.toLowerCase();
+    if (streetNumber && p.includes(streetNumber)) return false;
+    if (cityLower && p.includes(cityLower)) return false;
+    if (stateLower && p.includes(stateLower)) return false;
+    if (zip && p.includes(zip)) return false;
+    return true;
+  });
+
+  const joined = remaining.join(", ").trim();
+  // Fallback: si todo se eliminó, conserva el original (mejor mostrar algo que nada)
+  cleanTitle = joined.length > 0 ? joined : propertyTitle;
+}
+// --- Limpieza de la descripción cuando la propiedad está vendida ---
+const rawDescription = lang === 'en' ? property.descriptionEn : property.descriptionEs;
+
+const cleanDescription = isSold
+  ? sanitizeDescription(
+      rawDescription,
+      property.address,
+      property.city,
+      property.state,
+      property.zipCode,
+      lang === 'en' ? "this beautiful property" : "esta hermosa propiedad"
+    )
+  : rawDescription;
   // --- BLOQUE CTA (Renderizado dinámico para móvil vs desktop) ---
   const renderCTA = () => (
     <div className="bg-[#1a1a1a] p-8 rounded-xl shadow-2xl text-center space-y-6 relative overflow-hidden">
@@ -265,12 +390,14 @@ export default async function PropertyDetailPage(props: Props) {
                 {/* Encabezado Principal y Precio Dinámico */}
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end mb-10 pb-6 border-b-4 border-[#1a1a1a] gap-6">
                     <div className="flex-1">
-                        <h1 className="text-4xl md:text-5xl font-black text-[#1a1a1a] mb-3 uppercase tracking-tighter leading-none">
-                            {propertyTitle}
-                        </h1>
+                    <h1 className="text-4xl md:text-5xl font-black text-[#1a1a1a] mb-3 uppercase tracking-tighter leading-none">
+  {cleanTitle}
+</h1>
                         <p className="text-lg md:text-xl text-gray-600 flex items-center gap-2 font-medium">
-                            📍 {property.address}, {property.city}, {property.state} {property.zipCode}
-                        </p>
+  📍 {property.status === "SOLD"
+    ? `${property.city}, ${property.state} ${property.zipCode}`
+    : `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+</p>
                     </div>
                     
                     {/* Componente del Precio y Tabs */}
@@ -338,8 +465,8 @@ export default async function PropertyDetailPage(props: Props) {
                                 {t.aboutTitle}
                             </h2>
                             <div className="prose prose-lg text-gray-700 max-w-none whitespace-pre-line leading-relaxed mb-8">
-                                {lang === 'en' ? property.descriptionEn : property.descriptionEs}
-                            </div>
+    {cleanDescription}
+</div>
                             {property.videoUrl && (
                               <div className="relative center z-20">
                                   <VideoModal videoUrl={property.videoUrl} label={t.videoBtn} />

@@ -357,8 +357,9 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, specsTexts
     const subLabelPrefix = priceDisplay === 'monthly' ? (isRentMode ? 'Dep:' : '') : '';
     const subLabelSuffix = priceDisplay === 'monthly' ? (isRentMode ? '' : 'TOTAL') : (isRentMode ? '/mo' : '/mo est.');
 
-    const fullAddress = `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`;
-
+    const fullAddress = property.status === "SOLD"
+    ? `${property.city}, ${property.state} ${property.zipCode}`
+    : `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`;
     return (
         <div onClick={onClick} className={`cursor-pointer rounded-2xl overflow-hidden border transition-all duration-300 group flex flex-col relative ${isHighlighted ? 'bg-[#121826] border-[#f8ed1a] shadow-[0_0_30px_rgba(248,237,26,0.15)] scale-[1.02]' : 'bg-[#121826] border-white/5 hover:border-white/20 hover:shadow-xl'}`}>
             <div className={`relative w-full ${isMobile ? 'h-40' : 'h-48'}`}>

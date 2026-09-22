@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DeletePropertyButton from '@/app/components/ui/delete-button';
 import { deleteAgreement } from '@/lib/actions';
+
 const formatMoney = (amount: number | unknown) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -23,8 +24,11 @@ const formatDate = (date: any) => {
   }
 };
 
+/* =========================================================
+   PROPERTY SECTION
+   ========================================================= */
 const PropertySection = ({ title, items, icon, colorClass }: any) => {
-  const [isOpen, setIsOpen] = useState(true); 
+  const [isOpen, setIsOpen] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -38,165 +42,234 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
     }
   };
 
-  if (items.length === 0) return null; 
+  if (items.length === 0) return null;
 
   return (
-    <div className="mb-6 bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-      <button 
+    <div className="mb-4 bg-[#1c2030] border border-[#2e3340] rounded-xl overflow-hidden">
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-gray-900 hover:bg-gray-800 transition-colors border-b border-gray-800"
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-[#1c2030] hover:bg-[#222838] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{icon}</span>
-          <h2 className={`text-lg font-black uppercase tracking-wide ${colorClass}`}>
-            {title} <span className="text-gray-500 text-sm ml-2">({items.length})</span>
+          <span className="text-xl">{icon}</span>
+          <h2 className={`text-[12px] font-bold uppercase tracking-[1px] ${colorClass}`}>
+            {title}
+            <span className="text-[#8892a4] ml-2 normal-case">({items.length})</span>
           </h2>
         </div>
-        <span className={`text-gray-400 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+        <span
+          className={`text-[#8892a4] text-xs transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        >
           ▼
         </span>
       </button>
 
       {isOpen && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="border-t border-[#2e3340]">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-800">
-              <thead className="bg-[#111]">
+            <table className="w-full border-collapse">
+              <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property</th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Type & Price</th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Seller</th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Lockbox</th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Specs</th>
-                  <th className="px-6 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                  <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                    Property
+                  </th>
+                  <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                    Type & Price
+                  </th>
+                  <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                    Seller
+                  </th>
+                  <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#F8ED1A] py-2.5 px-4 border-b border-[#2e3340]">
+                    Lockbox
+                  </th>
+                  <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                    Specs
+                  </th>
+                  <th className="text-right text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
+              <tbody>
                 {currentItems.map((property: any) => {
-                    const isRent = property.isForRent;
-                    const isSale = property.isForSale;
-                    
-                    return (
-                      <tr key={property.id} className="hover:bg-white/5 transition-colors group">
-                        
-                        {/* Property Info */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 flex-shrink-0 bg-gray-800 rounded overflow-hidden border border-gray-700 relative">
-                               {property.mainImage ? (
-                                 <img src={property.mainImage} alt="" className="h-full w-full object-cover" />
-                               ) : (
-                                 <div className="h-full w-full flex items-center justify-center text-gray-600 text-[10px]">N/A</div>
-                               )}
-                            </div>
-                            <div className="ml-3">
-                              <div className="text-sm font-bold text-white truncate max-w-[180px]" title={property.titleEn || property.titleEs}>
-                                {property.titleEn || property.titleEs}
-                              </div>
-                              <div className="text-xs text-gray-500">{property.address}</div>
-                            </div>
-                          </div>
-                        </td>
+                  const isRent = property.isForRent;
+                  const isSale = property.isForSale;
 
-                        {/* Prices */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            {isSale && (
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="bg-[#f8ed1a] text-black text-[9px] font-black px-1.5 py-0.5 rounded uppercase">SALE</span>
-                                        <span className="text-sm text-[#f8ed1a] font-bold">{formatMoney(property.price)}</span>
-                                    </div>
-                                    <div className="text-[9px] text-gray-500 ml-1">Down: {formatMoney(property.downPayment)}</div>
-                                </div>
-                            )}
-                            {isRent && (
-                                <div className={`${isSale ? 'mt-1 border-t border-gray-700 pt-1' : ''}`}>
-                                    <div className="flex items-center gap-2">
-                                        <span className="bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">RENT</span>
-                                        <span className="text-sm text-blue-400 font-bold">{formatMoney(property.monthlyRent)}/mo</span>
-                                    </div>
-                                    <div className="text-[9px] text-gray-500 ml-1">Dep: {formatMoney(property.securityDeposit)}</div>
-                                </div>
-                            )}
-                            {!isSale && !isRent && (
-                                <span className="text-gray-600 text-xs italic">Not configured</span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Seller Name */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                             {property.sellerImage && (
-                                 <img src={property.sellerImage} className="w-5 h-5 rounded-full object-cover border border-gray-600" alt="Seller" />
-                             )}
-                             <div>
-                                 <div className="text-sm text-white font-medium">
-                                   {property.sellerName || <span className="text-gray-600 italic text-xs">Dueño a Dueño Team</span>}
-                                 </div>
-                                 <div className="text-[9px] text-gray-500 uppercase">{property.sellerType}</div>
-                             </div>
-                          </div>
-                        </td>
-
-                        {/* Lockbox Code */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            {property.lockboxCode ? (
-                                <span className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-[#f8ed1a] font-mono font-bold text-xs tracking-wider">
-                                    {property.lockboxCode}
-                                </span>
+                  return (
+                    <tr
+                      key={property.id}
+                      className="hover:bg-white/[0.02] transition-colors"
+                    >
+                      {/* Property */}
+                      <td className="px-4 py-3 border-b border-white/[0.04] align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 flex-shrink-0 bg-[#111318] rounded-lg overflow-hidden border border-[#2e3340] relative">
+                            {property.mainImage ? (
+                              <img
+                                src={property.mainImage}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                                <span className="text-gray-600 text-xs">-</span>
+                              <div className="h-full w-full flex items-center justify-center text-[#4b5563] text-[10px]">
+                                N/A
+                              </div>
                             )}
-                        </td>
-
-                        {/* Specs */}
-                        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-medium">
-                          {property.bedrooms} bd • {property.bathrooms} ba • {property.sqft} sqft
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end items-center gap-3">
-                              <Link href={`/propiedades/${property.slug}`} target="_blank" className="text-gray-500 hover:text-white transition-colors" title="View">
-                                  👁️
-                              </Link>
-                              <Link href={`/admin/properties/${property.id}/edit`} className="text-blue-400 hover:text-blue-300 font-bold uppercase text-[10px] tracking-wide">
-                                  EDIT
-                              </Link>
-                              <DeletePropertyButton id={property.id} />
                           </div>
-                        </td>
-                      </tr>
-                    );
+                          <div className="min-w-0">
+                            <div className="text-[13px] font-bold text-white truncate max-w-[220px]">
+                              {property.titleEn || property.titleEs}
+                            </div>
+                            <div className="text-[11px] text-[#8892a4]">
+                              {property.address}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Type & Price */}
+                      <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
+                        <div className="flex flex-col gap-1">
+                          {isSale && (
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="bg-[#F8ED1A] text-black text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  SALE
+                                </span>
+                                <span className="text-[13px] text-[#F8ED1A] font-bold">
+                                  {formatMoney(property.price)}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-[#8892a4] ml-1">
+                                Down: {formatMoney(property.downPayment)}
+                              </div>
+                            </div>
+                          )}
+                          {isRent && (
+                            <div
+                              className={
+                                isSale ? 'mt-1 pt-1 border-t border-[#2e3340]' : ''
+                              }
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="bg-[#60a5fa] text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  RENT
+                                </span>
+                                <span className="text-[13px] text-[#60a5fa] font-bold">
+                                  {formatMoney(property.monthlyRent)}/mo
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-[#8892a4] ml-1">
+                                Dep: {formatMoney(property.securityDeposit)}
+                              </div>
+                            </div>
+                          )}
+                          {!isSale && !isRent && (
+                            <span className="text-[#4b5563] text-xs italic">
+                              Not configured
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Seller */}
+                      <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {property.sellerImage && (
+                            <img
+                              src={property.sellerImage}
+                              className="w-6 h-6 rounded-full object-cover border border-[#2e3340]"
+                              alt="Seller"
+                            />
+                          )}
+                          <div>
+                            <div className="text-[12px] text-white font-bold">
+                              {property.sellerName || (
+                                <span className="text-[#4b5563] italic text-[11px]">
+                                  Dueño a Dueño Team
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[9px] text-[#8892a4] uppercase tracking-wider">
+                              {property.sellerType}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Lockbox */}
+                      <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
+                        {property.lockboxCode ? (
+                          <span className="px-2 py-1 rounded bg-[#111318] border border-[#2e3340] text-[#F8ED1A] font-mono font-bold text-[11px] tracking-wider">
+                            {property.lockboxCode}
+                          </span>
+                        ) : (
+                          <span className="text-[#4b5563] text-xs">-</span>
+                        )}
+                      </td>
+
+                      {/* Specs */}
+                      <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap text-[11px] text-[#8892a4] font-semibold">
+                        {property.bedrooms} bd • {property.bathrooms} ba •{' '}
+                        {property.sqft} sqft
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 border-b border-white/[0.04] align-middle text-right whitespace-nowrap">
+                        <div className="flex justify-end items-center gap-3">
+                          <Link
+                            href={`/propiedades/${property.slug}`}
+                            target="_blank"
+                            className="text-[#8892a4] hover:text-white transition-colors text-sm"
+                            title="View"
+                          >
+                            👁️
+                          </Link>
+                          <Link
+                            href={`/admin/properties/${property.id}/edit`}
+                            className="text-[#60a5fa] hover:text-[#93c5fd] font-bold uppercase text-[10px] tracking-wider"
+                          >
+                            Edit
+                          </Link>
+                          <DeletePropertyButton id={property.id} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>
           </div>
 
-          {/* PAGINATION CONTROLS */}
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800 bg-gray-900/50">
-                <span className="text-xs text-gray-500">
-                    Showing <span className="font-bold text-white">{startIndex + 1}</span> to <span className="font-bold text-white">{Math.min(startIndex + itemsPerPage, items.length)}</span> of {items.length}
-                </span>
-                <div className="flex gap-2">
-                    <button 
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 text-xs font-bold uppercase rounded bg-gray-800 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
-                    >
-                        Prev
-                    </button>
-                    <button 
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 text-xs font-bold uppercase rounded bg-gray-800 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
-                    >
-                        Next
-                    </button>
-                </div>
+            <div className="flex items-center justify-between px-5 py-3 border-t border-[#2e3340] bg-[#111318]/40">
+              <span className="text-[11px] text-[#8892a4]">
+                Showing{' '}
+                <span className="font-bold text-white">{startIndex + 1}</span> to{' '}
+                <span className="font-bold text-white">
+                  {Math.min(startIndex + itemsPerPage, items.length)}
+                </span>{' '}
+                of {items.length}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-[10px] font-bold uppercase rounded-md bg-[#111318] border border-[#2e3340] text-[#8892a4] hover:border-[#F8ED1A] hover:text-[#F8ED1A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Prev
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-[10px] font-bold uppercase rounded-md bg-[#111318] border border-[#2e3340] text-[#8892a4] hover:border-[#F8ED1A] hover:text-[#F8ED1A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -205,21 +278,35 @@ const PropertySection = ({ title, items, icon, colorClass }: any) => {
   );
 };
 
-// Component to render the list of Contracts/Loans or Lease Agreements
-const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isLease?: boolean }) => {
+/* =========================================================
+   CONTRACT / LEASE SECTION
+   ========================================================= */
+const ContractSection = ({
+  contracts,
+  isLease = false,
+}: {
+  contracts: any[];
+  isLease?: boolean;
+}) => {
   const router = useRouter();
 
   if (!contracts || contracts.length === 0) {
     return (
-      <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl mt-6">
-        <p className="text-gray-500 text-lg">No {isLease ? 'lease agreements' : 'contracts or active loans'} found.</p>
+      <div className="text-center py-20 bg-[#1c2030] border border-dashed border-[#2e3340] rounded-xl">
+        <p className="text-[#8892a4] text-sm">
+          No {isLease ? 'lease agreements' : 'contracts or active loans'} found.
+        </p>
       </div>
     );
   }
 
   const handleDelete = async (e: React.MouseEvent, contractId: string) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this agreement? This action cannot be undone.")) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete this agreement? This action cannot be undone.'
+      )
+    ) {
       const response = await deleteAgreement(contractId, isLease);
       if (!response.success) {
         alert(response.message);
@@ -228,145 +315,216 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
   };
 
   return (
-    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden shadow-xl mt-6">
+    <div className="bg-[#1c2030] border border-[#2e3340] rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-800">
-          <thead className="bg-[#111]">
+        <table className="w-full border-collapse">
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Property & Type</th>
-              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Seller Details</th>
-              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{isLease ? 'Tenant Details' : 'Buyer Details'}</th>
-              <th className="px-6 py-3 text-left text-[10px] font-black text-[#f8ed1a] uppercase tracking-widest">Financial Terms</th>
-              <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-3 text-right text-[10px] font-black text-red-500 uppercase tracking-widest">Actions</th>
+              <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                Property & Type
+              </th>
+              <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                Seller Details
+              </th>
+              <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                {isLease ? 'Tenant Details' : 'Buyer Details'}
+              </th>
+              <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#F8ED1A] py-2.5 px-4 border-b border-[#2e3340]">
+                Financial Terms
+              </th>
+              <th className="text-left text-[9px] font-bold uppercase tracking-[0.6px] text-[#8892a4] py-2.5 px-4 border-b border-[#2e3340]">
+                Status
+              </th>
+              <th className="text-right text-[9px] font-bold uppercase tracking-[0.6px] text-[#f87171] py-2.5 px-4 border-b border-[#2e3340]">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800 bg-[#1a1a1a]">
+          <tbody>
             {contracts.map((contract: any) => {
-              const client = isLease 
-                ? (contract?.renters?.[0] || contract?.renter || contract?.buyers?.[0] || contract?.buyer)
-                : (contract?.buyers?.[0] || contract?.buyer);
-              
+              const client = isLease
+                ? contract?.renters?.[0] ||
+                  contract?.renter ||
+                  contract?.buyers?.[0] ||
+                  contract?.buyer
+                : contract?.buyers?.[0] || contract?.buyer;
+
               const seller = contract?.property?.sellerProfile;
 
-              // 👇 Detectamos si el cliente es "Unknown" (Falta el perfil o faltan los campos clave)
-              const isUnknown = isLease 
-                ? !client?.RenterName 
-                : (!client?.firstName && !client?.lastName);
+              const isUnknown = isLease
+                ? !client?.RenterName
+                : !client?.firstName && !client?.lastName;
 
               return (
-                <tr 
-                  key={contract.id} 
-                  onClick={() => router.push(`/admin/agreements/${contract.id}?type=${isLease ? 'LEASE' : 'LOAN'}`)}
-                  className="hover:bg-white/10 transition-colors cursor-pointer"
+                <tr
+                  key={contract.id}
+                  onClick={() =>
+                    router.push(
+                      `/admin/agreements/${contract.id}?type=${
+                        isLease ? 'LEASE' : 'LOAN'
+                      }`
+                    )
+                  }
+                  className="hover:bg-white/[0.03] transition-colors cursor-pointer"
                 >
-                  {/* Property and Contract Type */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  {/* Property + Type */}
+                  <td className="px-4 py-3 border-b border-white/[0.04] align-middle">
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white max-w-[200px] truncate">
-                        {contract?.property?.titleEn || contract?.property?.titleEs || 'Property Name N/A'}
+                      <span className="text-[13px] font-bold text-white max-w-[200px] truncate">
+                        {contract?.property?.titleEn ||
+                          contract?.property?.titleEs ||
+                          'Property Name N/A'}
                       </span>
-                      <span className="text-xs text-gray-500 mb-1">{contract?.property?.address || 'Address N/A'}</span>
-                      <span className={`w-fit px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                        contract?.type === 'LOAN' ? 'bg-[#f8ed1a] text-black' : 'bg-blue-500 text-white'
-                      }`}>
+                      <span className="text-[11px] text-[#8892a4] mb-1">
+                        {contract?.property?.address || 'Address N/A'}
+                      </span>
+                      <span
+                        className={`w-fit px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                          contract?.type === 'LOAN'
+                            ? 'bg-[#F8ED1A] text-black'
+                            : 'bg-[#60a5fa] text-white'
+                        }`}
+                      >
                         {contract?.type || 'N/A'}
                       </span>
                     </div>
                   </td>
-                  
-                  {/* Seller Details */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Seller */}
+                  <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                       {seller?.sellerImage && (
-                           <img src={seller.sellerImage} className="w-8 h-8 rounded-full object-cover border border-gray-600" alt="Seller" />
-                       )}
-                       <div className="flex flex-col">
-                         <span className="text-sm font-bold text-white">
-                           {seller?.sellerName || <span className="text-gray-600 italic">Dueño a Dueño Team</span>}
-                         </span>
-                         {seller?.phone && (
-                           <span className="text-xs text-gray-400">{seller.phone}</span>
-                         )}
-                       </div>
+                      {seller?.sellerImage && (
+                        <img
+                          src={seller.sellerImage}
+                          className="w-7 h-7 rounded-full object-cover border border-[#2e3340]"
+                          alt="Seller"
+                        />
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-[12px] font-bold text-white">
+                          {seller?.sellerName || (
+                            <span className="text-[#4b5563] italic">
+                              Dueño a Dueño Team
+                            </span>
+                          )}
+                        </span>
+                        {seller?.phone && (
+                          <span className="text-[11px] text-[#8892a4]">
+                            {seller.phone}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
-                  
-                  {/* Client Details */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Client */}
+                  <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm font-bold text-white">
-                        {isLease 
-                          ? (client?.RenterName || 'Unknown Tenant') 
-                          : (client ? `${client.firstName || 'Unknown'} ${client.lastName || 'Buyer'}` : 'Unknown Buyer')
-                        }
+                      <span className="text-[12px] font-bold text-white">
+                        {isLease
+                          ? client?.RenterName || 'Unknown Tenant'
+                          : client
+                          ? `${client.firstName || 'Unknown'} ${
+                              client.lastName || 'Buyer'
+                            }`
+                          : 'Unknown Buyer'}
                       </span>
-                      
-                      {/* Si el cliente es desconocido, mostramos el botón de asignar */}
+
                       {isUnknown ? (
                         <button
                           onClick={(e) => {
-                            e.stopPropagation(); // Evita redirigir a los detalles del contrato
-                            router.push(`/admin/properties/${contract?.propertyId || contract?.property?.id}/assign?type=${isLease ? 'RENTED' : 'SOLD'}`);
+                            e.stopPropagation();
+                            router.push(
+                              `/admin/properties/${
+                                contract?.propertyId || contract?.property?.id
+                              }/assign?type=${isLease ? 'RENTED' : 'SOLD'}`
+                            );
                           }}
-                          className="mt-1 w-fit bg-[#f8ed1a] text-black text-[10px] font-black px-2 py-0.5 rounded uppercase hover:bg-yellow-400 transition-colors tracking-wide"
+                          className="mt-1 w-fit bg-[#F8ED1A] text-black text-[10px] font-black px-2 py-0.5 rounded uppercase hover:bg-[#e6dc10] transition-colors tracking-wide"
                         >
                           Assign {isLease ? 'Tenant' : 'Buyer'}
                         </button>
                       ) : (
                         <>
                           {client?.user?.email && (
-                            <span className="text-xs text-gray-400">{client.user.email}</span>
+                            <span className="text-[11px] text-[#8892a4]">
+                              {client.user.email}
+                            </span>
                           )}
                           {client?.phone && (
-                            <span className="text-xs text-gray-400">{client.phone}</span>
+                            <span className="text-[11px] text-[#8892a4]">
+                              {client.phone}
+                            </span>
                           )}
                         </>
                       )}
                     </div>
                   </td>
-                  
-                  {/* Financial Terms */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Financial */}
+                  <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm text-white font-bold">
-                        {isLease ? 'Rent: ' : 'Amt: '} {formatMoney(contract?.totalAmount || contract?.monthlyRent || 0)}
+                      <span className="text-[13px] text-white font-bold">
+                        {isLease ? 'Rent: ' : 'Amt: '}
+                        {formatMoney(
+                          contract?.totalAmount || contract?.monthlyRent || 0
+                        )}
                       </span>
-                      <div className="text-xs text-gray-500 flex gap-2">
+                      <div className="text-[11px] text-[#8892a4] flex gap-2">
                         {isLease ? (
                           <>
-                            {contract?.securityDeposit ? <span>Dep: {formatMoney(contract.securityDeposit)}</span> : null}
-                            {contract?.termInYears ? <span>Term: {contract.termInYears} mos</span> : null}
+                            {contract?.securityDeposit ? (
+                              <span>
+                                Dep: {formatMoney(contract.securityDeposit)}
+                              </span>
+                            ) : null}
+                            {contract?.termInYears ? (
+                              <span>Term: {contract.termInYears} mos</span>
+                            ) : null}
                           </>
                         ) : (
                           <>
-                            {contract?.interestRate ? <span>Rate: {contract.interestRate}%</span> : null}
-                            {contract?.termInYears ? <span>Term: {contract.termInYears} yrs</span> : null}
+                            {contract?.interestRate ? (
+                              <span>Rate: {contract.interestRate}%</span>
+                            ) : null}
+                            {contract?.termInYears ? (
+                              <span>Term: {contract.termInYears} yrs</span>
+                            ) : null}
                           </>
                         )}
                       </div>
                     </div>
                   </td>
-                  
-                  {/* Status and Dates */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Status */}
+                  <td className="px-4 py-3 border-b border-white/[0.04] align-middle whitespace-nowrap">
                     <div className="flex flex-col gap-1">
                       {contract?.isActive ? (
-                        <span className="text-[#529e14] text-xs font-bold uppercase">● Active</span>
+                        <span className="inline-flex items-center gap-1.5 w-fit text-[10px] font-bold px-2 py-0.5 rounded-full bg-[rgba(52,211,153,.1)] text-[#34d399] uppercase">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" />
+                          Active
+                        </span>
                       ) : (
-                        <span className="text-red-500 text-xs font-bold uppercase">● Inactive</span>
+                        <span className="inline-flex items-center gap-1.5 w-fit text-[10px] font-bold px-2 py-0.5 rounded-full bg-[rgba(248,113,113,.1)] text-[#f87171] uppercase">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#f87171]" />
+                          Inactive
+                        </span>
                       )}
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-[#8892a4]">
                         Started: {formatDate(contract?.startDate)}
                       </span>
-                      {/* Generated payments summary */}
                       {contract?.payments && (
-                        <div className="mt-1 pt-1 border-t border-gray-800 flex flex-col">
-                          <span className="text-[10px] text-[#f8ed1a] font-bold">
+                        <div className="mt-1 pt-1 border-t border-[#2e3340] flex flex-col">
+                          <span className="text-[10px] text-[#F8ED1A] font-bold">
                             {contract.payments.length} Generated Payments
                           </span>
-                          <span className="text-[10px] text-gray-400">
-                            {contract.payments.filter((p: any) => p.status === 'PAID').length} Paid
+                          <span className="text-[10px] text-[#8892a4]">
+                            {
+                              contract.payments.filter(
+                                (p: any) => p.status === 'PAID'
+                              ).length
+                            }{' '}
+                            Paid
                           </span>
                         </div>
                       )}
@@ -374,10 +532,10 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
                   </td>
 
                   {/* Actions */}
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button 
+                  <td className="px-4 py-3 border-b border-white/[0.04] align-middle text-right whitespace-nowrap">
+                    <button
                       onClick={(e) => handleDelete(e, contract.id)}
-                      className="text-red-500 hover:text-red-400 font-bold uppercase text-[10px] tracking-wide transition-colors"
+                      className="text-[#f87171] hover:text-[#fca5a5] font-bold uppercase text-[10px] tracking-wider transition-colors"
                     >
                       Delete
                     </button>
@@ -392,19 +550,28 @@ const ContractSection = ({ contracts, isLease = false }: { contracts: any[], isL
   );
 };
 
-export default function DashboardClient({ properties = [], contracts = [] }: { properties: any[], contracts?: any[] }) {
-  // 1. Estado para el input de búsqueda
+/* =========================================================
+   MAIN CLIENT
+   ========================================================= */
+export default function DashboardClient({
+  properties = [],
+  contracts = [],
+}: {
+  properties: any[];
+  contracts?: any[];
+}) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'properties' | 'contracts' | 'leases'>('properties');
+  const [activeTab, setActiveTab] = useState<'properties' | 'contracts' | 'leases'>(
+    'properties'
+  );
 
-  // Separamos contratos de venta (Loans) y de arrendamiento (Leases)
   const salesContracts = contracts.filter((c) => c.type === 'LOAN');
-  const leaseAgreements = contracts.filter((c) => c.type === 'RENTAL' || c.type === 'LEASE' || c.type !== 'LOAN');
+  const leaseAgreements = contracts.filter(
+    (c) => c.type === 'RENTAL' || c.type === 'LEASE' || c.type !== 'LOAN'
+  );
 
-  // 2. Filtramos la lista maestra de propiedades según la búsqueda (Título en/es, dirección, código postal)
   const filteredProperties = properties.filter((p) => {
     if (!searchTerm) return true;
-    
     const query = searchTerm.toLowerCase();
     return (
       p.titleEn?.toLowerCase().includes(query) ||
@@ -414,107 +581,147 @@ export default function DashboardClient({ properties = [], contracts = [] }: { p
     );
   });
 
-  // 3. Ahora las listas por estado usan las propiedades filtradas
-  const availableProps = filteredProperties.filter(p => p.status === 'AVAILABLE');
-  const underContractProps = filteredProperties.filter(p => p.status === 'UNDER_CONTRACT');
-  const soldProps = filteredProperties.filter(p => p.status === 'SOLD');
-  const rentedProps = filteredProperties.filter(p => p.status === 'RENTED');
-  const draftProps = filteredProperties.filter(p => p.status === 'DRAFT');
-  const comingSoonProps = filteredProperties.filter(p => p.status === 'COMING_SOON');
+  const availableProps = filteredProperties.filter((p) => p.status === 'AVAILABLE');
+  const underContractProps = filteredProperties.filter(
+    (p) => p.status === 'UNDER_CONTRACT'
+  );
+  const soldProps = filteredProperties.filter((p) => p.status === 'SOLD');
+  const rentedProps = filteredProperties.filter((p) => p.status === 'RENTED');
+  const draftProps = filteredProperties.filter((p) => p.status === 'DRAFT');
+  const comingSoonProps = filteredProperties.filter(
+    (p) => p.status === 'COMING_SOON'
+  );
 
   return (
-    <div className="space-y-8">
-      
-      {/* NAVEGACIÓN DE TABS */}
-      <div className="flex border-b border-gray-800 gap-6 overflow-x-auto whitespace-nowrap">
-        <button 
+    <div className="space-y-6">
+      {/* ===== TABS ===== */}
+      <div className="flex border-b border-[#2a2d38] gap-1 overflow-x-auto whitespace-nowrap">
+        <TabButton
+          active={activeTab === 'properties'}
           onClick={() => setActiveTab('properties')}
-          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors ${
-            activeTab === 'properties' 
-              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
         >
           All Properties
-        </button>
-        <button 
+        </TabButton>
+        <TabButton
+          active={activeTab === 'contracts'}
           onClick={() => setActiveTab('contracts')}
-          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
-            activeTab === 'contracts' 
-              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
+          badge={salesContracts.length}
         >
           All Contracts
-          {salesContracts.length > 0 && (
-            <span className="bg-gray-800 text-white px-2 py-0.5 rounded-full text-[10px]">
-              {salesContracts.length}
-            </span>
-          )}
-        </button>
-        <button 
+        </TabButton>
+        <TabButton
+          active={activeTab === 'leases'}
           onClick={() => setActiveTab('leases')}
-          className={`pb-3 text-sm font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${
-            activeTab === 'leases' 
-              ? 'text-[#f8ed1a] border-b-2 border-[#f8ed1a]' 
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
+          badge={leaseAgreements.length}
         >
           All Lease Agreements
-          {leaseAgreements.length > 0 && (
-            <span className="bg-gray-800 text-white px-2 py-0.5 rounded-full text-[10px]">
-              {leaseAgreements.length}
-            </span>
-          )}
-        </button>
+        </TabButton>
       </div>
 
-      {/* CONTENIDO DE PROPIEDADES */}
+      {/* ===== PROPERTIES TAB ===== */}
       {activeTab === 'properties' && (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          {/* BARRA DE BÚSQUEDA */}
+        <div className="space-y-4">
+          {/* Search */}
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span className="text-gray-500 text-lg">🔍</span>
-            </div>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4b5563] text-sm">
+              🔍
+            </span>
             <input
               type="text"
               placeholder="Search properties by title, address, or zip code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-gray-700 text-white rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#f8ed1a] focus:ring-1 focus:ring-[#f8ed1a] transition-all shadow-lg"
+              className="w-full bg-[#111318] border border-[#2e3340] text-white rounded-lg py-3 pl-11 pr-4 text-[13px] focus:outline-none focus:border-[#F8ED1A] transition-colors placeholder:text-[#4b5563]"
             />
           </div>
 
           {filteredProperties.length === 0 && (
-              <div className="text-center py-20 bg-[#1a1a1a] border border-dashed border-gray-700 rounded-xl">
-                  <p className="text-gray-500 text-lg">No properties found matching "{searchTerm}".</p>
-              </div>
+            <div className="text-center py-20 bg-[#1c2030] border border-dashed border-[#2e3340] rounded-xl">
+              <p className="text-[#8892a4] text-sm">
+                No properties found matching &ldquo;{searchTerm}&rdquo;.
+              </p>
+            </div>
           )}
 
-          {/* Listas por Categoría */}
-          <PropertySection title="Available Properties" items={availableProps} icon="✅" colorClass="text-[#529e14]" />
-          <PropertySection title="Coming Soon" items={comingSoonProps} icon="⏳" colorClass="text-blue-400" />
-          <PropertySection title="Under Contract" items={underContractProps} icon="📝" colorClass="text-[#f8ed1a]" />
-          <PropertySection title="Sold History" items={soldProps} icon="💰" colorClass="text-red-500" />
-          <PropertySection title="Rented History" items={rentedProps} icon="🏠" colorClass="text-purple-400" />
-          <PropertySection title="Drafts" items={draftProps} icon="✏️" colorClass="text-orange-400" />
+          <PropertySection
+            title="Available Properties"
+            items={availableProps}
+            icon="✅"
+            colorClass="text-[#34d399]"
+          />
+          <PropertySection
+            title="Coming Soon"
+            items={comingSoonProps}
+            icon="⏳"
+            colorClass="text-[#60a5fa]"
+          />
+          <PropertySection
+            title="Under Contract"
+            items={underContractProps}
+            icon="📝"
+            colorClass="text-[#F8ED1A]"
+          />
+          <PropertySection
+            title="Sold History"
+            items={soldProps}
+            icon="💰"
+            colorClass="text-[#f87171]"
+          />
+          <PropertySection
+            title="Rented History"
+            items={rentedProps}
+            icon="🏠"
+            colorClass="text-[#a78bfa]"
+          />
+          <PropertySection
+            title="Drafts"
+            items={draftProps}
+            icon="✏️"
+            colorClass="text-[#fb923c]"
+          />
         </div>
       )}
 
-      {/* CONTENIDO DE CONTRATOS */}
+      {/* ===== CONTRACTS TAB ===== */}
       {activeTab === 'contracts' && (
-        <div className="animate-in fade-in duration-300">
-          <ContractSection contracts={salesContracts} isLease={false} />
-        </div>
+        <ContractSection contracts={salesContracts} isLease={false} />
       )}
 
-      {/* CONTENIDO DE RENTAS / LEASES */}
+      {/* ===== LEASES TAB ===== */}
       {activeTab === 'leases' && (
-        <div className="animate-in fade-in duration-300">
-          <ContractSection contracts={leaseAgreements} isLease={true} />
-        </div>
+        <ContractSection contracts={leaseAgreements} isLease={true} />
       )}
     </div>
+  );
+}
+
+/* ---------- Tabs helper ---------- */
+function TabButton({
+  active,
+  onClick,
+  badge,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  badge?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`pb-3 px-2 text-[12px] font-black uppercase tracking-wider transition-colors border-b-[3px] -mb-px flex items-center gap-2 ${
+        active
+          ? 'text-[#F8ED1A] border-[#F8ED1A]'
+          : 'text-[#8892a4] border-transparent hover:text-white'
+      }`}
+    >
+      {children}
+      {badge !== undefined && badge > 0 && (
+        <span className="bg-[rgba(248,237,26,.15)] text-[#F8ED1A] px-2 py-0.5 rounded-full text-[10px] font-bold">
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }
