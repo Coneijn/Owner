@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import LanguageSwitch from '@/app/components/LanguageSwitch';
 import PropertyTourScheduler from '@/app/components/PropertyTourScheduler';
-import { prisma } from '@/lib/prisma'; // Ajusta la ruta a tu instancia de Prisma
+import { prisma } from '@/lib/prisma';
 
 export async function generateMetadata(props: { searchParams: Promise<{ lang?: string }> }) {
   const searchParams = await props.searchParams;
@@ -9,8 +9,8 @@ export async function generateMetadata(props: { searchParams: Promise<{ lang?: s
 
   return {
     title: lang === 'en' ? 'Schedule a Tour | Dueño a Dueño' : 'Agenda tu visita | Dueño a Dueño',
-    description: lang === 'en' 
-      ? 'Choose a home and schedule an in-person tour with our team.' 
+    description: lang === 'en'
+      ? 'Choose a home and schedule an in-person tour with our team.'
       : 'Elige una casa y agenda una visita presencial con nuestro equipo.',
   };
 }
@@ -19,7 +19,6 @@ export default async function LandingPageAnuncios(props: { searchParams: Promise
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
 
-  // Obtenemos propiedades disponibles en base de datos
   const dbProperties = await prisma.property.findMany({
     where: {
       status: 'AVAILABLE',
@@ -32,6 +31,7 @@ export default async function LandingPageAnuncios(props: { searchParams: Promise
       address: true,
       city: true,
       state: true,
+      zipCode: true, // 👈 NUEVO
       price: true,
       bedrooms: true,
       bathrooms: true,
@@ -46,6 +46,7 @@ export default async function LandingPageAnuncios(props: { searchParams: Promise
     address: p.address,
     city: p.city,
     state: p.state,
+    zipCode: p.zipCode, // 👈 NUEVO
     price: p.price ? Number(p.price) : null,
     bedrooms: p.bedrooms,
     bathrooms: p.bathrooms,
@@ -54,17 +55,17 @@ export default async function LandingPageAnuncios(props: { searchParams: Promise
 
   const DICTIONARY = {
     es: {
-      titlePart1: "AGENDA TU VISITA",
-      titleAccent: "A TU PRÓXIMA CASA",
-      subtitle: "Selecciona la propiedad que quieres conocer, elige el horario y déjanos tus datos para coordinar el acceso.",
-      benefits: ["Recorridos presenciales", "Atención personalizada", "Opciones de Dueño a Dueño"]
+      titlePart1: 'AGENDA TU VISITA',
+      titleAccent: 'A TU PRÓXIMA CASA',
+      subtitle: 'Selecciona la propiedad que quieres conocer, elige el horario y déjanos tus datos para coordinar el acceso.',
+      benefits: ['Recorridos presenciales', 'Atención personalizada', 'Opciones de Dueño a Dueño'],
     },
     en: {
-      titlePart1: "SCHEDULE A TOUR",
-      titleAccent: "TO YOUR NEXT HOME",
+      titlePart1: 'SCHEDULE A TOUR',
+      titleAccent: 'TO YOUR NEXT HOME',
       subtitle: "Choose the property you'd like to see, pick a date & time, and provide your details to confirm access.",
-      benefits: ["In-person showings", "Personalized advice", "Owner to Owner options"]
-    }
+      benefits: ['In-person showings', 'Personalized advice', 'Owner to Owner options'],
+    },
   };
 
   const t = DICTIONARY[lang];
@@ -95,7 +96,7 @@ export default async function LandingPageAnuncios(props: { searchParams: Promise
         <p className="text-base md:text-lg text-gray-300 mb-8 font-medium max-w-2xl mx-auto">
           {t.subtitle}
         </p>
-        
+
         <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-6 mb-8 text-sm font-bold text-gray-200">
           {t.benefits.map((benefit, index) => (
             <div key={index} className="flex items-center justify-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-full border border-gray-700">
@@ -105,7 +106,6 @@ export default async function LandingPageAnuncios(props: { searchParams: Promise
         </div>
       </section>
 
-      {/* Componente Custom de Agendamiento */}
       <section className="w-full px-4 pb-20 flex-grow">
         <PropertyTourScheduler properties={properties} lang={lang} />
       </section>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 
 interface SimpleProperty {
@@ -9,6 +9,7 @@ interface SimpleProperty {
   address: string;
   city: string;
   state: string;
+  zipCode: string;
   price: number | null;
   bedrooms: number;
   bathrooms: number;
@@ -25,9 +26,12 @@ export default function PropertyTourScheduler({
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedProperty, setSelectedProperty] = useState<SimpleProperty | null>(null);
 
+  // 🔍 Buscador
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Estados del calendario y slots
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState<boolean>(false);
   const [selectedSlot, setSelectedSlot] = useState<string>('');
@@ -37,13 +41,34 @@ export default function PropertyTourScheduler({
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [error, setError] = useState('');
 
+  // ✍️ Opt-in de consentimiento (LOPDP / TCPA / GDPR friendly)
+  const [acceptedOptIn, setAcceptedOptIn] = useState(false);
+
   const isEs = lang === 'es';
+
+  // Textos del opt-in (reutilizados en el envío para evidencia)
+  const optInText = isEs
+    ? 'Autorizo a Dueño a Dueño a contactarme por teléfono, correo electrónico y mensajes de texto (SMS/WhatsApp) sobre esta propiedad y propiedades similares, incluyendo comunicaciones automatizadas. Entiendo que puedo retirar mi consentimiento en cualquier momento respondiendo "STOP" o escribiendo a nuestro correo de contacto.'
+    : 'I authorize Dueño a Dueño to contact me by phone, email, and text messages (SMS/WhatsApp) about this property and similar properties, including automated communications. I understand I can withdraw my consent at any time by replying "STOP" or emailing our contact address.';
+
+  // 🔍 Filtrado por calle, ciudad o zip code
+  const filteredProperties = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return properties;
+    return properties.filter((p) => {
+      const haystack = [p.title, p.address, p.city, p.state, p.zipCode]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [properties, searchQuery]);
 
   // --- LÓGICA DEL CALENDARIO ---
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
 
-  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Domingo
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const monthNames = isEs
@@ -56,7 +81,7 @@ export default function PropertyTourScheduler({
 
   const prevMonth = () => {
     const now = new Date();
-    if (year === now.getFullYear() && month <= now.getMonth()) return; // Evitar ir a meses pasados
+    if (year === now.getFullYear() && month <= now.getMonth()) return;
     setCurrentMonth(new Date(year, month - 1, 1));
   };
 
@@ -71,7 +96,6 @@ export default function PropertyTourScheduler({
     return candidate < today;
   };
 
-  // Consultar slots de la API al hacer clic en un día
   const handleSelectDay = async (day: number) => {
     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDate(formattedDate);
@@ -98,6 +122,14 @@ export default function PropertyTourScheduler({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProperty || !selectedDate || !selectedSlot) return;
+    if (!acceptedOptIn) {
+      setError(
+        isEs
+          ? 'Debes aceptar el aviso de privacidad para continuar.'
+          : 'You must accept the consent notice to continue.'
+      );
+      return;
+    }
 
     setLoadingSubmit(true);
     setError('');
@@ -109,10 +141,16 @@ export default function PropertyTourScheduler({
         body: JSON.stringify({
           propertyId: selectedProperty.id,
           propertyTitle: selectedProperty.title,
-          propertyAddress: `${selectedProperty.address}, ${selectedProperty.city}`,
+          propertyAddress: `${selectedProperty.address}, ${selectedProperty.city}, ${selectedProperty.state} ${selectedProperty.zipCode}`,
+          zipCode: selectedProperty.zipCode,
           date: selectedDate,
           timeSlot: selectedSlot,
           ...formData,
+          // ✍️ Evidencia del consentimiento
+          optIn: true,
+          optInAt: new Date().toISOString(),
+          optInText,
+          optInLang: lang,
         }),
       });
 
@@ -152,31 +190,71 @@ export default function PropertyTourScheduler({
           <h2 className="text-xl md:text-2xl font-black mb-4">
             {isEs ? '¿Qué casa te gustaría visitar?' : 'Which home would you like to visit?'}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-1">
-            {properties.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => setSelectedProperty(p)}
-                className={`flex gap-3 p-3 rounded-xl border cursor-pointer transition ${
-                  selectedProperty?.id === p.id
-                    ? 'border-[#f8ed1a] bg-[#1f283d]'
-                    : 'border-gray-700 bg-[#0d121f] hover:border-gray-500'
-                }`}
+
+          {/* 🔍 BUSCADOR */}
+          <div className="relative mb-4">
+            <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isEs ? 'Buscar por calle, ciudad o código postal...' : 'Search by street, city, or zip code...'}
+              className="w-full bg-[#0d121f] border border-gray-700 rounded-xl pl-10 pr-10 py-3 text-white placeholder-gray-500 focus:border-[#f8ed1a] outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-white"
+                aria-label={isEs ? 'Limpiar búsqueda' : 'Clear search'}
               >
-                <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
-                  <Image src={p.mainImage || '/placeholder.jpg'} alt={p.title} fill className="object-cover" />
-                </div>
-                <div className="flex flex-col justify-center">
-                  <h3 className="font-bold text-sm line-clamp-1">{p.title}</h3>
-                  <p className="text-xs text-gray-400">{p.address}, {p.city}</p>
-                  <p className="text-xs text-gray-300 mt-1">{p.bedrooms} Beds • {p.bathrooms} Baths</p>
-                  {p.price && (
-                    <p className="text-sm font-black text-[#f8ed1a] mt-1">${p.price.toLocaleString()}</p>
-                  )}
-                </div>
-              </div>
-            ))}
+                ✕
+              </button>
+            )}
           </div>
+
+          {filteredProperties.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm border border-dashed border-gray-700 rounded-xl">
+              {isEs ? 'No encontramos propiedades con esa búsqueda.' : 'No properties matched your search.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-1">
+              {filteredProperties.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedProperty(p)}
+                  className={`flex gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    selectedProperty?.id === p.id
+                      ? 'border-[#f8ed1a] bg-[#1f283d]'
+                      : 'border-gray-700 bg-[#0d121f] hover:border-gray-500'
+                  }`}
+                >
+                  <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
+                    <Image src={p.mainImage || '/placeholder.jpg'} alt={p.title} fill className="object-cover" />
+                  </div>
+                  <div className="flex flex-col justify-center min-w-0">
+                    <h3 className="font-bold text-sm line-clamp-1">{p.title}</h3>
+                    <p className="text-xs text-gray-400 line-clamp-1">
+                      {p.address}, {p.city}, {p.state} {p.zipCode}
+                    </p>
+                    <p className="text-xs text-gray-300 mt-1">
+                      {p.bedrooms} Beds • {p.bathrooms} Baths
+                    </p>
+                    {p.price && (
+                      <p className="text-sm font-black text-[#f8ed1a] mt-1">
+                        ${p.price.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <button
             disabled={!selectedProperty}
             onClick={() => setStep(2)}
@@ -187,7 +265,7 @@ export default function PropertyTourScheduler({
         </div>
       )}
 
-      {/* PASO 2: CALENDARIO INTERACTIVO + HORARIOS VIA API */}
+      {/* PASO 2: CALENDARIO + HORARIOS */}
       {step === 2 && (
         <div>
           <h2 className="text-xl md:text-2xl font-black mb-4">
@@ -195,40 +273,19 @@ export default function PropertyTourScheduler({
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Cuadrícula del Calendario */}
             <div className="bg-[#0d121f] border border-gray-800 rounded-xl p-4">
               <div className="flex justify-between items-center mb-4">
-                <button
-                  type="button"
-                  onClick={prevMonth}
-                  className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-200"
-                >
-                  ←
-                </button>
-                <span className="font-bold text-base">
-                  {monthNames[month]} {year}
-                </span>
-                <button
-                  type="button"
-                  onClick={nextMonth}
-                  className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-200"
-                >
-                  →
-                </button>
+                <button type="button" onClick={prevMonth} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-200">←</button>
+                <span className="font-bold text-base">{monthNames[month]} {year}</span>
+                <button type="button" onClick={nextMonth} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-200">→</button>
               </div>
 
-              {/* Días de la semana */}
               <div className="grid grid-cols-7 text-center text-xs font-bold text-gray-400 mb-2">
-                {weekDays.map((d) => (
-                  <span key={d}>{d}</span>
-                ))}
+                {weekDays.map((d) => <span key={d}>{d}</span>)}
               </div>
 
-              {/* Días del mes */}
               <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-                  <div key={`empty-${i}`} />
-                ))}
+                {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} />)}
 
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1;
@@ -257,7 +314,6 @@ export default function PropertyTourScheduler({
               </div>
             </div>
 
-            {/* Panel de Horarios desde la API */}
             <div className="bg-[#0d121f] border border-gray-800 rounded-xl p-4 flex flex-col">
               <h3 className="text-sm font-bold text-gray-300 mb-3">
                 {isEs ? 'Horarios disponibles' : 'Available Slots'}
@@ -273,7 +329,9 @@ export default function PropertyTourScheduler({
               {loadingSlots && (
                 <div className="my-auto flex flex-col items-center justify-center gap-2 text-gray-400">
                   <div className="w-6 h-6 border-2 border-[#f8ed1a] border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs">{isEs ? 'Consultando agenda en vivo...' : 'Checking live availability...'}</span>
+                  <span className="text-xs">
+                    {isEs ? 'Consultando agenda en vivo...' : 'Checking live availability...'}
+                  </span>
                 </div>
               )}
 
@@ -305,10 +363,7 @@ export default function PropertyTourScheduler({
           </div>
 
           <div className="flex gap-4 mt-6">
-            <button
-              onClick={() => setStep(1)}
-              className="w-1/3 border border-gray-700 py-3 rounded-xl hover:bg-gray-800 transition cursor-pointer"
-            >
+            <button onClick={() => setStep(1)} className="w-1/3 border border-gray-700 py-3 rounded-xl hover:bg-gray-800 transition cursor-pointer">
               {isEs ? 'Atrás' : 'Back'}
             </button>
             <button
@@ -330,8 +385,8 @@ export default function PropertyTourScheduler({
           </h2>
           <p className="text-sm text-gray-400 mb-4">
             {isEs
-              ? `Visita para: ${selectedProperty?.address} el ${selectedDate} a las ${selectedSlot}`
-              : `Showing for: ${selectedProperty?.address} on ${selectedDate} at ${selectedSlot}`}
+              ? `Visita para: ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode} el ${selectedDate} a las ${selectedSlot}`
+              : `Showing for: ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode} on ${selectedDate} at ${selectedSlot}`}
           </p>
 
           <div>
@@ -373,6 +428,32 @@ export default function PropertyTourScheduler({
             />
           </div>
 
+          {/* ✍️ OPT-IN DE CONSENTIMIENTO */}
+          <div className="bg-[#0d121f] border border-gray-700 rounded-xl p-4 mt-2">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedOptIn}
+                onChange={(e) => {
+                  setAcceptedOptIn(e.target.checked);
+                  if (e.target.checked) setError('');
+                }}
+                className="mt-0.5 h-5 w-5 flex-shrink-0 accent-[#f8ed1a] cursor-pointer"
+              />
+              <span className="text-xs text-gray-300 leading-relaxed">
+                {optInText}{' '}
+                <a
+                  href={isEs ? '/privacidad' : '/privacy'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#f8ed1a] underline hover:text-yellow-300"
+                >
+                  {isEs ? 'Ver aviso de privacidad' : 'View privacy notice'}
+                </a>
+              </span>
+            </label>
+          </div>
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <div className="flex gap-4 mt-6">
@@ -385,8 +466,8 @@ export default function PropertyTourScheduler({
             </button>
             <button
               type="submit"
-              disabled={loadingSubmit}
-              className="w-2/3 bg-[#f8ed1a] text-black font-black py-3 rounded-xl disabled:opacity-40 hover:bg-yellow-400 transition cursor-pointer uppercase"
+              disabled={loadingSubmit || !acceptedOptIn}
+              className="w-2/3 bg-[#f8ed1a] text-black font-black py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-yellow-400 transition cursor-pointer uppercase"
             >
               {loadingSubmit ? (isEs ? 'Agendando...' : 'Booking...') : isEs ? 'Confirmar Visita' : 'Confirm Tour'}
             </button>
@@ -405,8 +486,8 @@ export default function PropertyTourScheduler({
           </h2>
           <p className="text-gray-300 max-w-md mx-auto mb-6 text-sm">
             {isEs
-              ? `Te enviamos la confirmación a tu teléfono y correo. Te esperamos el ${selectedDate} a las ${selectedSlot} en ${selectedProperty?.address}.`
-              : `We sent a confirmation to your phone and email. See you on ${selectedDate} at ${selectedSlot} at ${selectedProperty?.address}.`}
+              ? `Te enviamos la confirmación a tu teléfono y correo. Te esperamos el ${selectedDate} a las ${selectedSlot} en ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode}.`
+              : `We sent a confirmation to your phone and email. See you on ${selectedDate} at ${selectedSlot} at ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode}.`}
           </p>
         </div>
       )}
