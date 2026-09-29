@@ -2,19 +2,40 @@ import Image from 'next/image';
 import LanguageSwitch from '@/app/components/LanguageSwitch';
 import PropertyTourScheduler from '@/app/components/PropertyTourScheduler';
 import { prisma } from '@/lib/prisma';
+import type { Metadata } from 'next';
 
-export async function generateMetadata(props: { searchParams: Promise<{ lang?: string }> }) {
+export async function generateMetadata(props: { searchParams: Promise<{ lang?: string }> }): Promise<Metadata> {
   const searchParams = await props.searchParams;
   const lang = searchParams?.lang === 'en' ? 'en' : 'es';
 
+  const title = lang === 'en' ? 'Schedule a Tour | Dueño a Dueño' : 'Agenda tu cita | Dueño a Dueño';
+  const description = lang === 'en'
+    ? 'Choose a home and schedule an in-person tour with our team.'
+    : 'Elige una casa y agenda tu cita para una visita presencial con nuestro equipo.';
+
   return {
-    title: lang === 'en' ? 'Schedule a Tour | Dueño a Dueño' : 'Agenda tu visita | Dueño a Dueño',
-    description: lang === 'en'
-      ? 'Choose a home and schedule an in-person tour with our team.'
-      : 'Elige una casa y agenda una visita presencial con nuestro equipo.',
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [
+        {
+          url: '/agendar.jpeg',
+          width: 1200,
+          height: 630,
+          alt: 'Agenda tu cita',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/agendar.jpeg'],
+    },
   };
 }
-
 export default async function LandingPageAnuncios(props: { searchParams: Promise<{ lang?: string }> }) {
   const searchParams = await props.searchParams;
   const lang = (searchParams?.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
