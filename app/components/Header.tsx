@@ -44,7 +44,7 @@ export default function Header({ lang, activePage }: HeaderProps) {
                     <Link href={`/properties?lang=${lang}`} className={getLinkClass('properties')}>{t.properties}</Link>
                     <Link href={`/sellers?lang=${lang}`} className={getLinkClass('sellers')}>{t.sellers}</Link>
                     <Link href={`/about-us?lang=${lang}`} className={getLinkClass('about')}>{t.about}</Link>
-                    <Link href={`/blog?lang=${lang}`} className={getLinkClass('blog')}>{t.blog}</Link> 
+                    <Link href={`https://blog.ownertodueno.com/`} className={getLinkClass('blog')}>{t.blog}</Link> 
                     <Link href={`/case-studies?lang=${lang}`} className={getLinkClass('case-studies')}>{t.caseStudies}</Link>
                     <Link href={`/contact-us?lang=${lang}`} className={getLinkClass('contact')}>{t.contact}</Link>
                 </nav>
