@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { BuyerStatus, ContractSnapshot } from '@/lib/contract-snapshot';
 
@@ -57,6 +57,12 @@ export default function ActiveBuyersClient({
 }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter]);
 
   const counts = useMemo(() => {
     return {
@@ -81,6 +87,16 @@ export default function ActiveBuyersClient({
       );
     });
   }, [contracts, search, filter]);
+
+  const totalPages = Math.ceil(rows.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRows = rows.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   return (
     <div className="bg-[#1c2030] border border-[#2e3340] rounded-xl">
@@ -172,7 +188,7 @@ export default function ActiveBuyersClient({
                 </td>
               </tr>
             )}
-            {rows.map((c) => {
+            {paginatedRows.map((c) => {
               const meta = STATUS_META[c.status];
               const dueSoon = c.status === 'DUE';
               const late = c.status === 'LATE';
@@ -272,6 +288,37 @@ export default function ActiveBuyersClient({
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-5 py-3 border-t border-[#2e3340] bg-[#111318]/40">
+          <span className="text-[11px] text-[#8892a4]">
+            Showing{' '}
+            <span className="font-bold text-white">{startIndex + 1}</span> to{' '}
+            <span className="font-bold text-white">
+              {Math.min(startIndex + itemsPerPage, rows.length)}
+            </span>{' '}
+            of {rows.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-[10px] font-bold uppercase rounded-md bg-[#111318] border border-[#2e3340] text-[#8892a4] hover:border-[#F8ED1A] hover:text-[#F8ED1A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-[10px] font-bold uppercase rounded-md bg-[#111318] border border-[#2e3340] text-[#8892a4] hover:border-[#F8ED1A] hover:text-[#F8ED1A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
