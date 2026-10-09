@@ -3,9 +3,6 @@ import Link from 'next/link';
 import DashboardClient from './dashboard-client';
 import AdminShell from './_components/AdminShell';
 import AlertBanner from './_components/AlertBanner';
-import ActiveBuyers from './_components/active-buyers';
-import UpcomingPayments from './_components/upcoming-payments';
-import RecentActivity from './_components/recent-activity';
 import { calculateEstimatedPayment } from '@/lib/utils';
 
 const DAY_MS = 86_400_000;
@@ -291,16 +288,7 @@ export default async function AdminDashboard() {
           accent="bg-[#fb923c]"
         />
       </div>
-
-      {/* Grid principal */}
-      <div className="grid grid-cols-1 xl:grid-cols-[3fr_1fr] gap-4 mb-6">
-        <ActiveBuyers />
-        <div className="flex flex-col gap-4">
-          <UpcomingPayments limit={5} />
-          <RecentActivity limit={6} />
-        </div>
-      </div>
-
+      
       {/* Tabla de propiedades / contratos */}
       <DashboardClient properties={safeProperties} contracts={safeContracts} />
     </AdminShell>

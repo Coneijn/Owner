@@ -29,6 +29,7 @@ export default function AdminSidebar() {
         { label: 'Community', icon: '💬', href: '/comunidad' },
         { label: 'Chat', icon: '💭', href: '/chat' },
         { label: 'Sellers', icon: '👥', href: '/admin/sellers' },
+        { label: 'buyers', icon: '🛒', href: '/admin/buyers' },
         { label: 'Blog', icon: '📰', href: '/admin/blog' },
         {
           label: 'AI JSON',
