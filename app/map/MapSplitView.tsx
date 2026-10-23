@@ -11,6 +11,11 @@ import { calculateEstimatedPayment, formatMoney } from '@/lib/utils';
 import MapFloatingButtons from './ui/MapFloatingButtons';
 import MapErrorBoundary from './MapErrorBoundary';
 
+const removeHouseNumber = (address: string | null | undefined): string => {
+  if (!address) return '';
+  return address.replace(/^\d+[\s-]*[a-zA-Z]?\s+/, '').trim();
+};
+
 export interface PropertyProps {
   id: string;
   title: string;
@@ -359,7 +364,8 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, specsTexts
 
     const fullAddress = property.status === "SOLD"
     ? `${property.city}, ${property.state} ${property.zipCode}`
-    : `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`;
+    : `${removeHouseNumber(property.address)}, ${property.city}, ${property.state} ${property.zipCode}`;
+
     return (
         <div onClick={onClick} className={`cursor-pointer rounded-2xl overflow-hidden border transition-all duration-300 group flex flex-col relative ${isHighlighted ? 'bg-[#121826] border-[#f8ed1a] shadow-[0_0_30px_rgba(248,237,26,0.15)] scale-[1.02]' : 'bg-[#121826] border-white/5 hover:border-white/20 hover:shadow-xl'}`}>
             <div className={`relative w-full ${isMobile ? 'h-40' : 'h-48'}`}>

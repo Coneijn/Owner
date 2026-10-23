@@ -32,6 +32,31 @@ function getDistanceFromLatLonInMiles(lat1: number, lon1: number, lat2: number, 
   return R * c;
 }
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const removeHouseNumber = (address: string | null | undefined): string => {
+  if (!address) return '';
+  return address.replace(/^\d+[\s-]*[a-zA-Z]?\s+/, '').trim();
+};
+
+const removeNumberFromText = (text: string | null | undefined, address: string | null | undefined): string => {
+  if (!text || !address) return text || '';
+  
+  const numberMatch = address.match(/^(\d+[\s-]*[a-zA-Z]?)\s+/);
+  if (!numberMatch) return text;
+  
+  const houseNumber = numberMatch[1];
+  const streetName = address.replace(numberMatch[0], '').trim();
+  
+  if (!streetName) return text;
+
+  // Solo borra el numero si esta seguido de la primera palabra del nombre de la calle
+  const firstWordOfStreet = streetName.split(' ')[0];
+  const regex = new RegExp(`\\b${escapeRegExp(houseNumber)}\\s+(?=${escapeRegExp(firstWordOfStreet)})`, 'gi');
+  
+  return text.replace(regex, '');
+};
+
 // --- DICCIONARIO ---
 const DICTIONARY = { 
    es: {
@@ -434,7 +459,7 @@ export default async function CatalogPage(props: {
 
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pt-12">
                                         <h3 className="text-white font-bold text-lg leading-tight truncate">
-                                            {property.address}
+                                            {removeHouseNumber(property.address)}
                                         </h3>
                                         <p className="text-gray-300 text-sm">{property.city}, {property.state} {property.zipCode}</p>
                                     </div>
@@ -444,7 +469,7 @@ export default async function CatalogPage(props: {
                                 <div className="p-5 flex-1 flex flex-col justify-between">
                                     <div>
                                         <h2 className="text-xl font-black text-white uppercase mb-4 line-clamp-2 min-h-[3.5rem]">
-                                            {lang === 'es' ? property.titleEs : property.titleEn}
+                                            {removeNumberFromText(lang === 'es' ? property.titleEs : property.titleEn, property.address)}
                                         </h2>
 
                                         {/* Specs */}

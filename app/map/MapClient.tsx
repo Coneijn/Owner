@@ -96,8 +96,12 @@ interface PropertyProps {
   lastPriceChangeAt?: string | null;
   status: string;
   zipCode: string;
-
 }
+
+const removeHouseNumber = (address: string | null | undefined): string => {
+  if (!address) return '';
+  return address.replace(/^\d+[\s-]*[a-zA-Z]?\s+/, '').trim();
+};
 
 interface MapClientProps {
   properties: PropertyProps[];
@@ -402,16 +406,12 @@ export default function MapClient({ properties, lang, highlightedProperty, onMar
                      </div>
 
                      <div className="p-3">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-gray-400 text-[10px] font-bold uppercase">{data.subLabel}</span>
-                            <span className="text-white font-bold text-sm">{formatMoney(data.subPrice)}</span>
-                        </div>
-                        <h3 className="font-bold text-white text-xs uppercase truncate mb-2 border-t border-white/10 pt-2">
-  {selectedProperty.status === "SOLD"
-    ? selectedProperty.zipCode
-    : selectedProperty.address}
-</h3>
-                        <div className="flex justify-between items-center text-xs text-gray-300 font-bold mb-3">
+                       <div className="flex justify-between items-center mb-2">
+                                    <span className="text-gray-400 text-[10px] font-bold uppercase">{data.subLabel}</span>
+                                    <span className="text-white font-bold text-sm">{formatMoney(data.subPrice)}</span>
+                                </div>
+                                <h3 className="font-bold text-white text-xs uppercase truncate mb-2 border-t border-white/10 pt-2">   {selectedProperty.status === "SOLD"     ? selectedProperty.zipCode     : removeHouseNumber(selectedProperty.address)} </h3>
+                                <div className="flex justify-between items-center text-xs text-gray-300 font-bold mb-3">
                             <div className="flex items-center gap-1"><span>🛏</span>{selectedProperty.beds}</div>
                             <div className="flex items-center gap-1"><span>🚿</span>{selectedProperty.baths}</div>
                             <div className="flex items-center gap-1"><span>📐</span>{selectedProperty.sqft}</div>

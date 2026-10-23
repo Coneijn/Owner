@@ -76,7 +76,31 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
 };
+
+const removeHouseNumber = (address: string | null | undefined): string => {
+  if (!address) return '';
+  return address.replace(/^\d+[\s-]*[a-zA-Z]?\s+/, '').trim();
+};
+
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const removeNumberFromText = (text: string | null | undefined, address: string | null | undefined): string => {
+  if (!text || !address) return text || '';
+  
+  const numberMatch = address.match(/^(\d+[\s-]*[a-zA-Z]?)\s+/);
+  if (!numberMatch) return text;
+  
+  const houseNumber = numberMatch[1];
+  const streetName = address.replace(numberMatch[0], '').trim();
+  
+  if (!streetName) return text;
+
+  // Solo borra el numero si esta seguido de la primera palabra del nombre de la calle
+  const firstWordOfStreet = streetName.split(' ')[0];
+  const regex = new RegExp(`\\b${escapeRegExp(houseNumber)}\\s+(?=${escapeRegExp(firstWordOfStreet)})`, 'gi');
+  
+  return text.replace(regex, '');
+};
 
 // Variantes de abreviación comunes en direcciones US
 const STREET_ABBR_PAIRS: [RegExp, string][] = [
@@ -267,8 +291,11 @@ export default async function PropertyDetailPage(props: Props) {
   const allImages = [property.mainImage, ...property.galleryImages].filter(Boolean);
   const phoneHref = `tel:${property.phoneNumber || '9016-604-115'}`;
   const bookingLink = property.calendarLink && property.calendarLink.length > 0 ? property.calendarLink : DEFAULT_CALENDAR_LINK;
-  const propertyTitle = lang === 'en' ? property.titleEn : property.titleEs;
-  // --- Limpieza del título cuando la propiedad está vendida ---
+  
+  const rawTitle = lang === 'en' ? property.titleEn : property.titleEs;
+  const propertyTitle = removeNumberFromText(rawTitle, property.address);
+
+  // --- Limpieza del titulo cuando la propiedad esta vendida ---
 const isSold = property.status?.toUpperCase().trim() === "SOLD";
 
 let cleanTitle = propertyTitle;
@@ -300,8 +327,9 @@ if (isSold && propertyTitle) {
   // Fallback: si todo se eliminó, conserva el original (mejor mostrar algo que nada)
   cleanTitle = joined.length > 0 ? joined : propertyTitle;
 }
-// --- Limpieza de la descripción cuando la propiedad está vendida ---
-const rawDescription = lang === 'en' ? property.descriptionEn : property.descriptionEs;
+// --- Limpieza de la descripcion cuando la propiedad esta vendida ---
+const rawDescText = lang === 'en' ? property.descriptionEn : property.descriptionEs;
+const rawDescription = removeNumberFromText(rawDescText, property.address);
 
 const cleanDescription = isSold
   ? sanitizeDescription(
@@ -396,7 +424,7 @@ const cleanDescription = isSold
                         <p className="text-lg md:text-xl text-gray-600 flex items-center gap-2 font-medium">
   📍 {property.status === "SOLD"
     ? `${property.city}, ${property.state} ${property.zipCode}`
-    : `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+    : `${removeHouseNumber(property.address)}, ${property.city}, ${property.state} ${property.zipCode}`}
 </p>
                     </div>
                     
@@ -427,7 +455,7 @@ const cleanDescription = isSold
                             <PropertyGallery 
                                 images={allImages} 
                                 title={propertyTitle} 
-                                address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+                                address={`${removeHouseNumber(property.address)}, ${property.city}, ${property.state} ${property.zipCode}`}
                                 lat={property.latitude}
                                 lng={property.longitude}
                                 bedrooms={property.bedrooms}
