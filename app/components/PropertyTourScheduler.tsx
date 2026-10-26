@@ -16,6 +16,31 @@ interface SimpleProperty {
   mainImage: string;
 }
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const removeNumberFromText = (
+  text: string | null | undefined,
+  address: string | null | undefined
+): string => {
+  if (!text || !address) return text || '';
+
+  const numberMatch = address.match(/^(\d+[\s-]*[a-zA-Z]?)\s+/);
+  if (!numberMatch) return text;
+
+  const houseNumber = numberMatch[1];
+  const streetName = address.replace(numberMatch[0], '').trim();
+
+  if (!streetName) return text;
+
+  const firstWordOfStreet = streetName.split(' ')[0];
+  const regex = new RegExp(
+    `\\b${escapeRegExp(houseNumber)}\\s+(?=${escapeRegExp(firstWordOfStreet)})`,
+    'gi'
+  );
+
+  return text.replace(regex, '');
+};
+
 export default function PropertyTourScheduler({
   properties,
   lang,
@@ -46,12 +71,10 @@ export default function PropertyTourScheduler({
 
   const isEs = lang === 'es';
 
-  // Textos del opt-in (reutilizados en el envío para evidencia)
   const optInText = isEs
     ? 'Autorizo a Dueño a Dueño a contactarme por teléfono, correo electrónico y mensajes de texto (SMS/WhatsApp) sobre esta propiedad y propiedades similares, incluyendo comunicaciones automatizadas. Entiendo que puedo retirar mi consentimiento en cualquier momento respondiendo "STOP" o escribiendo a nuestro correo de contacto.'
     : 'I authorize Dueño a Dueño to contact me by phone, email, and text messages (SMS/WhatsApp) about this property and similar properties, including automated communications. I understand I can withdraw my consent at any time by replying "STOP" or emailing our contact address.';
 
-  // 🔍 Filtrado por calle, ciudad o zip code
   const filteredProperties = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return properties;
@@ -146,7 +169,6 @@ export default function PropertyTourScheduler({
           date: selectedDate,
           timeSlot: selectedSlot,
           ...formData,
-          // ✍️ Evidencia del consentimiento
           optIn: true,
           optInAt: new Date().toISOString(),
           optInText,
@@ -191,7 +213,6 @@ export default function PropertyTourScheduler({
             {isEs ? '¿Qué casa te gustaría visitar?' : 'Which home would you like to visit?'}
           </h2>
 
-          {/* 🔍 BUSCADOR */}
           <div className="relative mb-4">
             <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -237,9 +258,11 @@ export default function PropertyTourScheduler({
                     <Image src={p.mainImage || '/placeholder.jpg'} alt={p.title} fill className="object-cover" />
                   </div>
                   <div className="flex flex-col justify-center min-w-0">
-                    <h3 className="font-bold text-sm line-clamp-1">{p.title}</h3>
+                    <h3 className="font-bold text-sm line-clamp-1">
+                      {removeNumberFromText(p.title, p.address)}
+                    </h3>
                     <p className="text-xs text-gray-400 line-clamp-1">
-                      {p.address}, {p.city}, {p.state} {p.zipCode}
+                      {removeNumberFromText(p.address, p.address)}, {p.city}, {p.state} {p.zipCode}
                     </p>
                     <p className="text-xs text-gray-300 mt-1">
                       {p.bedrooms} Beds • {p.bathrooms} Baths
@@ -385,8 +408,8 @@ export default function PropertyTourScheduler({
           </h2>
           <p className="text-sm text-gray-400 mb-4">
             {isEs
-              ? `Visita para: ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode} el ${selectedDate} a las ${selectedSlot}`
-              : `Showing for: ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode} on ${selectedDate} at ${selectedSlot}`}
+              ? `Visita para: ${removeNumberFromText(selectedProperty?.address, selectedProperty?.address)}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode} el ${selectedDate} a las ${selectedSlot}`
+              : `Showing for: ${removeNumberFromText(selectedProperty?.address, selectedProperty?.address)}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode} on ${selectedDate} at ${selectedSlot}`}
           </p>
 
           <div>
@@ -486,8 +509,8 @@ export default function PropertyTourScheduler({
           </h2>
           <p className="text-gray-300 max-w-md mx-auto mb-6 text-sm">
             {isEs
-              ? `Te enviamos la confirmación a tu teléfono y correo. Te esperamos el ${selectedDate} a las ${selectedSlot} en ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode}.`
-              : `We sent a confirmation to your phone and email. See you on ${selectedDate} at ${selectedSlot} at ${selectedProperty?.address}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode}.`}
+              ? `Te enviamos la confirmación a tu teléfono y correo. Te esperamos el ${selectedDate} a las ${selectedSlot} en ${removeNumberFromText(selectedProperty?.address, selectedProperty?.address)}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode}.`
+              : `We sent a confirmation to your phone and email. See you on ${selectedDate} at ${selectedSlot} at ${removeNumberFromText(selectedProperty?.address, selectedProperty?.address)}, ${selectedProperty?.city}, ${selectedProperty?.state} ${selectedProperty?.zipCode}.`}
           </p>
         </div>
       )}
