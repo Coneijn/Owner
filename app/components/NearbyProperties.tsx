@@ -2,6 +2,29 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// Funcion auxiliar para escapar caracteres en la expresion regular
+const escapeRegExp = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+// Funcion para remover el numero de la casa del titulo
+const removeNumberFromText = (text: string | null | undefined, address: string | null | undefined): string => {
+  if (!text || !address) return text || '';
+  
+  const numberMatch = address.match(/^(\d+[\s-]*[a-zA-Z]?)\s+/);
+  if (!numberMatch) return text;
+  
+  const houseNumber = numberMatch[1];
+  const streetName = address.replace(numberMatch[0], '').trim();
+  
+  if (!streetName) return text;
+
+  const firstWordOfStreet = streetName.split(' ')[0];
+  const regex = new RegExp(`\\b${escapeRegExp(houseNumber)}\\s+(?=${escapeRegExp(firstWordOfStreet)})`, 'gi');
+  
+  return text.replace(regex, '');
+};
+
 interface NearbyPropertiesProps {
   currentPropertyId: string;
   latitude: number | null;
@@ -60,6 +83,7 @@ export default async function NearbyProperties({
       mainImage: true,
       latitude: true,
       longitude: true,
+      address: true,
     },
   });
 
@@ -115,7 +139,9 @@ export default async function NearbyProperties({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {nearbyProperties.map((item) => {
-          const title = lang === 'en' ? item.titleEn : item.titleEs;
+          const rawTitle = lang === 'en' ? item.titleEn : item.titleEs;
+          const title = removeNumberFromText(rawTitle, item.address);
+      
           const displayPrice = item.isForRent && item.monthlyRent
             ? `$${Number(item.monthlyRent).toLocaleString()}/mes`
             : item.price

@@ -341,8 +341,6 @@ function SoldCTACard({ lang, isMobile = false }: { lang: string, isMobile?: bool
 function DesktopCard({ property, isHighlighted, onClick, statusTexts, specsTexts, isMobile = false, searchType = 'buy', priceDisplay }: any) {
     const badge = getStatusBadge(property.status, statusTexts);
     const firstFeature = property.features && property.features.length > 0 ? property.features[0] : null;
-    const sellerImgUrl = property.sellerImage || property.seller?.image;
-
     const isRentMode = searchType === 'rent';
     
     // Cálculos base
@@ -399,14 +397,7 @@ function DesktopCard({ property, isHighlighted, onClick, statusTexts, specsTexts
                             {subLabelSuffix && <span className="text-[9px] font-normal text-gray-600 ml-1 mt-0.5">{subLabelSuffix}</span>}
                         </h3>
                     </div>
-
-                    {sellerImgUrl && (
-                        <div className="relative group/seller">
-                            <div className="w-10 h-10 rounded-full p-[2px] border border-white/10 bg-white/5 overflow-hidden">
-                                <Image src={sellerImgUrl} alt="Seller" width={40} height={40} className="rounded-full w-full h-full object-cover" />
-                            </div>
-                        </div>
-                    )}
+                    
                 </div>
 
                 <div>
