@@ -21,6 +21,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(baseUrl), 
   title: 'Discover Your 🏡CashFlow',
   description: 'Marketplace inmobiliario en Memphis para comprar y vender casas directamente, sin bancos ni intermediarios. Owner financing available.',
+  verification: {
+    other: {
+      'facebook-domain-verification': 'nz7whwwj6m40vkqrx48shvxo8g1eci',
+    },
+  },
   robots: {
     index: true, 
     follow: true,
