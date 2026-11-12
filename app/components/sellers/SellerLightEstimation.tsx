@@ -30,11 +30,64 @@ interface SellerLightEstimationProps {
 
 const GOOGLE_MAPS_LIBRARIES: ('places')[] = ['places'];
 
+const translations = {
+  es: {
+    heading: 'Publica tu Propiedad como Dueño',
+    subheading:
+      'Sin comisiones de agentes ni cálculos engorrosos. Define tu valor y calcula tu ingreso pasivo.',
+    fullNameLabel: 'Nombre Completo',
+    fullNamePlaceholder: 'Ej. Carlos Mendoza',
+    phoneLabel: 'Teléfono (WhatsApp/Móvil)',
+    emailLabel: 'Correo Electrónico',
+    emailPlaceholder: 'carlos@ejemplo.com',
+    addressLabel: 'Dirección de la Propiedad',
+    loadingMaps: 'Cargando Google Maps...',
+    minPriceLabel: 'Precio Mínimo Deseado ($)',
+    maxPriceLabel: 'Precio Máximo Sugerido ($)',
+    estMonthlyLabel: 'Ingreso Mensual Estimado (P&I)',
+    rateBadge: 'Tasa Fija 10% / 30 Años',
+    perMonth: '/mes',
+    avgPricePrefix: 'Basado en un precio medio de venta de ',
+    avgPriceSuffix: ' financiado por el dueño.',
+    disclaimerTitle: 'Nota sobre impuestos y seguros:',
+    disclaimerBody:
+      'Los impuestos prediales (Taxes) y seguro contra riesgos (Insurance) no están incluidos en este monto y se calcularán con precisión en tu borrador final.',
+    submittingBtn: 'Creando tu Borrador...',
+    submitBtn: 'Crear Borrador y Continuar →',
+  },
+  en: {
+    heading: 'List Your Home as the Bank',
+    subheading:
+      'No agent commissions or complex repairs. Set your value and see your passive cashflow.',
+    fullNameLabel: 'Full Name',
+    fullNamePlaceholder: 'e.g. John Doe',
+    phoneLabel: 'Phone Number',
+    emailLabel: 'Email Address',
+    emailPlaceholder: 'john@example.com',
+    addressLabel: 'Property Address',
+    loadingMaps: 'Loading Google Maps...',
+    minPriceLabel: 'Minimum Target Price ($)',
+    maxPriceLabel: 'Maximum Suggested Price ($)',
+    estMonthlyLabel: 'Est. Monthly Income (P&I)',
+    rateBadge: '10% Fixed Rate / 30 Years',
+    perMonth: '/mo',
+    avgPricePrefix: 'Based on an average owner-financed sale price of ',
+    avgPriceSuffix: '.',
+    disclaimerTitle: 'Note on taxes and insurance:',
+    disclaimerBody:
+      'Property taxes and hazard insurance are not included in this amount and will be accurately calculated in your final draft.',
+    submittingBtn: 'Generating Draft...',
+    submitBtn: 'Create Draft & Continue →',
+  },
+};
+
 export default function SellerLightEstimation({
   onSubmit,
   isSubmitting = false,
   lang = 'es',
 }: SellerLightEstimationProps) {
+  const t = translations[lang];
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -53,9 +106,9 @@ export default function SellerLightEstimation({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script', // antes: 'google-map-autocomplete'
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ['places'],
+    libraries: GOOGLE_MAPS_LIBRARIES,
     version: '3.64',
   });
 
@@ -124,14 +177,8 @@ export default function SellerLightEstimation({
   return (
     <div className="w-full max-w-2xl mx-auto bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl text-white">
       <div className="mb-6">
-        <h2 className="text-2xl font-black text-white">
-          {lang === 'es' ? 'Publica tu Propiedad como Dueño' : 'List Your Home as the Bank'}
-        </h2>
-        <p className="text-gray-400 text-sm mt-1">
-          {lang === 'es'
-            ? 'Sin comisiones de agentes ni cálculos engorrosos. Define tu valor y calcula tu ingreso pasivo.'
-            : 'No agent commissions or complex repairs. Set your value and see your passive cashflow.'}
-        </p>
+        <h2 className="text-2xl font-black text-white">{t.heading}</h2>
+        <p className="text-gray-400 text-sm mt-1">{t.subheading}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -139,20 +186,20 @@ export default function SellerLightEstimation({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              {lang === 'es' ? 'Nombre Completo' : 'Full Name'} *
+              {t.fullNameLabel} *
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Carlos Mendoza"
+              placeholder={t.fullNamePlaceholder}
               className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-[#529e14]"
             />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              {lang === 'es' ? 'Teléfono (WhatsApp/Móvil)' : 'Phone Number'} *
+              {t.phoneLabel} *
             </label>
             <input
               type="tel"
@@ -167,14 +214,14 @@ export default function SellerLightEstimation({
 
         <div>
           <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-            {lang === 'es' ? 'Correo Electrónico' : 'Email Address'} *
+            {t.emailLabel} *
           </label>
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="carlos@ejemplo.com"
+            placeholder={t.emailPlaceholder}
             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-[#529e14]"
           />
         </div>
@@ -182,7 +229,7 @@ export default function SellerLightEstimation({
         {/* Dirección con Autocomplete */}
         <div>
           <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-            {lang === 'es' ? 'Dirección de la Propiedad' : 'Property Address'} *
+            {t.addressLabel} *
           </label>
           {isLoaded ? (
             <Autocomplete
@@ -203,7 +250,7 @@ export default function SellerLightEstimation({
             <input
               type="text"
               disabled
-              placeholder="Cargando Google Maps..."
+              placeholder={t.loadingMaps}
               className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-gray-500 cursor-not-allowed"
             />
           )}
@@ -213,7 +260,7 @@ export default function SellerLightEstimation({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              {lang === 'es' ? 'Precio Mínimo Deseado ($)' : 'Minimum Target Price ($)'}
+              {t.minPriceLabel}
             </label>
             <input
               type="number"
@@ -225,7 +272,7 @@ export default function SellerLightEstimation({
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              {lang === 'es' ? 'Precio Máximo Sugerido ($)' : 'Maximum Suggested Price ($)'}
+              {t.maxPriceLabel}
             </label>
             <input
               type="number"
@@ -241,29 +288,29 @@ export default function SellerLightEstimation({
         <div className="bg-black/50 border border-[#529e14]/40 rounded-xl p-5 my-4">
           <div className="flex justify-between items-baseline mb-2">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              {lang === 'es' ? 'Ingreso Mensual Estimado (P&I)' : 'Est. Monthly Income (P&I)'}
+              {t.estMonthlyLabel}
             </span>
             <span className="text-xs px-2 py-0.5 rounded bg-[#529e14]/20 text-[#529e14] font-semibold">
-              Tasa Fija 10% / 30 Años
+              {t.rateBadge}
             </span>
           </div>
 
           <div className="text-4xl font-black text-[#529e14]">
             {formatCurrency(estimatedMonthly)}
-            <span className="text-sm font-normal text-gray-400 ml-1">/mes</span>
+            <span className="text-sm font-normal text-gray-400 ml-1">{t.perMonth}</span>
           </div>
 
           <p className="text-xs text-gray-400 mt-2">
-            Basado en un precio medio de venta de{' '}
-            <strong className="text-white">{formatCurrency(avgPrice)}</strong> financiado por el dueño.
+            {t.avgPricePrefix}
+            <strong className="text-white">{formatCurrency(avgPrice)}</strong>
+            {t.avgPriceSuffix}
           </p>
 
           {/* Disclaimer (RF-09) */}
           <div className="mt-4 pt-3 border-t border-white/10 flex items-start gap-2 text-[11px] text-gray-400">
             <span className="text-amber-400 text-sm">ℹ️</span>
             <p>
-              <strong>Nota sobre impuestos y seguros:</strong> Los impuestos prediales (Taxes) y seguro contra riesgos
-              (Insurance) no están incluidos en este monto y se calcularán con precisión en tu borrador final.
+              <strong>{t.disclaimerTitle}</strong> {t.disclaimerBody}
             </p>
           </div>
         </div>
@@ -273,9 +320,7 @@ export default function SellerLightEstimation({
           disabled={isSubmitting}
           className="w-full py-4 bg-[#529e14] hover:bg-[#459e10] text-[#0a0f1c] font-black uppercase tracking-wider rounded-lg transition-all shadow-lg shadow-[#529e14]/20 disabled:opacity-50"
         >
-          {isSubmitting
-            ? lang === 'es' ? 'Creando tu Borrador...' : 'Generating Draft...'
-            : lang === 'es' ? 'Crear Borrador y Continuar →' : 'Create Draft & Continue →'}
+          {isSubmitting ? t.submittingBtn : t.submitBtn}
         </button>
       </form>
     </div>
