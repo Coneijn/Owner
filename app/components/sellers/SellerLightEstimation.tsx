@@ -55,6 +55,7 @@ export default function SellerLightEstimation({
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-autocomplete',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    version: "3.64",
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
