@@ -53,10 +53,10 @@ export default function SellerLightEstimation({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-autocomplete',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    version: "3.64",
-    libraries: GOOGLE_MAPS_LIBRARIES,
+    id: 'google-map-script', // antes: 'google-map-autocomplete'
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    libraries: ['places'],
+    version: '3.64',
   });
 
   // Cálculo de amortización mensual P&I a 30 años (360 cuotas)
