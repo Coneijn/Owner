@@ -26,8 +26,16 @@ interface CashOfferWidgetProps {
   lang?: 'es' | 'en';
   onSelectOption?: (option: string, data: any) => void; 
   allProperties?: any[]; 
-  initialAddress?: string;//para el fuzzy search
-  autoAnalyze?: boolean;//para el fuzzy search
+  initialAddress?: string;
+  autoAnalyze?: boolean;
+  initialArv?: number;
+  sellerContact?: {
+    name: string;
+    email: string;
+    phone: string;
+    suggestedPriceMin: number;
+    suggestedPriceMax: number;
+  };
 }
 
 const libraries: ("places" | "visualization")[] = ["places", "visualization"];
@@ -153,14 +161,16 @@ export default function CashOfferWidget({
   lang = 'es', 
   onSelectOption,
   allProperties,
-  initialAddress = '',//para el fuzzy search
-  autoAnalyze = false//para el fuzzy search
+  initialAddress = '',
+  autoAnalyze = false,
+  initialArv,
+  sellerContact, 
 }: CashOfferWidgetProps) {
   const t = i18n[lang];
   
   const [address, setAddress] = useState(initialAddress || '');
   const [conditionScale, setConditionScale] = useState(3);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(initialAddress && autoAnalyze)); // 👈 Inicia en true si viene con autoAnalyze
   const [error, setError] = useState('');
 // Reemplazar showComps por activeModal
 const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
@@ -360,14 +370,24 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
 
   const handleSelect = (strategyName: string) => {
     if (onSelectOption) {
-      onSelectOption(strategyName, { address, parsedAddress, propertyDetails, inputs, strategies });
+      onSelectOption(strategyName, { address, parsedAddress, propertyDetails, inputs, strategies, sellerContact });
     } else {
       console.log(`Seleccionaste: ${strategyName}`, { address, propertyDetails, inputs, strategies });
     }
   };
 
   const formatMoney = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
-
+  if (!propertyDetails && (loading || autoAnalyze) && !error) {
+    return (
+      <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl p-12 flex flex-col items-center justify-center text-center text-white min-h-[320px]">
+        <div className="w-12 h-12 border-4 border-[#529e14]/30 border-t-[#529e14] rounded-full animate-spin mb-4"></div>
+        <h3 className="text-xl font-bold text-white mb-1">{t.analyzing}</h3>
+        <p className="text-sm text-gray-400 max-w-md">
+          {address || initialAddress}
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="w-full bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden text-white">
       
@@ -837,9 +857,9 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                 </li>
               </ul>
 
-              <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold rounded-lg transition-colors mt-auto">
+              {/* <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold rounded-lg transition-colors mt-auto">
                 {t.chooseBtn}
-              </button>
+              </button>*/}
             </div>
             
             <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">

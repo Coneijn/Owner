@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import CashOfferWidget from '../CashOfferWidget';
 
 interface PropertyData {
   address: string;
@@ -16,6 +17,7 @@ interface SellerFormData {
   name: string;
   email: string;
   phone: string;
+  fullAddress: string;
   addressData: PropertyData;
   suggestedPriceMin: number;
   suggestedPriceMax: number;
@@ -23,12 +25,16 @@ interface SellerFormData {
 }
 
 interface SellerLightEstimationProps {
-  onSubmit: (data: SellerFormData) => Promise<void>;
+  /** Opcional: por si quieres registrar el lead en tu BD al hacer submit sin redirigir */
+  onSaveLead?: (data: SellerFormData) => Promise<void> | void;
+  /** Callback cuando el usuario elige una oferta/estrategia dentro del CashOfferWidget */
+  onSelectOfferOption?: (option: string, data: any) => void;
+  allProperties?: any[];
   isSubmitting?: boolean;
   lang?: 'es' | 'en';
 }
 
-const GOOGLE_MAPS_LIBRARIES: ('places')[] = ['places'];
+const GOOGLE_MAPS_LIBRARIES: ('places' | 'visualization')[] = ['places', 'visualization'];
 
 const translations = {
   es: {
@@ -52,8 +58,9 @@ const translations = {
     disclaimerTitle: 'Nota sobre impuestos y seguros:',
     disclaimerBody:
       'Los impuestos prediales (Taxes) y seguro contra riesgos (Insurance) no están incluidos en este monto y se calcularán con precisión en tu borrador final.',
-    submittingBtn: 'Creando tu Borrador...',
-    submitBtn: 'Crear Borrador y Continuar →',
+    submittingBtn: 'Analizando Propiedad...',
+    submitBtn: 'Ver Opciones de Oferta y Números →',
+    backBtn: '← Editar mis datos iniciales',
   },
   en: {
     heading: 'List Your Home as the Bank',
@@ -76,13 +83,16 @@ const translations = {
     disclaimerTitle: 'Note on taxes and insurance:',
     disclaimerBody:
       'Property taxes and hazard insurance are not included in this amount and will be accurately calculated in your final draft.',
-    submittingBtn: 'Generating Draft...',
-    submitBtn: 'Create Draft & Continue →',
+    submittingBtn: 'Analyzing Property...',
+    submitBtn: 'See Offer Options & Numbers →',
+    backBtn: '← Edit my initial details',
   },
 };
 
 export default function SellerLightEstimation({
-  onSubmit,
+  onSaveLead,
+  onSelectOfferOption,
+  allProperties,
   isSubmitting = false,
   lang = 'es',
 }: SellerLightEstimationProps) {
@@ -101,10 +111,14 @@ export default function SellerLightEstimation({
 
   const [priceMin, setPriceMin] = useState<number>(200000);
   const [priceMax, setPriceMax] = useState<number>(250000);
-  const [annualRate] = useState<number>(0.10); // 10% fija por defecto (RF-08)
+  const [annualRate] = useState<number>(0.10);
+
+  // Estado que controla si ya se envió el formulario para mostrar el CashOfferWidget
+  const [submittedData, setSubmittedData] = useState<SellerFormData | null>(null);
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
+  // Nota: Usamos las mismas libraries que CashOfferWidget para evitar conflictos con useJsApiLoader
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -112,7 +126,6 @@ export default function SellerLightEstimation({
     version: '3.64',
   });
 
-  // Cálculo de amortización mensual P&I a 30 años (360 cuotas)
   const calculateMonthly = (price: number, rate: number): number => {
     if (!price || price <= 0) return 0;
     const monthlyRate = rate / 12;
@@ -145,7 +158,9 @@ export default function SellerLightEstimation({
     });
 
     const street = streetNumber && route ? `${streetNumber} ${route}` : place.name || addressInput;
-    setAddressInput(place.formatted_address || street);
+    const formatted = place.formatted_address || street;
+
+    setAddressInput(formatted);
     setAddressData({
       address: street,
       city,
@@ -158,22 +173,71 @@ export default function SellerLightEstimation({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addressData.address) return;
+    if (!addressInput.trim()) return;
 
-    await onSubmit({
+    const payload: SellerFormData = {
       name,
       email,
       phone,
-      addressData,
+      fullAddress: addressInput,
+      addressData: {
+        ...addressData,
+        address: addressData.address || addressInput,
+      },
       suggestedPriceMin: priceMin,
       suggestedPriceMax: priceMax,
       estimatedMonthlyPayment: estimatedMonthly,
-    });
+    };
+
+    // Si existe un callback para guardar el lead (sin redirigir), lo ejecutamos
+    if (onSaveLead) {
+      await onSaveLead(payload);
+    }
+
+    // Cambiamos la vista para cargar el CashOfferWidget con los datos ingresados
+    setSubmittedData(payload);
   };
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 
+  // 👉 SI YA HIZO SUBMIT, RENDERIZAMOS EL CASH OFFER WIDGET CON LOS DATOS
+  if (submittedData) {
+    return (
+      <div className="w-full max-w-6xl mx-auto space-y-4 animate-fadeIn">
+        <div className="flex justify-between items-center px-2">
+          <button
+            type="button"
+            onClick={() => setSubmittedData(null)}
+            className="text-sm text-gray-400 hover:text-white font-semibold transition-colors flex items-center gap-1"
+          >
+            {t.backBtn}
+          </button>
+          <div className="text-xs text-gray-400">
+            <span className="text-white font-semibold">{submittedData.name}</span> • {submittedData.fullAddress}
+          </div>
+        </div>
+
+        <CashOfferWidget
+          lang={lang}
+          initialAddress={submittedData.fullAddress}
+          autoAnalyze={true}
+          initialArv={(submittedData.suggestedPriceMin + submittedData.suggestedPriceMax) / 2}
+          sellerContact={{
+            name: submittedData.name,
+            email: submittedData.email,
+            phone: submittedData.phone,
+            suggestedPriceMin: submittedData.suggestedPriceMin,
+            suggestedPriceMax: submittedData.suggestedPriceMax,
+          }}
+          allProperties={allProperties}
+          onSelectOption={onSelectOfferOption}
+        />
+      </div>
+    );
+  }
+
+  // 👉 VISTA INICIAL: FORMULARIO LIGERO
   return (
     <div className="w-full max-w-2xl mx-auto bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl text-white">
       <div className="mb-6">
