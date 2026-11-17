@@ -25,9 +25,7 @@ interface SellerFormData {
 }
 
 interface SellerLightEstimationProps {
-  /** Opcional: por si quieres registrar el lead en tu BD al hacer submit sin redirigir */
-  onSaveLead?: (data: SellerFormData) => Promise<void> | void;
-  /** Callback cuando el usuario elige una oferta/estrategia dentro del CashOfferWidget */
+  onSubmit?: (data: SellerFormData) => Promise<void> | void;
   onSelectOfferOption?: (option: string, data: any) => void;
   allProperties?: any[];
   isSubmitting?: boolean;
@@ -90,7 +88,7 @@ const translations = {
 };
 
 export default function SellerLightEstimation({
-  onSaveLead,
+  onSubmit,
   onSelectOfferOption,
   allProperties,
   isSubmitting = false,
@@ -190,8 +188,8 @@ export default function SellerLightEstimation({
     };
 
     // Si existe un callback para guardar el lead (sin redirigir), lo ejecutamos
-    if (onSaveLead) {
-      await onSaveLead(payload);
+    if (onSubmit) {
+      await onSubmit(payload);
     }
 
     // Cambiamos la vista para cargar el CashOfferWidget con los datos ingresados
