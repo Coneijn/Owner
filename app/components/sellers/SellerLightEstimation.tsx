@@ -187,9 +187,9 @@ export default function SellerLightEstimation({
       estimatedMonthlyPayment: estimatedMonthly,
     };
 
-    // Si existe un callback para guardar el lead (sin redirigir), lo ejecutamos
     if (onSubmit) {
-      await onSubmit(payload);
+      const ok: any = await onSubmit(payload);
+      if (ok === false) return;
     }
 
     // Cambiamos la vista para cargar el CashOfferWidget con los datos ingresados

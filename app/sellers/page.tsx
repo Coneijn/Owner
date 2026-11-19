@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SellerLightEstimation from '@/app/components/sellers/SellerLightEstimation';
-import LanguageSwitch from '@/app/components/LanguageSwitch'; // Ajusta esta ruta si está en otra carpeta
+import LanguageSwitch from '@/app/components/LanguageSwitch';
 import { registerSellerAction } from './actions';
 
 const translations = {
@@ -31,18 +31,29 @@ function SellersContent() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
   const handleSellerSubmit = async (formData: any) => {
     setIsSubmitting(true);
     setErrorMessage('');
 
     const res = await registerSellerAction(formData);
+    setIsSubmitting(false);
 
     if (res.success && res.redirectUrl) {
-      router.push(res.redirectUrl);
+      // Guardamos la URL pero NO redirigimos todavía para mostrar CashOfferWidget
+      setRedirectUrl(res.redirectUrl);
+      return true;
     } else {
       setErrorMessage(res.error || t.defaultError);
-      setIsSubmitting(false);
+      return false;
+    }
+  };
+
+  // Se ejecuta cuando el usuario elige continuar desde CashOfferWidget
+  const handleSelectOfferOption = (option: string, data: any) => {
+    if (redirectUrl) {
+      router.push(redirectUrl);
     }
   };
 
@@ -73,6 +84,7 @@ function SellersContent() {
 
       <SellerLightEstimation
         onSubmit={handleSellerSubmit}
+        onSelectOfferOption={handleSelectOfferOption}
         isSubmitting={isSubmitting}
         lang={lang}
       />
