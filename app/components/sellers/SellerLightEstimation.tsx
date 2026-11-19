@@ -25,7 +25,7 @@ interface SellerFormData {
 }
 
 interface SellerLightEstimationProps {
-  onSubmit?: (data: SellerFormData) => Promise<void> | void;
+  onSubmit?: (data: SellerFormData) => Promise<boolean | void> | boolean | void;
   onSelectOfferOption?: (option: string, data: any) => void;
   allProperties?: any[];
   isSubmitting?: boolean;
@@ -187,9 +187,10 @@ export default function SellerLightEstimation({
       estimatedMonthlyPayment: estimatedMonthly,
     };
 
+    // Si existe un callback para guardar el lead (sin redirigir), lo ejecutamos
     if (onSubmit) {
-      const ok: any = await onSubmit(payload);
-      if (ok === false) return;
+      const result = await onSubmit(payload);
+      if (result === false) return;
     }
 
     // Cambiamos la vista para cargar el CashOfferWidget con los datos ingresados
