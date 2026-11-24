@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import CashOfferWidget from '../CashOfferWidget';
+import { getRentCastEstimateAction } from '@/app/sellers/actions';
 
 interface PropertyData {
   address: string;
@@ -59,6 +60,8 @@ const translations = {
     submittingBtn: 'Analizando Propiedad...',
     submitBtn: 'Ver Opciones de Oferta y Números →',
     backBtn: '← Editar mis datos iniciales',
+    fetchingEstimate: 'Calculando rango sugerido según el mercado...',
+    estimateReady: 'Rango estimado según valor de mercado (puedes ajustarlo)',
   },
   en: {
     heading: 'List Your Home as the Bank',
@@ -84,6 +87,8 @@ const translations = {
     submittingBtn: 'Analyzing Property...',
     submitBtn: 'See Offer Options & Numbers →',
     backBtn: '← Edit my initial details',
+    fetchingEstimate: 'Calculating suggested range based on market data...',
+    estimateReady: 'Estimated range based on market value (editable)',
   },
 };
 
@@ -135,7 +140,10 @@ export default function SellerLightEstimation({
   const avgPrice = useMemo(() => (priceMin + priceMax) / 2, [priceMin, priceMax]);
   const estimatedMonthly = useMemo(() => calculateMonthly(avgPrice, annualRate), [avgPrice, annualRate]);
 
-  const onPlaceChanged = () => {
+  const [isFetchingPrice, setIsFetchingPrice] = useState<boolean>(false);
+  const [hasMarketEstimate, setHasMarketEstimate] = useState<boolean>(false);
+
+  const onPlaceChanged = async () => {
     if (!autocompleteRef.current) return;
     const place = autocompleteRef.current.getPlace();
     if (!place || !place.address_components) return;
@@ -167,6 +175,20 @@ export default function SellerLightEstimation({
       latitude: place.geometry?.location?.lat(),
       longitude: place.geometry?.location?.lng(),
     });
+
+    // Consultar RentCast automáticamente al seleccionar la dirección
+    setIsFetchingPrice(true);
+    setHasMarketEstimate(false);
+
+    const estimate = await getRentCastEstimateAction(formatted);
+
+    if (estimate.success && estimate.suggestedMin && estimate.suggestedMax) {
+      setPriceMin(estimate.suggestedMin);
+      setPriceMax(estimate.suggestedMax);
+      setHasMarketEstimate(true);
+    }
+
+    setIsFetchingPrice(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -320,30 +342,45 @@ export default function SellerLightEstimation({
         </div>
 
         {/* Rango de Precios Sugeridos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              {t.minPriceLabel}
-            </label>
-            <input
-              type="number"
-              step="5000"
-              value={priceMin}
-              onChange={(e) => setPriceMin(Number(e.target.value))}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-[#529e14]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              {t.maxPriceLabel}
-            </label>
-            <input
-              type="number"
-              step="5000"
-              value={priceMax}
-              onChange={(e) => setPriceMax(Number(e.target.value))}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-[#529e14]"
-            />
+        <div className="pt-2 space-y-2">
+          {isFetchingPrice && (
+            <p className="text-xs text-[#f8ed1a] animate-pulse font-medium">
+              ⏳ {t.fetchingEstimate}
+            </p>
+          )}
+          {!isFetchingPrice && hasMarketEstimate && (
+            <p className="text-xs text-[#529e14] font-medium">
+              ✓ {t.estimateReady}
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
+                {t.minPriceLabel}
+              </label>
+              <input
+                type="number"
+                step="5000"
+                disabled={isFetchingPrice}
+                value={priceMin}
+                onChange={(e) => setPriceMin(Number(e.target.value))}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-[#529e14] disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
+                {t.maxPriceLabel}
+              </label>
+              <input
+                type="number"
+                step="5000"
+                disabled={isFetchingPrice}
+                value={priceMax}
+                onChange={(e) => setPriceMax(Number(e.target.value))}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-[#529e14] disabled:opacity-50"
+              />
+            </div>
           </div>
         </div>
 
@@ -353,12 +390,12 @@ export default function SellerLightEstimation({
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
               {t.estMonthlyLabel}
             </span>
-            <span className="text-xs px-2 py-0.5 rounded bg-[#529e14]/20 text-[#529e14] font-semibold">
+            <span className="text-xs px-2 py-0.5 rounded bg-[#f8ed1a]/20 text-[#f8ed1a] font-semibold">
               {t.rateBadge}
             </span>
           </div>
 
-          <div className="text-4xl font-black text-[#529e14]">
+          <div className="text-4xl font-black text-[#f8ed1a]">
             {formatCurrency(estimatedMonthly)}
             <span className="text-sm font-normal text-gray-400 ml-1">{t.perMonth}</span>
           </div>
@@ -380,8 +417,8 @@ export default function SellerLightEstimation({
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full py-4 bg-[#529e14] hover:bg-[#459e10] text-[#0a0f1c] font-black uppercase tracking-wider rounded-lg transition-all shadow-lg shadow-[#529e14]/20 disabled:opacity-50"
+          disabled={isSubmitting || isFetchingPrice}
+          className="w-full py-4 bg-[#f8ed1a] hover:bg-[#e5da12] text-[#0a0f1c] font-black uppercase tracking-wider rounded-lg transition-all shadow-lg shadow-[#f8ed1a]/20 disabled:opacity-50"
         >
           {isSubmitting ? t.submittingBtn : t.submitBtn}
         </button>

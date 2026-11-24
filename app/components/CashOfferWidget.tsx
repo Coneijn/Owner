@@ -53,6 +53,7 @@ const i18n = {
     beds: "Camas", baths: "Baños", sqft: "Pies²",
     switchToMoney: "Cambiar a $", switchToPercent: "Cambiar a %",
     backedByComps: "Respaldado por {n} ventas recientes",
+    otdSoldBadge: "Vendida por OTD",
     rangeTitle: "Tu Potencial de Ganancia",
     rangeDesc: "Como dueño, tienes múltiples formas de capitalizar tu propiedad. Sé el banco, véndela en el mercado, obtén efectivo rápido o réntala.",
     transparencyTitle: "🧠 ¿Cómo calculamos esto?",
@@ -110,14 +111,15 @@ const i18n = {
     beds: "Beds", baths: "Baths", sqft: "SqFt",
     switchToMoney: "Switch to $", switchToPercent: "Switch to %",
     backedByComps: "Backed by {n} recent sales",
+    otdSoldBadge: "Sold by OTD",
     rangeTitle: "Your Profit Potential",
     rangeDesc: "As an owner, you have multiple ways to capitalize on your property. Become the bank, list it, sell for fast cash, or rent it out.",
     transparencyTitle: "🧠 How did we calculate this?",
     transparencyArv: "The After Repair Value (ARV) was estimated by analyzing {n} recently sold comparable properties.",
     transparencyRehab: "Repairs were estimated at {price}/SqFt based on your condition input, property size, and age.",
     backedByRentComps: "Backed by {n} recent rents",
-selectRentCompsTitle: "Select similar rental properties",
-selectRentCompsDesc: "We will use the average monthly rent of these homes to fine-tune your estimate.",
+    selectRentCompsTitle: "Select similar rental properties",
+    selectRentCompsDesc: "We will use the average monthly rent of these homes to fine-tune your estimate.",
     sellerFinanceTitle: "Become The Bank", sellerFinanceSub: "(Seller Financing)",
     sellerFinanceDesc: "Sell on terms. Receive a down payment today and generate monthly income without dealing with tenants.",
     downPaymentReceivedLabel: "Down Payment:", monthlyIncomeLabel: "Monthly Income (P&I):", termLabel: "Term:", termValue: "{years} yrs at {rate}%", totalYieldLabel: "Total Yield:",
@@ -157,6 +159,29 @@ selectRentCompsDesc: "We will use the average monthly rent of these homes to fin
   }
 };
 
+const extractZipCode = (fullAddress: string, fallbackZip?: string): string => {
+  if (fallbackZip) return fallbackZip;
+  const match = fullAddress.match(/\b\d{5}(?:-\d{4})?\b/);
+  return match ? match[0].slice(0, 5) : '';
+};
+
+const mergeAndDedupeComps = (internalComps: any[], externalComps: any[]) => {
+  const seenStreets = new Set<string>();
+  const merged: any[] = [];
+
+  // Priorizar inventario propio vendido de OTD (RF-23)
+  for (const comp of [...internalComps, ...externalComps]) {
+    if (!comp?.address || !comp?.price) continue;
+    const streetKey = comp.address.toLowerCase().split(',')[0].trim();
+    if (seenStreets.has(streetKey)) continue;
+    seenStreets.add(streetKey);
+    merged.push(comp);
+  }
+
+  // Máximo 6 comparables en el modal para mantener el grid 3x2 limpio
+  return merged.slice(0, 6);
+};
+
 export default function CashOfferWidget({ 
   lang = 'es', 
   onSelectOption,
@@ -172,13 +197,13 @@ export default function CashOfferWidget({
   const [conditionScale, setConditionScale] = useState(3);
   const [loading, setLoading] = useState(Boolean(initialAddress && autoAnalyze)); // 👈 Inicia en true si viene con autoAnalyze
   const [error, setError] = useState('');
-// Reemplazar showComps por activeModal
-const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
-const [selectedComps, setSelectedComps] = useState<any[]>([]);
-const [selectedRentComps, setSelectedRentComps] = useState<any[]>([]); 
-const [showSettings, setShowSettings] = useState(false);
-const [propertyDetails, setPropertyDetails] = useState<any>(null);
-const [isWheelExpanded, setIsWheelExpanded] = useState(false);
+  // Reemplazar showComps por activeModal
+  const [activeModal, setActiveModal] = useState<'sales' | 'rent' | null>(null);
+  const [selectedComps, setSelectedComps] = useState<any[]>([]);
+  const [selectedRentComps, setSelectedRentComps] = useState<any[]>([]); 
+  const [showSettings, setShowSettings] = useState(false);
+  const [propertyDetails, setPropertyDetails] = useState<any>(null);
+  const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   
   // Nuevo estado para controlar porcentaje vs dinero en el enganche
   const [isDpPercent, setIsDpPercent] = useState(false); 
@@ -228,7 +253,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
   };
 
   const [inputs, setInputs] = useState<DealInputs>({
-    arv: 250000,
+    arv: initialArv || 250000,
     rehabCosts: 25000,
     estimatedRent: 1500,
     investorDiscountPercent: 30, 
@@ -264,7 +289,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
     }
   }, [selectedComps]);
 
-  //  Actualizar Renta cuando cambian las rentas seleccionadas 
+  // Actualizar Renta cuando cambian las rentas seleccionadas 
   useEffect(() => {
     if (selectedRentComps.length > 0) {
       const avgRent = selectedRentComps.reduce((sum, comp) => sum + comp.price, 0) / selectedRentComps.length;
@@ -320,7 +345,8 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
 
     calc();
   }, [inputs, isDpPercent]);
-  //para el fuzzy search, si hay una dirección inicial y autoAnalyze es true, se analiza la propiedad automáticamente
+
+  // Para el fuzzy search, si hay una dirección inicial y autoAnalyze es true, se analiza la propiedad automáticamente
   useEffect(() => {
     if (initialAddress && autoAnalyze) {
       setAddress(initialAddress);
@@ -336,6 +362,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
     if (overrideCondition === undefined) setPropertyDetails(null);
     
     try {
+      // 1. Análisis base de la propiedad
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -345,10 +372,36 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error.');
 
-      const sortedComps = (data.recentSales || []).sort((a: any, b: any) => b.price - a.price).slice(0, 5);
+      // 2. Consultar comparables internos vendidos en OTD (RF-22, RF-23)
+      const resolvedZip = extractZipCode(targetAddress, parsedAddress.zip || data.zipCode);
+      const referencePrice = data.arv || initialArv || sellerContact?.suggestedPriceMax || 0;
+
+      let internalOtdComps: any[] = [];
+      if (resolvedZip || parsedAddress.city) {
+        try {
+          const params = new URLSearchParams();
+          if (resolvedZip) params.set('zipCode', resolvedZip);
+          if (parsedAddress.city) params.set('city', parsedAddress.city);
+          if (referencePrice > 0) params.set('price', String(referencePrice));
+
+          const compsRes = await fetch(`/api/properties/comps?${params.toString()}`);
+          if (compsRes.ok) {
+            const compsData = await compsRes.json();
+            internalOtdComps = compsData.comps || [];
+          }
+        } catch (compsErr) {
+          console.error('Error fetching internal OTD comps:', compsErr);
+        }
+      }
+
+      // 3. Combinar comparables internos OTD (prioridad) + comparables externos
+      const externalSales = (data.recentSales || []).sort((a: any, b: any) => b.price - a.price);
+      const sortedComps = mergeAndDedupeComps(internalOtdComps, externalSales);
       const initialSelected = sortedComps.slice(0, 3);
+
       const sortedRents = (data.recentRents || []).sort((a: any, b: any) => b.price - a.price).slice(0, 5);
       const initialSelectedRents = sortedRents.slice(0, 3);
+
       setPropertyDetails({ ...data, recentSales: sortedComps });
       setSelectedComps(initialSelected);
       setSelectedRentComps(initialSelectedRents);
@@ -565,7 +618,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                           
                           return (
                             <div 
-                              key={idx} 
+                              key={comp.id || idx} 
                               onClick={() => {
                                 if (isSelected) {
                                   setSelected(selectedList.filter(c => c.address !== comp.address));
@@ -576,9 +629,16 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                               className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col gap-2 bg-black/40`}
                               style={{ borderColor: isSelected ? themeColor : 'rgba(255,255,255,0.05)', backgroundColor: isSelected ? `${themeColor}1A` : undefined }}
                             >
-                              <div className="flex justify-between items-start">
-                                <span className="text-xs text-gray-300 font-medium leading-tight w-2/3">{comp.address}</span>
-                                <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${isSelected ? 'text-white' : 'bg-white/10 text-gray-400'}`} style={{ backgroundColor: isSelected ? themeColor : undefined }}>
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="w-2/3">
+                                  {isSales && comp.isInternalOtd && (
+                                    <span className="inline-block mb-1.5 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#529e14]/20 text-[#7ceb21] border border-[#529e14]/40">
+                                      ★ {t.otdSoldBadge}
+                                    </span>
+                                  )}
+                                  <p className="text-xs text-gray-300 font-medium leading-tight">{comp.address}</p>
+                                </div>
+                                <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase shrink-0 ${isSelected ? 'text-white' : 'bg-white/10 text-gray-400'}`} style={{ backgroundColor: isSelected ? themeColor : undefined }}>
                                   {isSelected ? '✓ ' + t.selectedText : '+ ' + t.selectText}
                                 </span>
                               </div>
@@ -697,7 +757,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                     if (!comp.lat || !comp.lng) return null; 
                     return (
                       <Marker 
-                        key={`sold-${idx}`}
+                        key={`sold-${comp.id || idx}`}
                         position={{ lat: comp.lat, lng: comp.lng }}
                         icon={{
                           url: '/frog-pin-vendida.png', 
@@ -714,7 +774,12 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                       options={{ pixelOffset: new window.google.maps.Size(0, -40) }} 
                       onCloseClick={() => setSelectedPin(null)}
                     >
-                      <div className="p-2 text-[green] min-w-[150px] font-sans">
+                      <div className="p-2 text-[green] min-w-[160px] font-sans">
+                        {selectedPin.isInternalOtd && (
+                          <span className="inline-block mb-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#529e14] text-white">
+                            ★ {t.otdSoldBadge}
+                          </span>
+                        )}
                         <p className="font-bold text-xs mb-1 border-b border-gray-200 pb-1">{selectedPin.address}</p>
                         <p className="text-[#529e14] font-black text-lg">{formatMoney(selectedPin.price)}</p>
                         <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">
@@ -809,14 +874,14 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x border-t border-white/10 divide-white/10">
             
             <div className="p-6 bg-black/20 hover:bg-white/5 transition-colors group flex flex-col relative">
-              <div className="absolute top-0 left-0 w-full h-1 bg-[#529e14]"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-[#f8ed1a]"></div>
               <div className="flex items-center gap-3 mb-8">
                 <span className="text-2xl">🏦</span>
                 <h3 className="text-lg font-bold text-white">{t.sellerFinanceTitle} <br/><span className="text-xm text-gray-400 font-normal">{t.sellerFinanceSub}</span></h3>
               </div>
 
-              <div className="text-3xl leading-relaxed font-black text-[#529e14] mb-2">
-                {formatMoney(strategies.sellerFinance.totalMonthlyPayment)}<span className="text-lg text-[#529e14]/70 font-normal">/mo</span>
+              <div className="text-3xl leading-relaxed font-black text-[#f8ed1a] mb-2">
+                {formatMoney(strategies.sellerFinance.totalMonthlyPayment)}<span className="text-lg text-[#f8ed1a]/70 font-normal">/mo</span>
               </div>
 
               <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
@@ -835,7 +900,7 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                 {/* DESGLOSE DEL PAGO MENSUAL */}
                 <li className="flex justify-between text-[11px] text-gray-500 pl-2">
                   <span>• P&I</span> 
-                  <span className="text-[#529e14] font-bold">+{formatMoney(strategies.sellerFinance.monthlyIncome)}</span>
+                  <span className="text-[#f8ed1a] font-bold">+{formatMoney(strategies.sellerFinance.monthlyIncome)}</span>
                 </li>
                 <li className="flex justify-between text-[11px] text-gray-500 pl-2">
                   <span>• {lang === 'es' ? 'Impuestos (Est.)' : 'Taxes (Est.)'}</span> 
@@ -857,9 +922,9 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
                 </li>
               </ul>
 
-              {/* <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#529e14] text-[#529e14] hover:bg-[#529e14] hover:text-white font-bold rounded-lg transition-colors mt-auto">
+               <button onClick={() => handleSelect('owner_finance')} className="w-full py-3 border-2 border-[#f8ed1a] text-[#f8ed1a] hover:bg-[#f8ed1a] hover:text-black font-bold rounded-lg transition-colors mt-auto">
                 {t.chooseBtn}
-              </button>*/}
+              </button>
             </div>
             
             <div className="p-6 bg-transparent hover:bg-white/5 transition-colors group flex flex-col">
@@ -931,11 +996,9 @@ const [isWheelExpanded, setIsWheelExpanded] = useState(false);
              
             </div>
 
-           
-
           </div>
 
-         {/* "¿Cómo calculamos esto?" */}
+          {/* "¿Cómo calculamos esto?" */}
           <div className="bg-black/40 border border-white/5 p-5 rounded-xl max-w-4xl mx-auto text-left shadow-inner mt-4">
             <h4 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
               {t.transparencyTitle}

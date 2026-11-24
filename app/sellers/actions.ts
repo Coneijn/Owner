@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 
+const GHL_SELLER_WEBHOOK_URL =
+  'https://services.leadconnectorhq.com/hooks/sD7ANbPAIA28p65ZSvJl/webhook-trigger/4f9624b6-15f8-492f-bbbb-5ca537e21777';
+
 interface RegisterSellerInput {
   name: string;
   email: string;
@@ -154,52 +157,46 @@ export async function registerSellerAction(data: RegisterSellerInput) {
       },
     });
 
-    // 6. Sincronización en segundo plano con GoHighLevel (RF-04)
-    if (process.env.GHL_API_KEY && process.env.GHL_LOCATION_ID) {
-      const nameParts = name.trim().split(' ');
-      const firstName = nameParts[0] || 'Vendedor';
-      const lastName = nameParts.slice(1).join(' ') || '';
+    // 6. Envío de datos en segundo plano al Webhook de GoHighLevel
+    const nameParts = name.trim().split(' ');
+    const firstName = nameParts[0] || 'Vendedor';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    const draftUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://ownertodueno.com'}/sellerDashboard/properties/${property.id}/edit`;
 
-      fetch('https://services.leadconnectorhq.com/contacts/upsert', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GHL_API_KEY}`,
-          'Version': '2021-07-28',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          locationId: process.env.GHL_LOCATION_ID,
-          email: normalizedEmail,
-          phone: phone.trim(),
-          firstName,
-          lastName,
-          tags: ['seller', 'self-service', 'pipeline-onboarding', 'draft_incomplete'],
-          customFields: [
-            { key: 'property_address', value: addressData.address },
-            { key: 'suggested_price_min', value: suggestedPriceMin },
-            { key: 'suggested_price_max', value: suggestedPriceMax },
-            { key: 'estimated_monthly_payment', value: estimatedMonthlyPayment },
-            {
-              key: 'draft_url',
-              value: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ownertodueno.com'}/sellerDashboard/properties/${property.id}/edit`,
-            },
-          ],
-        }),
+    fetch(GHL_SELLER_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        sellerProfileId: sellerProfile.id,
+        propertyId: property.id,
+        propertySlug: property.slug,
+        firstName,
+        lastName,
+        fullName: name.trim(),
+        email: normalizedEmail,
+        phone: phone.trim(),
+        propertyAddress: addressData.address,
+        city: addressData.city || 'Unknown',
+        state: addressData.state || 'TX',
+        zipCode: addressData.zipCode || '00000',
+        latitude: addressData.latitude ?? null,
+        longitude: addressData.longitude ?? null,
+        suggestedPriceMin,
+        suggestedPriceMax,
+        estimatedMonthlyPayment,
+        draftUrl,
+        tags: ['seller', 'self-service', 'pipeline-onboarding', 'draft_incomplete'],
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          console.error(`Error en webhook de GHL: HTTP ${res.status}`);
+        }
       })
-        .then(async (ghlRes) => {
-          if (ghlRes.ok) {
-            const ghlData = await ghlRes.json();
-            const contactId = ghlData?.contact?.id;
-            if (contactId && sellerProfile) {
-              await prisma.sellerProfile.update({
-                where: { id: sellerProfile.id },
-                data: { ghlContactId: contactId },
-              });
-            }
-          }
-        })
-        .catch((err) => console.error('Error al sincronizar con GHL:', err));
-    }
+      .catch((err) => console.error('Error al enviar payload al webhook de GHL:', err));
 
     return {
       success: true,
@@ -212,5 +209,56 @@ export async function registerSellerAction(data: RegisterSellerInput) {
       success: false,
       error: error?.message || 'Error al procesar el registro del vendedor.',
     };
+  }
+}
+const LOWER_MARGIN = 0.10; // -10% sobre el valor estimado
+const UPPER_MARGIN = 0.10; // +10% sobre el valor estimado
+
+export async function getRentCastEstimateAction(fullAddress: string) {
+  try {
+    const apiKey = process.env.RENTCAST_API_KEY;
+    if (!apiKey) {
+      console.error('RENTCAST_API_KEY no está configurada');
+      return { success: false, error: 'API key missing' };
+    }
+
+    const url = `https://api.rentcast.io/v1/avm/value?address=${encodeURIComponent(fullAddress)}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Api-Key': apiKey,
+        Accept: 'application/json',
+      },
+      // Cache opcional para no gastar créditos repetidos si el usuario re-selecciona la misma dirección
+      next: { revalidate: 3600 },
+    });
+
+    if (!response.ok) {
+      console.error(`Error RentCast HTTP ${response.status}`);
+      return { success: false, error: `RentCast error: ${response.status}` };
+    }
+
+    const data = await response.json();
+
+    if (!data?.price || typeof data.price !== 'number') {
+      return { success: false, error: 'No se encontró valuación para esta dirección' };
+    }
+
+    const basePrice = data.price;
+
+    // Aplicamos márgenes y redondeamos a múltiplos de $5,000 para respetar el step="5000" de los inputs
+    const suggestedMin = Math.round((basePrice * (1 - LOWER_MARGIN)) / 5000) * 5000;
+    const suggestedMax = Math.round((basePrice * (1 + UPPER_MARGIN)) / 5000) * 5000;
+
+    return {
+      success: true,
+      estimatedValue: basePrice,
+      suggestedMin,
+      suggestedMax,
+    };
+  } catch (error: any) {
+    console.error('Error en getRentCastEstimateAction:', error);
+    return { success: false, error: error?.message || 'Error consultando RentCast' };
   }
 }

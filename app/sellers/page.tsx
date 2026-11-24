@@ -1,8 +1,9 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import SellerLightEstimation from '@/app/components/sellers/SellerLightEstimation';
+import CheckEmailModal from '@/app/components/sellers/CheckEmailModal';
 import LanguageSwitch from '@/app/components/LanguageSwitch';
 import { registerSellerAction } from './actions';
 
@@ -24,14 +25,14 @@ const translations = {
 };
 
 function SellersContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const lang: 'es' | 'en' = searchParams.get('lang') === 'en' ? 'en' : 'es';
   const t = translations[lang];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [sellerEmail, setSellerEmail] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   const handleSellerSubmit = async (formData: any) => {
     setIsSubmitting(true);
@@ -40,9 +41,8 @@ function SellersContent() {
     const res = await registerSellerAction(formData);
     setIsSubmitting(false);
 
-    if (res.success && res.redirectUrl) {
-      // Guardamos la URL pero NO redirigimos todavía para mostrar CashOfferWidget
-      setRedirectUrl(res.redirectUrl);
+    if (res.success) {
+      setSellerEmail(formData.email || '');
       return true;
     } else {
       setErrorMessage(res.error || t.defaultError);
@@ -50,11 +50,12 @@ function SellersContent() {
     }
   };
 
-  // Se ejecuta cuando el usuario elige continuar desde CashOfferWidget
-  const handleSelectOfferOption = (option: string, data: any) => {
-    if (redirectUrl) {
-      router.push(redirectUrl);
+  // Se ejecuta al hacer clic en el botón dentro de CashOfferWidget
+  const handleSelectOfferOption = (_option: string, data: any) => {
+    if (data?.sellerContact?.email) {
+      setSellerEmail(data.sellerContact.email);
     }
+    setShowEmailModal(true);
   };
 
   return (
@@ -65,7 +66,7 @@ function SellersContent() {
       </div>
 
       <div className="w-full max-w-2xl mb-8 text-center">
-        <span className="px-3 py-1 bg-[#529e14]/20 text-[#529e14] border border-[#529e14]/40 rounded-full text-xs font-bold uppercase tracking-widest">
+        <span className="px-3 py-1 bg-[#f8ed1a]/20 text-[#f8ed1a] border border-[#f8ed1a]/40 rounded-full text-xs font-bold uppercase tracking-widest">
           {t.badge}
         </span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white mt-4 tracking-tight">
@@ -86,6 +87,14 @@ function SellersContent() {
         onSubmit={handleSellerSubmit}
         onSelectOfferOption={handleSelectOfferOption}
         isSubmitting={isSubmitting}
+        lang={lang}
+      />
+
+      {/* Modal informativo de correo enviado */}
+      <CheckEmailModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        email={sellerEmail}
         lang={lang}
       />
     </div>
